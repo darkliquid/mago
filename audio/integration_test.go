@@ -2,19 +2,15 @@ package audio
 
 import (
 	"bytes"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/darkliquid/mago"
-	"github.com/darkliquid/mago/internal/buildlib"
+	"github.com/darkliquid/mago/internal/testlib"
 )
 
 func TestEnginePlayPauseResumeWithNullBackend(t *testing.T) {
-	libPath := filepath.Join(t.TempDir(), buildlib.DefaultLibraryFilename("linux"))
-	if err := buildlib.Build("..", libPath); err != nil {
-		t.Fatalf("build shared library: %v", err)
-	}
+	libPath := testlib.BuildRuntimeLibrary(t, "..")
 
 	engine, err := Open(Config{
 		LibraryPath:        libPath,

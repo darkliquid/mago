@@ -1,0 +1,49 @@
+version: "2"
+
+run:
+  relative-path-mode: gomod
+  modules-download-mode: readonly
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - copyloopvar
+    - gosec
+    - misspell
+    - predeclared
+    - revive
+    - unconvert
+  exclusions:
+    generated: strict
+    warn-unused: true
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+    rules:
+      - path: ^device_supported\.go$
+        text: "possible misuse of unsafe.Pointer"
+        linters:
+          - govet
+      - path: _test\.go
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: strict
+    warn-unused: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true

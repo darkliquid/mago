@@ -1,24 +1,18 @@
-//go:build linux
-
 package mago
 
 import (
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
 	"unsafe"
 
-	"github.com/darkliquid/mago/internal/buildlib"
+	"github.com/darkliquid/mago/internal/testlib"
 )
 
 func TestVersionAndNullBackendPlayback(t *testing.T) {
 	t.Parallel()
 
-	libPath := filepath.Join(t.TempDir(), buildlib.DefaultLibraryFilename("linux"))
-	if err := buildlib.Build(".", libPath); err != nil {
-		t.Fatalf("build shared library: %v", err)
-	}
+	libPath := testlib.BuildRuntimeLibrary(t, ".")
 
 	lib, err := Open(WithLibraryPath(libPath))
 	if err != nil {
