@@ -44,11 +44,7 @@ func TestEnginePlayPauseResumeWithNullBackend(t *testing.T) {
 	}
 	defer stream.Close()
 
-	time.Sleep(60 * time.Millisecond)
-	pos1 := stream.Position()
-	if pos1 <= 0 {
-		t.Fatalf("expected playback to advance, got %v", pos1)
-	}
+	waitForPositionAdvance(t, stream, 250*time.Millisecond)
 
 	stream.Pause()
 	paused := stream.Position()
@@ -61,9 +57,29 @@ func TestEnginePlayPauseResumeWithNullBackend(t *testing.T) {
 	if err := stream.Resume(); err != nil {
 		t.Fatalf("resume: %v", err)
 	}
-	time.Sleep(40 * time.Millisecond)
-	pos3 := stream.Position()
+	pos3 := waitForPositionGreaterThan(t, stream, pos2, 250*time.Millisecond)
 	if pos3 <= pos2 {
 		t.Fatalf("expected resumed playback to advance, got %v then %v", pos2, pos3)
 	}
+}
+
+func waitForPositionAdvance(t *testing.T, stream *Stream, timeout time.Duration) time.Duration {
+	t.Helper()
+	return waitForPositionGreaterThan(t, stream, 0, timeout)
+}
+
+func waitForPositionGreaterThan(t *testing.T, stream *Stream, threshold time.Duration, timeout time.Duration) time.Duration {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		pos := stream.Position()
+		if pos > threshold {
+			return pos
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	pos := stream.Position()
+	t.Fatalf("expected playback position > %v within %v, got %v", threshold, timeout, pos)
+	return 0
 }
