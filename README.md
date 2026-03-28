@@ -71,6 +71,7 @@ The current implementation includes:
 - playback device creation
 - callback-based audio output
 - a higher-level `audio` subpackage for ergonomic stream playback
+- a `speaker` subpackage compatible with `gopxl/beep/speaker`
 
 Examples included in this repo:
 
@@ -212,6 +213,43 @@ Notes:
 - `audio.Open()` starts the playback device automatically.
 - The initial loader supports WAV streams; higher-level format support can be added on top later.
 - The included `examples/audio-wav` demo shows loading a WAV stream from memory and changing speed / direction / fades at runtime.
+
+
+## `beep`-compatible `speaker` package
+
+If you already have `github.com/gopxl/beep` streamers, use `github.com/darkliquid/mago/speaker`.
+
+It mirrors the `beep/speaker` API closely:
+
+- `speaker.Init`
+- `speaker.Play`
+- `speaker.PlayAndWait`
+- `speaker.Lock` / `speaker.Unlock`
+- `speaker.Clear`
+- `speaker.Suspend` / `speaker.Resume`
+- `speaker.Close`
+
+Example:
+
+```go
+if err := speaker.Init(beep.SampleRate(48_000), 512); err != nil {
+	panic(err)
+}
+defer speaker.Close()
+
+speaker.Play(beep.StreamerFunc(func(samples [][2]float64) (int, bool) {
+	for i := range samples {
+		samples[i][0] = 0
+		samples[i][1] = 0
+	}
+	return len(samples), true
+}))
+```
+
+Notes:
+
+- Playback is backed by `mago`'s miniaudio callback rather than `oto`.
+- `Suspend` and `Resume` map to stopping and starting the underlying `mago.Device`.
 
 
 ## Demos
