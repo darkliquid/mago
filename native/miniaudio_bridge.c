@@ -6,7 +6,9 @@
 #define MA_IMPLEMENTATION
 #include "../miniaudio.h"
 
-#if defined(__GNUC__)
+#if defined(_WIN32)
+#define MAGO_API __declspec(dllexport)
+#elif defined(__GNUC__)
 #define MAGO_API __attribute__((visibility("default")))
 #else
 #define MAGO_API
