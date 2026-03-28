@@ -48,28 +48,30 @@ var (
 	callbackSeq atomic.Uint64
 	callbacks   sync.Map
 
-	dataCallbackPtr = purego.NewCallback(func(token uintptr, output uintptr, input uintptr, frameCount uint32) {
+	dataCallbackPtr = purego.NewCallback(func(token uintptr, output uintptr, input uintptr, frameCount uint32) uintptr {
 		value, ok := callbacks.Load(token)
 		if !ok {
-			return
+			return 0
 		}
 		state := value.(*callbackState)
 		if state.onData == nil {
-			return
+			return 0
 		}
 		state.onData(state.device, unsafe.Pointer(output), unsafe.Pointer(input), frameCount)
+		return 0
 	})
 
-	notificationCallbackPtr = purego.NewCallback(func(token uintptr, notificationType uint32) {
+	notificationCallbackPtr = purego.NewCallback(func(token uintptr, notificationType uint32) uintptr {
 		value, ok := callbacks.Load(token)
 		if !ok {
-			return
+			return 0
 		}
 		state := value.(*callbackState)
 		if state.onNotify == nil {
-			return
+			return 0
 		}
 		state.onNotify(state.device, NotificationType(notificationType))
+		return 0
 	})
 )
 
