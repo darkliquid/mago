@@ -1,0 +1,318 @@
+# mago
+
+`mago` is a Go wrapper around [`miniaudio.h`](https://miniaud.io/) that avoids Go-side CGO.
+
+Instead of compiling C into your Go package, `mago` expects `miniaudio` to be built as a standalone shared library and then loads that library at runtime with [`purego`](https://github.com/ebitengine/purego).
+
+Today, the Go wrapper in this repository is **Linux-first** and currently targets dynamic loading of `libminiaudio.so`. The native bridge can also be compiled as a shared library on other platforms, and this README includes build commands for those targets, but the Go API itself is not yet fully ported/validated beyond Linux.
+
+
+## License
+
+Like `miniaudio` itself, this project is intended to be available under a **public domain / MIT dual-license model**.
+
+- You may treat it as public domain where that is recognized.
+- Where public domain dedication is not recognized or not desired, you may use it under the MIT license instead.
+
+`miniaudio.h` itself follows that same licensing model, and this project is designed to mirror it.
+
+
+## What this library is
+
+`mago` gives you a way to use `miniaudio` from Go without requiring CGO in your Go build.
+
+The basic model is:
+
+1. Build the native bridge as a shared library.
+2. Ship that shared library with your application.
+3. Load it from Go with `mago.Open()`.
+4. Use the Go wrapper for version checks, context creation, device enumeration, and playback callbacks.
+
+Important runtime rule:
+
+- **Building the shared library is not required at application build time.**
+- **Providing the correct shared library artifact at runtime is required.**
+
+In other words, your Go binary does not need CGO, but it does need access to the right dynamic library:
+
+- Linux: `libminiaudio.so`
+- macOS: `libminiaudio.dylib`
+- Windows: `miniaudio.dll`
+
+
+## Strict version matching
+
+`miniaudio` does not promise backward compatibility, so `mago` performs a **strict runtime version check** when opening the library.
+
+The loaded shared library must report the exact `miniaudio` version vendored by this repository. Right now that is:
+
+- `0.11.25`
+
+If the loaded library version does not match exactly, `mago.Open()` fails immediately.
+
+
+## Current features
+
+The current implementation includes:
+
+- runtime loading through `purego`
+- strict `miniaudio` version validation
+- context creation
+- backend device enumeration
+- playback device creation
+- callback-based audio output
+
+Examples included in this repo:
+
+- `examples/null-playback` — plays silence through the null backend and proves callback flow
+- `examples/list-devices` — enumerates devices for common backends
+- `examples/tones` — generates tones and plays them through a real device
+
+
+## How to use it
+
+### 1. Provide the shared library
+
+By default, `mago` looks for the runtime library in one of these places:
+
+- `native/libminiaudio.so` under the current working directory
+- `libminiaudio.so` under the current working directory
+- `native/libminiaudio.so` next to the executable
+- `libminiaudio.so` next to the executable
+
+You can also override the path explicitly:
+
+```go
+lib, err := mago.Open(mago.WithLibraryPath("/absolute/path/to/libminiaudio.so"))
+```
+
+Or via environment variable:
+
+```bash
+export MAGO_MINIAUDIO_LIB=/absolute/path/to/libminiaudio.so
+```
+
+
+### 2. Open the library and create a context
+
+```go
+lib, err := mago.Open()
+if err != nil {
+	panic(err)
+}
+defer lib.Close()
+
+ctx, err := lib.NewContext(mago.BackendPulseAudio)
+if err != nil {
+	panic(err)
+}
+defer ctx.Close()
+```
+
+
+### 3. Enumerate devices
+
+```go
+playback, capture, err := ctx.Devices()
+if err != nil {
+	panic(err)
+}
+
+for i, device := range playback {
+	fmt.Printf("[%d] %s (default=%v)\n", i, device.Name, device.IsDefault)
+}
+```
+
+
+### 4. Play audio via callback
+
+```go
+config := mago.DefaultPlaybackDeviceConfig()
+config.DeviceIndex = 0
+config.Channels = 2
+config.SampleRate = 48000
+config.PeriodSizeInFrames = 256
+config.DataCallback = func(device *mago.Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
+	samples := unsafe.Slice((*float32)(output), int(frameCount*config.Channels))
+	for i := range samples {
+		samples[i] = 0
+	}
+}
+
+device, err := ctx.NewPlaybackDevice(config)
+if err != nil {
+	panic(err)
+}
+defer device.Close()
+
+if err := device.Start(); err != nil {
+	panic(err)
+}
+```
+
+
+## Demos
+
+List devices:
+
+```bash
+go run ./examples/list-devices
+```
+
+Play tones on a real device:
+
+```bash
+go run ./examples/tones
+```
+
+You can override the backend/device selection:
+
+```bash
+go run ./examples/tones --backend pulse --device-index 0 --duration 3s
+go run ./examples/tones --backend alsa --device-name pipewire
+```
+
+Or with environment variables:
+
+```bash
+MAGO_BACKEND=pulse MAGO_DEVICE_INDEX=0 MAGO_TONE_DURATION=2s go run ./examples/tones
+MAGO_BACKEND=alsa MAGO_DEVICE_NAME=analog go run ./examples/tones
+```
+
+Supported demo overrides:
+
+- `--backend` / `MAGO_BACKEND`
+- `--device-index` / `MAGO_DEVICE_INDEX`
+- `--device-name` / `MAGO_DEVICE_NAME`
+- `--duration` / `MAGO_TONE_DURATION`
+
+
+## Building the shared library
+
+### Linux
+
+The repository includes a helper script:
+
+```bash
+bash native/build.sh
+```
+
+That produces:
+
+```text
+native/libminiaudio.so
+```
+
+Equivalent manual command:
+
+```bash
+cc -std=c11 -O2 -fPIC -shared \
+  -Wl,-soname,libminiaudio.so \
+  -o native/libminiaudio.so \
+  native/miniaudio_bridge.c \
+  -ldl -lm -lpthread
+```
+
+
+### macOS
+
+You can build a `.dylib` with `clang`:
+
+```bash
+clang -std=c11 -O2 -fPIC -dynamiclib \
+  -o native/libminiaudio.dylib \
+  native/miniaudio_bridge.c \
+  -framework CoreAudio \
+  -framework AudioToolbox \
+  -framework AudioUnit \
+  -framework Foundation \
+  -framework CoreFoundation \
+  -framework CoreServices \
+  -lm -lpthread
+```
+
+Notes:
+
+- The Go wrapper in this repo is not yet fully ported/validated on macOS.
+- The native bridge can still be built this way if you want to experiment or extend the wrapper.
+
+
+### Windows
+
+You can build a `.dll` with MinGW-w64:
+
+```bash
+x86_64-w64-mingw32-gcc -std=c11 -O2 -shared \
+  -o native/miniaudio.dll \
+  native/miniaudio_bridge.c \
+  -lwinmm -lole32 -luuid
+```
+
+Or from an MSYS2/MinGW shell:
+
+```bash
+gcc -std=c11 -O2 -shared \
+  -o native/miniaudio.dll \
+  native/miniaudio_bridge.c \
+  -lwinmm -lole32 -luuid
+```
+
+Notes:
+
+- The Go wrapper in this repo is not yet fully ported/validated on Windows.
+- You still need to ship `miniaudio.dll` alongside the executable if you extend the loader for Windows.
+
+
+### Cross-compiling shared libraries
+
+`mago` itself avoids Go-side CGO, but the shared library is still native code, so cross-compiling the shared library requires an appropriate C toolchain for the target platform.
+
+Typical examples:
+
+- Linux -> Linux: system `cc` or `clang`
+- Linux -> Windows: `x86_64-w64-mingw32-gcc`
+- macOS -> macOS: `clang`
+
+
+## Runtime deployment
+
+The important deployment rule is:
+
+- **Your Go binary can be built without CGO**
+- **Your deployment still needs the correct shared library for the target OS/architecture**
+
+For example:
+
+- Linux deployment needs `libminiaudio.so`
+- macOS deployment needs `libminiaudio.dylib`
+- Windows deployment needs `miniaudio.dll`
+
+You can place that artifact next to the executable, under a known app directory, or point `mago` at it explicitly with `WithLibraryPath(...)` or `MAGO_MINIAUDIO_LIB`.
+
+
+## Development notes
+
+- The bridge source lives in `native/miniaudio_bridge.c`.
+- Generated Go symbol bindings are produced with:
+
+```bash
+go generate ./...
+```
+
+- Tests:
+
+```bash
+go test ./...
+```
+
+
+## Status
+
+This project is currently an early Linux-first wrapper focused on:
+
+- playback
+- device enumeration
+- runtime dynamic loading
+- real-device and null-backend demos
+
+There is room to expand the wrapper surface substantially, but the current priority is to keep the ABI boundary explicit and safe.

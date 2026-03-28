@@ -1,0 +1,16 @@
+# Native runtime artifacts
+*.so
+*.so.*
+*.dylib
+*.dll
+*.lib
+*.exp
+
+# Local build outputs
+bin/
+dist/
+
+# Test binaries and coverage output
+*.test
+*.out
+coverage.*
