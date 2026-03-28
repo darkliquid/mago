@@ -4,7 +4,9 @@ package mago
 
 import (
 	"bytes"
+	"fmt"
 	"runtime"
+	"strconv"
 	"unsafe"
 )
 
@@ -24,7 +26,11 @@ func (lib *Library) NewContext(backends ...Backend) (*Context, error) {
 	if len(backends) == 0 {
 		result = lib.bindings.magoContextInitDefault(&handle)
 	} else {
-		result = lib.bindings.magoContextInitWithBackends(&backends[0], uint32(len(backends)), &handle)
+		backendCount, err := intToUint32(len(backends))
+		if err != nil {
+			return nil, fmt.Errorf("mago: %w", err)
+		}
+		result = lib.bindings.magoContextInitWithBackends(&backends[0], backendCount, &handle)
 		runtime.KeepAlive(backends)
 	}
 	if result != Success {
@@ -98,4 +104,15 @@ func copyDeviceInfos(native *deviceInfoNative, count uint32) []DeviceInfo {
 	}
 
 	return out
+}
+
+func intToUint32(v int) (uint32, error) {
+	if v < 0 {
+		return 0, fmt.Errorf("value %d exceeds uint32 range", v)
+	}
+	var out uint32
+	if _, err := fmt.Sscan(strconv.Itoa(v), &out); err != nil {
+		return 0, fmt.Errorf("value %d exceeds uint32 range", v)
+	}
+	return out, nil
 }

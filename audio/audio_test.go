@@ -51,7 +51,9 @@ func TestStreamMixReverseSpeedAndFade(t *testing.T) {
 	}
 
 	stream.SetReverse(true)
-	stream.Seek(750 * time.Millisecond)
+	if err := stream.Seek(750 * time.Millisecond); err != nil {
+		t.Fatalf("seek: %v", err)
+	}
 	out = make([]float32, 2)
 	if !stream.mixInto(out, 2, 1, 4) {
 		t.Fatal("expected reverse stream to stay alive")
@@ -107,18 +109,25 @@ func mustTestWAV(t *testing.T, samples []float32, channels int, sampleRate int) 
 	byteRate := sampleRate * blockAlign
 	var wav bytes.Buffer
 	wav.WriteString("RIFF")
-	binary.Write(&wav, binary.LittleEndian, uint32(36+dataSize))
+	mustBinaryWrite(t, &wav, uint32(36+dataSize))
 	wav.WriteString("WAVE")
 	wav.WriteString("fmt ")
-	binary.Write(&wav, binary.LittleEndian, uint32(16))
-	binary.Write(&wav, binary.LittleEndian, uint16(1))
-	binary.Write(&wav, binary.LittleEndian, uint16(channels))
-	binary.Write(&wav, binary.LittleEndian, uint32(sampleRate))
-	binary.Write(&wav, binary.LittleEndian, uint32(byteRate))
-	binary.Write(&wav, binary.LittleEndian, uint16(blockAlign))
-	binary.Write(&wav, binary.LittleEndian, uint16(16))
+	mustBinaryWrite(t, &wav, uint32(16))
+	mustBinaryWrite(t, &wav, uint16(1))
+	mustBinaryWrite(t, &wav, uint16(channels))
+	mustBinaryWrite(t, &wav, uint32(sampleRate))
+	mustBinaryWrite(t, &wav, uint32(byteRate))
+	mustBinaryWrite(t, &wav, uint16(blockAlign))
+	mustBinaryWrite(t, &wav, uint16(16))
 	wav.WriteString("data")
-	binary.Write(&wav, binary.LittleEndian, uint32(dataSize))
+	mustBinaryWrite(t, &wav, uint32(dataSize))
 	wav.Write(pcm.Bytes())
 	return wav.Bytes()
+}
+
+func mustBinaryWrite(t *testing.T, buf *bytes.Buffer, value any) {
+	t.Helper()
+	if err := binary.Write(buf, binary.LittleEndian, value); err != nil {
+		t.Fatalf("binary write %T: %v", value, err)
+	}
 }

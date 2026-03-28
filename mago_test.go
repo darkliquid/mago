@@ -71,7 +71,7 @@ func TestVersionAndNullBackendPlayback(t *testing.T) {
 	config.Channels = 1
 	config.SampleRate = 48000
 	config.PeriodSizeInFrames = 64
-	config.DataCallback = func(device *Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
+	config.DataCallback = func(_ *Device, output unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
 		if output != nil {
 			samples := unsafe.Slice((*float32)(output), int(frameCount))
 			for i := range samples {
@@ -83,7 +83,7 @@ func TestVersionAndNullBackendPlayback(t *testing.T) {
 		default:
 		}
 	}
-	config.NotificationCallback = func(device *Device, notification NotificationType) {
+	config.NotificationCallback = func(_ *Device, notification NotificationType) {
 		select {
 		case notifications <- notification:
 		default:

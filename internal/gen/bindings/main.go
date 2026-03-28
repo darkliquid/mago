@@ -126,7 +126,7 @@ func main() {
 		panic(fmt.Errorf("format generated bindings: %w\n%s", err, buf.String()))
 	}
 
-	if err := os.WriteFile(outPath, formatted, 0o644); err != nil {
+	if err := os.WriteFile(outPath, formatted, 0o600); err != nil {
 		panic(err)
 	}
 }

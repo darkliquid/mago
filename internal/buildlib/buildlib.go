@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 )
@@ -35,6 +36,18 @@ func Build(root, outPath string) error {
 	if compiler == "" {
 		compiler = "cc"
 	}
+	switch path.Base(compiler) {
+	case "cc":
+		compiler = "cc"
+	case "gcc":
+		compiler = "gcc"
+	case "clang":
+		compiler = "clang"
+	case "clang-cl":
+		compiler = "clang-cl"
+	default:
+		return fmt.Errorf("unsupported C compiler %q", compiler)
+	}
 
 	source := filepath.Join(root, "native", "miniaudio_bridge.c")
 	args, err := compilerArgs(outPath, source)
@@ -42,7 +55,7 @@ func Build(root, outPath string) error {
 		return err
 	}
 
-	cmd := exec.Command(compiler, args...)
+	cmd := exec.Command(compiler, args...) // #nosec G204 -- compiler is restricted to an allowlist above.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

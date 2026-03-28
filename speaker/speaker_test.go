@@ -32,7 +32,7 @@ func TestStreamToFloat32ClampsAndPads(t *testing.T) {
 func TestDrainSignalStreamerSignalsOnce(t *testing.T) {
 	var calls atomic.Int32
 	streamer := &drainSignalStreamer{
-		Streamer: beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
+		Streamer: beep.StreamerFunc(func(_ [][2]float64) (n int, ok bool) {
 			return 0, false
 		}),
 		done: func() {

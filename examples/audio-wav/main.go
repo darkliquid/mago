@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/darkliquid/mago/audio"
@@ -56,38 +57,39 @@ func main() {
 }
 
 func makeTestWAV() []byte {
-	const sampleRate = 48000
-	const channels = 2
+	const sampleRate uint32 = 48000
+	const channels uint16 = 2
 	const duration = 1
 	frameCount := sampleRate * duration
 
 	pcm := bytes.Buffer{}
-	for frame := 0; frame < frameCount; frame++ {
-		t := float64(frame) / sampleRate
+	for frame := uint32(0); frame < frameCount; frame++ {
+		t := float64(frame) / float64(sampleRate)
 		sample := int16(math.Sin(2*math.Pi*330*t) * 0.3 * 32767)
-		for ch := 0; ch < channels; ch++ {
-			_ = binary.Write(&pcm, binary.LittleEndian, sample)
+		for ch := uint16(0); ch < channels; ch++ {
+			must(binary.Write(&pcm, binary.LittleEndian, sample))
 		}
 	}
 
 	dataSize := pcm.Len()
+	dataSize32 := mustUint32(dataSize)
 	blockAlign := channels * 2
-	byteRate := sampleRate * blockAlign
+	byteRate := sampleRate * uint32(blockAlign)
 
 	var wav bytes.Buffer
 	wav.WriteString("RIFF")
-	_ = binary.Write(&wav, binary.LittleEndian, uint32(36+dataSize))
+	must(binary.Write(&wav, binary.LittleEndian, 36+dataSize32))
 	wav.WriteString("WAVE")
 	wav.WriteString("fmt ")
-	_ = binary.Write(&wav, binary.LittleEndian, uint32(16))
-	_ = binary.Write(&wav, binary.LittleEndian, uint16(1))
-	_ = binary.Write(&wav, binary.LittleEndian, uint16(channels))
-	_ = binary.Write(&wav, binary.LittleEndian, uint32(sampleRate))
-	_ = binary.Write(&wav, binary.LittleEndian, uint32(byteRate))
-	_ = binary.Write(&wav, binary.LittleEndian, uint16(blockAlign))
-	_ = binary.Write(&wav, binary.LittleEndian, uint16(16))
+	must(binary.Write(&wav, binary.LittleEndian, uint32(16)))
+	must(binary.Write(&wav, binary.LittleEndian, uint16(1)))
+	must(binary.Write(&wav, binary.LittleEndian, channels))
+	must(binary.Write(&wav, binary.LittleEndian, sampleRate))
+	must(binary.Write(&wav, binary.LittleEndian, byteRate))
+	must(binary.Write(&wav, binary.LittleEndian, blockAlign))
+	must(binary.Write(&wav, binary.LittleEndian, uint16(16)))
 	wav.WriteString("data")
-	_ = binary.Write(&wav, binary.LittleEndian, uint32(dataSize))
+	must(binary.Write(&wav, binary.LittleEndian, dataSize32))
 	wav.Write(pcm.Bytes())
 	return wav.Bytes()
 }
@@ -105,4 +107,15 @@ func must(err error) {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
+}
+
+func mustUint32(v int) uint32 {
+	if v < 0 {
+		must(fmt.Errorf("value %d exceeds uint32 range", v))
+	}
+	var out uint32
+	if _, err := fmt.Sscan(strconv.Itoa(v), &out); err != nil {
+		must(fmt.Errorf("value %d exceeds uint32 range", v))
+	}
+	return out
 }

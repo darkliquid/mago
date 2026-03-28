@@ -263,7 +263,10 @@ func (e *Engine) Crossfade(from *Stream, to *Clip, duration time.Duration, optio
 		return nil, err
 	}
 	toStream.FadeTo(targetVolume, duration)
-	toStream.Start()
+	if err := toStream.Start(); err != nil {
+		toStream.Close()
+		return nil, err
+	}
 	if from != nil {
 		from.FadeOutAndStop(duration)
 	}

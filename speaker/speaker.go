@@ -2,6 +2,8 @@ package speaker
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"sync"
 	"time"
 	"unsafe"
@@ -65,6 +67,16 @@ func Init(sampleRate beep.SampleRate, bufferSize int) error {
 	config := mago.DefaultPlaybackDeviceConfig()
 	config.Format = mago.FormatF32
 	config.Channels = channelCount
+	if sampleRate > beep.SampleRate(math.MaxUint32) {
+		_ = ctx.Close()
+		_ = lib.Close()
+		return fmt.Errorf("speaker: sample rate must be %d or less", uint32(math.MaxUint32))
+	}
+	if bufferSize > math.MaxUint32 {
+		_ = ctx.Close()
+		_ = lib.Close()
+		return fmt.Errorf("speaker: buffer size must be %d or less", uint32(math.MaxUint32))
+	}
 	config.SampleRate = uint32(sampleRate)
 	config.PeriodSizeInFrames = uint32(bufferSize)
 	config.DataCallback = state.onDeviceData

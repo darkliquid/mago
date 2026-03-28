@@ -41,7 +41,7 @@ func main() {
 	config.Channels = 1
 	config.SampleRate = 48_000
 	config.PeriodSizeInFrames = 128
-	config.DataCallback = func(device *mago.Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
+	config.DataCallback = func(_ *mago.Device, output unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
 		if output != nil {
 			samples := unsafe.Slice((*float32)(output), int(frameCount))
 			for i := range samples {
@@ -50,7 +50,7 @@ func main() {
 		}
 		callbackCount.Add(1)
 	}
-	config.NotificationCallback = func(device *mago.Device, notification mago.NotificationType) {
+	config.NotificationCallback = func(_ *mago.Device, notification mago.NotificationType) {
 		fmt.Printf("notification: %v\n", notification)
 	}
 

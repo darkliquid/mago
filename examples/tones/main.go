@@ -72,7 +72,7 @@ func main() {
 
 	var phaseA float64
 	var phaseB float64
-	config.DataCallback = func(device *mago.Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
+	config.DataCallback = func(_ *mago.Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
 		_ = input
 		samples := unsafe.Slice((*float32)(output), int(frameCount*config.Channels))
 		for frame := 0; frame < int(frameCount); frame++ {

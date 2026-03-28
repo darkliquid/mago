@@ -4,6 +4,7 @@ package mago
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -94,6 +95,9 @@ func (lib *Library) NewPlaybackDevice(ctx *Context, config PlaybackDeviceConfig)
 	}
 	if config.DeviceIndex < -1 {
 		return nil, fmt.Errorf("mago: device index must be -1 or greater")
+	}
+	if config.DeviceIndex > math.MaxInt32 {
+		return nil, fmt.Errorf("mago: device index must be %d or less", math.MaxInt32)
 	}
 	if ctx == nil && config.DeviceIndex >= 0 {
 		return nil, fmt.Errorf("mago: selecting a device by index requires a context")
