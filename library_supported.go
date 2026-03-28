@@ -1,4 +1,4 @@
-//go:build linux
+//go:build darwin || freebsd || linux || netbsd || windows
 
 package mago
 
@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-
-	"github.com/ebitengine/purego"
 )
 
 const envLibraryPath = "MAGO_MINIAUDIO_LIB"
@@ -46,18 +44,18 @@ func Open(options ...LibraryOption) (*Library, error) {
 		return nil, err
 	}
 
-	handle, err := purego.Dlopen(path, purego.RTLD_NOW|purego.RTLD_GLOBAL)
+	handle, err := openLibrary(path)
 	if err != nil {
 		return nil, fmt.Errorf("open shared library %q: %w", path, err)
 	}
 
 	lib := &Library{handle: handle, path: path}
 	if err := lib.register(); err != nil {
-		_ = purego.Dlclose(handle)
+		_ = closeLibrary(handle)
 		return nil, err
 	}
 	if err := lib.validateLoadedVersion(); err != nil {
-		_ = purego.Dlclose(handle)
+		_ = closeLibrary(handle)
 		return nil, err
 	}
 
@@ -94,7 +92,7 @@ func (lib *Library) Close() error {
 		return nil
 	}
 
-	if err := purego.Dlclose(lib.handle); err != nil {
+	if err := closeLibrary(lib.handle); err != nil {
 		return fmt.Errorf("close shared library %q: %w", lib.path, err)
 	}
 
@@ -200,19 +198,24 @@ func resolveLibraryPath(explicit string) (string, error) {
 	}
 
 	var candidates []string
+	names := defaultLibraryNames()
 	if wd, err := os.Getwd(); err == nil {
-		candidates = append(candidates,
-			filepath.Join(wd, "native", "libminiaudio.so"),
-			filepath.Join(wd, "libminiaudio.so"),
-		)
+		for _, name := range names {
+			candidates = append(candidates,
+				filepath.Join(wd, "native", name),
+				filepath.Join(wd, name),
+			)
+		}
 	}
 
 	if exePath, err := os.Executable(); err == nil {
 		exeDir := filepath.Dir(exePath)
-		candidates = append(candidates,
-			filepath.Join(exeDir, "native", "libminiaudio.so"),
-			filepath.Join(exeDir, "libminiaudio.so"),
-		)
+		for _, name := range names {
+			candidates = append(candidates,
+				filepath.Join(exeDir, "native", name),
+				filepath.Join(exeDir, name),
+			)
+		}
 	}
 
 	for _, candidate := range candidates {
@@ -221,5 +224,5 @@ func resolveLibraryPath(explicit string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("mago: could not find libminiaudio.so; set %s or use WithLibraryPath (searched %v)", envLibraryPath, candidates)
+	return "", fmt.Errorf("mago: could not find a runtime miniaudio library (%v); set %s or use WithLibraryPath (searched %v)", names, envLibraryPath, candidates)
 }

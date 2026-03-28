@@ -1,24 +1,10 @@
-//go:build !linux
+//go:build !darwin && !freebsd && !linux && !netbsd && !windows
 
 package mago
 
 import "errors"
 
-var errUnsupportedPlatform = errors.New("mago: this package currently supports Linux only")
-
-type Result int32
-type Backend int32
-type DeviceType int32
-type ShareMode int32
-type PerformanceProfile int32
-type Format int32
-type NotificationType uint32
-
-type Version struct {
-	Major    uint32
-	Minor    uint32
-	Revision uint32
-}
+var errUnsupportedPlatform = errors.New("mago: this package is currently supported on darwin, freebsd, linux, netbsd, and windows")
 
 type Library struct{}
 type Context struct{}

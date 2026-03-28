@@ -4,23 +4,20 @@ package mago
 
 import (
 	"errors"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 	"unsafe"
+
+	"github.com/darkliquid/mago/internal/buildlib"
 )
 
 func TestVersionAndNullBackendPlayback(t *testing.T) {
 	t.Parallel()
 
-	libPath := filepath.Join(t.TempDir(), "libminiaudio.so")
-	cmd := exec.Command("bash", filepath.Join("native", "build.sh"), libPath)
-	cmd.Env = os.Environ()
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("build shared library: %v\n%s", err, output)
+	libPath := filepath.Join(t.TempDir(), buildlib.DefaultLibraryFilename("linux"))
+	if err := buildlib.Build(".", libPath); err != nil {
+		t.Fatalf("build shared library: %v", err)
 	}
 
 	lib, err := Open(WithLibraryPath(libPath))

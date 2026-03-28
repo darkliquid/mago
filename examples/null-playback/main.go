@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sync/atomic"
@@ -11,13 +10,14 @@ import (
 	"unsafe"
 
 	"github.com/darkliquid/mago"
+	"github.com/darkliquid/mago/internal/buildlib"
 )
 
 func main() {
 	repoRoot, err := findRepoRoot()
 	must(err)
 
-	libPath := filepath.Join(repoRoot, "native", "libminiaudio.so")
+	libPath := buildlib.DefaultOutputPath(repoRoot)
 	must(ensureSharedLibrary(repoRoot, libPath))
 
 	lib, err := mago.Open(mago.WithLibraryPath(libPath))
@@ -77,10 +77,7 @@ func findRepoRoot() (string, error) {
 }
 
 func ensureSharedLibrary(repoRoot, libPath string) error {
-	cmd := exec.Command("bash", filepath.Join(repoRoot, "native", "build.sh"), libPath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return buildlib.Build(repoRoot, libPath)
 }
 
 func must(err error) {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -14,10 +13,11 @@ import (
 	"unsafe"
 
 	"github.com/darkliquid/mago"
+	"github.com/darkliquid/mago/internal/buildlib"
 )
 
 func main() {
-	backendFlag := flag.String("backend", getenv("MAGO_BACKEND", ""), "backend to use: pulse, alsa, jack")
+	backendFlag := flag.String("backend", getenv("MAGO_BACKEND", ""), "backend to use (platform-dependent, for example pulse/alsa/jack/coreaudio/wasapi)")
 	deviceIndexFlag := flag.Int("device-index", getenvInt("MAGO_DEVICE_INDEX", -1), "playback device index from the enumerated list")
 	deviceNameFlag := flag.String("device-name", getenv("MAGO_DEVICE_NAME", ""), "substring to match in the playback device name")
 	durationFlag := flag.Duration("duration", getenvDuration("MAGO_TONE_DURATION", 3*time.Second), "how long to play the tones")
@@ -26,7 +26,7 @@ func main() {
 	repoRoot, err := findRepoRoot()
 	must(err)
 
-	libPath := filepath.Join(repoRoot, "native", "libminiaudio.so")
+	libPath := buildlib.DefaultOutputPath(repoRoot)
 	must(ensureSharedLibrary(repoRoot, libPath))
 
 	lib, err := mago.Open(mago.WithLibraryPath(libPath))
@@ -118,14 +118,7 @@ func selectBackend(lib *mago.Library, requested string) (string, mago.Backend, e
 		return "", 0, fmt.Errorf("backend %s is unavailable", name)
 	}
 
-	candidates := []struct {
-		name    string
-		backend mago.Backend
-	}{
-		{name: "PulseAudio", backend: mago.BackendPulseAudio},
-		{name: "ALSA", backend: mago.BackendALSA},
-		{name: "JACK", backend: mago.BackendJACK},
-	}
+	candidates := backendCandidates()
 	for _, candidate := range candidates {
 		ctx, err := lib.NewContext(candidate.backend)
 		if err == nil {
@@ -139,6 +132,18 @@ func selectBackend(lib *mago.Library, requested string) (string, mago.Backend, e
 
 func parseBackend(value string) (string, mago.Backend, bool) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "wasapi":
+		return "WASAPI", mago.BackendWASAPI, true
+	case "dsound", "directsound":
+		return "DirectSound", mago.BackendDSound, true
+	case "winmm":
+		return "WinMM", mago.BackendWinMM, true
+	case "coreaudio", "core-audio":
+		return "CoreAudio", mago.BackendCoreAudio, true
+	case "audio4", "audio(4)":
+		return "audio(4)", mago.BackendAudio4, true
+	case "oss":
+		return "OSS", mago.BackendOSS, true
 	case "pulse", "pulseaudio":
 		return "PulseAudio", mago.BackendPulseAudio, true
 	case "alsa":
@@ -186,10 +191,55 @@ func findRepoRoot() (string, error) {
 }
 
 func ensureSharedLibrary(repoRoot, libPath string) error {
-	cmd := exec.Command("bash", filepath.Join(repoRoot, "native", "build.sh"), libPath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return buildlib.Build(repoRoot, libPath)
+}
+
+func backendCandidates() []struct {
+	name    string
+	backend mago.Backend
+} {
+	switch runtime.GOOS {
+	case "windows":
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "WASAPI", backend: mago.BackendWASAPI},
+			{name: "DirectSound", backend: mago.BackendDSound},
+			{name: "WinMM", backend: mago.BackendWinMM},
+		}
+	case "darwin":
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "CoreAudio", backend: mago.BackendCoreAudio},
+		}
+	case "freebsd":
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "OSS", backend: mago.BackendOSS},
+			{name: "JACK", backend: mago.BackendJACK},
+		}
+	case "netbsd":
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "audio(4)", backend: mago.BackendAudio4},
+		}
+	default:
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "PulseAudio", backend: mago.BackendPulseAudio},
+			{name: "ALSA", backend: mago.BackendALSA},
+			{name: "JACK", backend: mago.BackendJACK},
+		}
+	}
 }
 
 func getenv(key, fallback string) string {

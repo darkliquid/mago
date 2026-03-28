@@ -4,7 +4,15 @@
 
 Instead of compiling C into your Go package, `mago` expects `miniaudio` to be built as a standalone shared library and then loads that library at runtime with [`purego`](https://github.com/ebitengine/purego).
 
-Today, the Go wrapper in this repository is **Linux-first** and currently targets dynamic loading of `libminiaudio.so`. The native bridge can also be compiled as a shared library on other platforms, and this README includes build commands for those targets, but the Go API itself is not yet fully ported/validated beyond Linux.
+The Go wrapper currently supports the same platforms this package is wired up to use with `purego`:
+
+- Linux
+- macOS
+- Windows
+- FreeBSD
+- NetBSD
+
+OpenBSD and other targets are intentionally skipped here unless `purego` support exists for them.
 
 
 ## License
@@ -38,6 +46,7 @@ In other words, your Go binary does not need CGO, but it does need access to the
 - Linux: `libminiaudio.so`
 - macOS: `libminiaudio.dylib`
 - Windows: `miniaudio.dll`
+- FreeBSD / NetBSD: `libminiaudio.so`
 
 
 ## Strict version matching
@@ -73,23 +82,23 @@ Examples included in this repo:
 
 ### 1. Provide the shared library
 
-By default, `mago` looks for the runtime library in one of these places:
+By default, `mago` looks for the platform-appropriate runtime library name in one of these places:
 
-- `native/libminiaudio.so` under the current working directory
-- `libminiaudio.so` under the current working directory
-- `native/libminiaudio.so` next to the executable
-- `libminiaudio.so` next to the executable
+- `native/<platform-library-name>` under the current working directory
+- `<platform-library-name>` under the current working directory
+- `native/<platform-library-name>` next to the executable
+- `<platform-library-name>` next to the executable
 
 You can also override the path explicitly:
 
 ```go
-lib, err := mago.Open(mago.WithLibraryPath("/absolute/path/to/libminiaudio.so"))
+lib, err := mago.Open(mago.WithLibraryPath("/absolute/path/to/runtime-library"))
 ```
 
 Or via environment variable:
 
 ```bash
-export MAGO_MINIAUDIO_LIB=/absolute/path/to/libminiaudio.so
+export MAGO_MINIAUDIO_LIB=/absolute/path/to/runtime-library
 ```
 
 
@@ -102,7 +111,7 @@ if err != nil {
 }
 defer lib.Close()
 
-ctx, err := lib.NewContext(mago.BackendPulseAudio)
+ctx, err := lib.NewContext(mago.BackendNull)
 if err != nil {
 	panic(err)
 }
@@ -165,18 +174,20 @@ Play tones on a real device:
 go run ./examples/tones
 ```
 
-You can override the backend/device selection:
+You can override the backend/device selection. The accepted backend values are platform-dependent:
 
 ```bash
 go run ./examples/tones --backend pulse --device-index 0 --duration 3s
-go run ./examples/tones --backend alsa --device-name pipewire
+go run ./examples/tones --backend coreaudio
+go run ./examples/tones --backend wasapi
 ```
 
 Or with environment variables:
 
 ```bash
 MAGO_BACKEND=pulse MAGO_DEVICE_INDEX=0 MAGO_TONE_DURATION=2s go run ./examples/tones
-MAGO_BACKEND=alsa MAGO_DEVICE_NAME=analog go run ./examples/tones
+MAGO_BACKEND=coreaudio go run ./examples/tones
+MAGO_BACKEND=wasapi go run ./examples/tones
 ```
 
 Supported demo overrides:
@@ -189,21 +200,40 @@ Supported demo overrides:
 
 ## Building the shared library
 
-### Linux
+### Recommended builder
 
-The repository includes a helper script:
+The repository includes a Go-native builder that chooses the right output name and compiler flags for the current host platform:
+
+```bash
+go run ./internal/cmd/buildlib
+```
+
+There is also a convenience wrapper:
 
 ```bash
 bash native/build.sh
 ```
 
-That produces:
+That produces a platform-appropriate runtime library in `native/`, for example:
 
 ```text
 native/libminiaudio.so
 ```
 
 Equivalent manual command:
+
+```bash
+cc -std=c11 -O2 -fPIC -shared \
+  -Wl,-soname,libminiaudio.so \
+  -o native/libminiaudio.so \
+  native/miniaudio_bridge.c \
+  -ldl -lm -lpthread
+```
+
+
+### Linux
+
+Manual Linux command:
 
 ```bash
 cc -std=c11 -O2 -fPIC -shared \
@@ -231,12 +261,6 @@ clang -std=c11 -O2 -fPIC -dynamiclib \
   -lm -lpthread
 ```
 
-Notes:
-
-- The Go wrapper in this repo is not yet fully ported/validated on macOS.
-- The native bridge can still be built this way if you want to experiment or extend the wrapper.
-
-
 ### Windows
 
 You can build a `.dll` with MinGW-w64:
@@ -257,10 +281,16 @@ gcc -std=c11 -O2 -shared \
   -lwinmm -lole32 -luuid
 ```
 
-Notes:
+### FreeBSD / NetBSD
 
-- The Go wrapper in this repo is not yet fully ported/validated on Windows.
-- You still need to ship `miniaudio.dll` alongside the executable if you extend the loader for Windows.
+Manual BSD command:
+
+```bash
+cc -std=c11 -O2 -fPIC -shared \
+  -o native/libminiaudio.so \
+  native/miniaudio_bridge.c \
+  -lm -lpthread
+```
 
 
 ### Cross-compiling shared libraries
@@ -272,6 +302,13 @@ Typical examples:
 - Linux -> Linux: system `cc` or `clang`
 - Linux -> Windows: `x86_64-w64-mingw32-gcc`
 - macOS -> macOS: `clang`
+
+For Go package cross-compilation, note that `purego` requires a special flag for `freebsd` and `netbsd` when building with `CGO_ENABLED=0`:
+
+```bash
+GOOS=freebsd GOARCH=amd64 go build -gcflags=github.com/ebitengine/purego/internal/fakecgo=-std ./...
+GOOS=netbsd  GOARCH=amd64 go build -gcflags=github.com/ebitengine/purego/internal/fakecgo=-std ./...
+```
 
 
 ## Runtime deployment
@@ -286,6 +323,7 @@ For example:
 - Linux deployment needs `libminiaudio.so`
 - macOS deployment needs `libminiaudio.dylib`
 - Windows deployment needs `miniaudio.dll`
+- FreeBSD / NetBSD deployment needs `libminiaudio.so`
 
 You can place that artifact next to the executable, under a known app directory, or point `mago` at it explicitly with `WithLibraryPath(...)` or `MAGO_MINIAUDIO_LIB`.
 
@@ -308,7 +346,7 @@ go test ./...
 
 ## Status
 
-This project is currently an early Linux-first wrapper focused on:
+This project is currently an early cross-platform wrapper focused on:
 
 - playback
 - device enumeration

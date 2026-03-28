@@ -1,4 +1,4 @@
-//go:build linux
+//go:build darwin || freebsd || linux || netbsd || windows
 
 package mago
 

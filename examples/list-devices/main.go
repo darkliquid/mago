@@ -3,18 +3,18 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 
 	"github.com/darkliquid/mago"
+	"github.com/darkliquid/mago/internal/buildlib"
 )
 
 func main() {
 	repoRoot, err := findRepoRoot()
 	must(err)
 
-	libPath := filepath.Join(repoRoot, "native", "libminiaudio.so")
+	libPath := buildlib.DefaultOutputPath(repoRoot)
 	must(ensureSharedLibrary(repoRoot, libPath))
 
 	lib, err := mago.Open(mago.WithLibraryPath(libPath))
@@ -23,15 +23,7 @@ func main() {
 		must(lib.Close())
 	}()
 
-	backends := []struct {
-		name    string
-		backend mago.Backend
-	}{
-		{name: "PulseAudio", backend: mago.BackendPulseAudio},
-		{name: "ALSA", backend: mago.BackendALSA},
-		{name: "JACK", backend: mago.BackendJACK},
-		{name: "Null", backend: mago.BackendNull},
-	}
+	backends := backendCandidates()
 
 	for _, entry := range backends {
 		fmt.Printf("== %s ==\n", entry.name)
@@ -82,10 +74,60 @@ func findRepoRoot() (string, error) {
 }
 
 func ensureSharedLibrary(repoRoot, libPath string) error {
-	cmd := exec.Command("bash", filepath.Join(repoRoot, "native", "build.sh"), libPath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return buildlib.Build(repoRoot, libPath)
+}
+
+func backendCandidates() []struct {
+	name    string
+	backend mago.Backend
+} {
+	switch runtime.GOOS {
+	case "windows":
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "WASAPI", backend: mago.BackendWASAPI},
+			{name: "DirectSound", backend: mago.BackendDSound},
+			{name: "WinMM", backend: mago.BackendWinMM},
+			{name: "Null", backend: mago.BackendNull},
+		}
+	case "darwin":
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "CoreAudio", backend: mago.BackendCoreAudio},
+			{name: "Null", backend: mago.BackendNull},
+		}
+	case "freebsd":
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "OSS", backend: mago.BackendOSS},
+			{name: "JACK", backend: mago.BackendJACK},
+			{name: "Null", backend: mago.BackendNull},
+		}
+	case "netbsd":
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "audio(4)", backend: mago.BackendAudio4},
+			{name: "Null", backend: mago.BackendNull},
+		}
+	default:
+		return []struct {
+			name    string
+			backend mago.Backend
+		}{
+			{name: "PulseAudio", backend: mago.BackendPulseAudio},
+			{name: "ALSA", backend: mago.BackendALSA},
+			{name: "JACK", backend: mago.BackendJACK},
+			{name: "Null", backend: mago.BackendNull},
+		}
+	}
 }
 
 func must(err error) {
