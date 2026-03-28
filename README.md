@@ -70,12 +70,14 @@ The current implementation includes:
 - backend device enumeration
 - playback device creation
 - callback-based audio output
+- a higher-level `audio` subpackage for ergonomic stream playback
 
 Examples included in this repo:
 
 - `examples/null-playback` — plays silence through the null backend and proves callback flow
 - `examples/list-devices` — enumerates devices for common backends
 - `examples/tones` — generates tones and plays them through a real device
+- `examples/audio-wav` — uses the higher-level `audio` package with an in-memory WAV clip
 
 
 ## How to use it
@@ -160,6 +162,58 @@ if err := device.Start(); err != nil {
 ```
 
 
+## Higher-level `audio` package
+
+If you want a more idiomatic playback API, use `github.com/darkliquid/mago/audio`.
+
+The `audio` subpackage currently provides:
+
+- loading WAV streams from `io.Reader` and `io.ReadSeeker`
+- stream start / pause / resume / stop / close
+- looping
+- release of loaded clip buffers
+- volume control
+- playback speed adjustment
+- reverse playback
+- software resampling during playback
+- crossfades between streams
+
+This makes it the recommended entry point if you want application-facing playback code instead of low-level callback wiring.
+
+Example:
+
+```go
+engine, err := audio.Open(audio.DefaultConfig())
+if err != nil {
+	panic(err)
+}
+defer engine.Close()
+
+clip, err := engine.Load(reader)
+if err != nil {
+	panic(err)
+}
+defer clip.Release()
+
+stream, err := engine.Play(clip, audio.DefaultPlayOptions())
+if err != nil {
+	panic(err)
+}
+defer stream.Close()
+
+stream.SetLooping(true)
+stream.SetVolume(0.5)
+stream.SetSpeed(1.25)
+stream.SetReverse(false)
+```
+
+Notes:
+
+- `audio.Open()` starts the playback device automatically.
+- The initial loader supports WAV streams; higher-level format support can be added on top later.
+- The included `examples/audio-wav` demo shows loading a WAV stream from memory and changing speed / direction / fades at runtime.
+
+
 ## Demos
 
 List devices:
@@ -172,6 +226,12 @@ Play tones on a real device:
 
 ```bash
 go run ./examples/tones
+```
+
+Use the higher-level `audio` package demo:
+
+```bash
+go run ./examples/audio-wav
 ```
 
 You can override the backend/device selection. The accepted backend values are platform-dependent:
