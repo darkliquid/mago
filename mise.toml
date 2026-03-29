@@ -1,0 +1,56 @@
+[tools]
+go = "latest"
+golangci-lint = "latest"
+"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+
+[env]
+CGO_ENABLED = 0
+MA_VER = "0.11.25"
+
+[tasks.test]
+description = "Run Go tests"
+run = "go test ./..."
+
+[tasks.build]
+depends = ["generate"]
+description = "Build test"
+run = "go build ./..."
+sources = ["**/*.go"]
+
+[tasks.fetch-miniaudio]
+description = "Download and extract the miniaudio release"
+run = """
+wget -q https://github.com/mackron/miniaudio/archive/refs/tags/$MA_VER.zip
+unzip -p $MA_VER.zip miniaudio-$MA_VER/miniaudio.c > miniaudio.c
+unzip -p $MA_VER.zip miniaudio-$MA_VER/miniaudio.h > miniaudio.h
+rm $MA_VER.zip
+"""
+outputs = ["miniaudio.c", "miniaudio.h"]
+
+[tasks.build-lib]
+depends = ["fetch-miniaudio"]
+description = "Build the native miniaudio lib"
+run = "go run ./internal/cmd/buildlib"
+sources = ["miniaudio.c", "miniaudio.h", "native/miniaudio_bridge.c"]
+outputs = ["native/libminiaudio.so"]
+
+[tasks.generate]
+hide = true
+description = "Run go generate (internal task)"
+run = "go generate ./..."
+sources = ["**/*.go"]
+
+[tasks.lint]
+description = "Run Go linting (golangci-lint + govulncheck)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+golangci-lint run ./...
+govulncheck ./...
+"""
+sources = ["**/*.go"]
+
+[tasks.fmt]
+description = "Format Go code"
+run = "golangci-lint fmt ./..."
+sources = ["**/*.go"]

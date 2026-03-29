@@ -14,3 +14,7 @@ dist/
 *.test
 *.out
 coverage.*
+
+# Miniaudio source files (fetched and generated)
+miniaudio.c
+miniaudio.h
