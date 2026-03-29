@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -40,7 +39,7 @@ func DefaultOutputPath(root string) string {
 	return filepath.Join(root, "native", DefaultLibraryFilename(runtime.GOOS))
 }
 
-func Build(root, outPath, version string) error {
+func Build(root, outPath, version string) (err error) {
 	if strings.TrimSpace(version) == "" {
 		resolvedVersion, err := defaultMiniaudioVersion(root)
 		if err != nil {
@@ -59,15 +58,11 @@ func Build(root, outPath, version string) error {
 	if compiler == "" {
 		compiler = "cc"
 	}
-	switch path.Base(compiler) {
+	switch filepath.Base(compiler) {
 	case "cc":
-		compiler = "cc"
 	case "gcc":
-		compiler = "gcc"
 	case "clang":
-		compiler = "clang"
 	case "clang-cl":
-		compiler = "clang-cl"
 	default:
 		return fmt.Errorf("unsupported C compiler %q", compiler)
 	}
@@ -76,7 +71,11 @@ func Build(root, outPath, version string) error {
 	if err != nil {
 		return fmt.Errorf("create temporary include directory: %w", err)
 	}
-	defer os.RemoveAll(includeDir)
+	defer func() {
+		if cleanupErr := os.RemoveAll(includeDir); cleanupErr != nil && err == nil {
+			err = fmt.Errorf("remove temporary include directory: %w", cleanupErr)
+		}
+	}()
 
 	headerPath := filepath.Join(includeDir, "miniaudio.h")
 	if err := downloadMiniaudioHeader(version, headerPath); err != nil {
@@ -89,7 +88,7 @@ func Build(root, outPath, version string) error {
 		return err
 	}
 
-	cmd := exec.Command(compiler, args...) // #nosec G204 -- compiler is restricted to an allowlist above.
+	cmd := exec.Command(compiler, args...) // #nosec G204,G702 -- compiler is restricted to an allowlist above.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -122,7 +121,7 @@ func defaultMiniaudioVersion(root string) (string, error) {
 	return major + "." + minor + "." + revision, nil
 }
 
-func downloadMiniaudioHeader(version, dstPath string) error {
+func downloadMiniaudioHeader(version, dstPath string) (err error) {
 	version = strings.TrimSpace(version)
 	if version == "" {
 		return fmt.Errorf("miniaudio version must not be empty")
@@ -138,7 +137,11 @@ func downloadMiniaudioHeader(version, dstPath string) error {
 	if err != nil {
 		return fmt.Errorf("download miniaudio.h for version %s: %w", version, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("close miniaudio.h response body: %w", closeErr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download miniaudio.h for version %s: unexpected status %s", version, resp.Status)
