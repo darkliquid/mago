@@ -20,20 +20,18 @@ sources = ["**/*.go"]
 [tasks.fetch-miniaudio]
 description = "Download and extract the miniaudio release"
 run = """
-wget -q https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$MA_VER/miniaudio.c
 wget -q https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$MA_VER/miniaudio.h
 """
 run_windows = """
-powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$env:MA_VER/miniaudio.c -OutFile miniaudio.c"
 powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$env:MA_VER/miniaudio.h -OutFile miniaudio.h"
 """
-outputs = ["miniaudio.c", "miniaudio.h"]
+outputs = ["miniaudio.h"]
 
 [tasks.build-lib]
 depends = ["fetch-miniaudio"]
 description = "Build the native miniaudio lib"
 run = "go run ./internal/cmd/buildlib"
-sources = ["miniaudio.c", "miniaudio.h", "native/miniaudio_bridge.c"]
+sources = ["miniaudio.h", "native/miniaudio_bridge.c"]
 
 [tasks.generate]
 hide = true
