@@ -18,16 +18,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Set up mise
+        uses: jdx/mise-action@v4
         with:
-          go-version-file: go.mod
           cache: true
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.11.4
+      - name: Run lint checks
+        run: mise run lint
 
   build:
     name: Build (${{ matrix.os }})
@@ -47,10 +44,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Set up mise
+        uses: jdx/mise-action@v4
         with:
-          go-version-file: go.mod
           cache: true
 
       - name: Set up MSYS2
@@ -65,12 +61,12 @@ jobs:
       - name: Build runtime library
         env:
           CC: ${{ matrix.cc }}
-        run: go run ./internal/cmd/buildlib
+        run: mise run build-lib
 
       - name: Build packages
-        run: go build ./...
+        run: mise run build
 
       - name: Run tests
         env:
           CC: ${{ matrix.cc }}
-        run: go test ./...
+        run: mise run test

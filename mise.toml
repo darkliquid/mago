@@ -32,7 +32,6 @@ depends = ["fetch-miniaudio"]
 description = "Build the native miniaudio lib"
 run = "go run ./internal/cmd/buildlib"
 sources = ["miniaudio.c", "miniaudio.h", "native/miniaudio_bridge.c"]
-outputs = ["native/libminiaudio.so"]
 
 [tasks.generate]
 hide = true
