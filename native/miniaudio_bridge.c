@@ -4,7 +4,7 @@
 
 #define MA_DLL
 #define MA_IMPLEMENTATION
-#include "../miniaudio.h"
+#include "miniaudio.h"
 
 #if defined(_WIN32)
 #define MAGO_API __declspec(dllexport)

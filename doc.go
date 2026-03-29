@@ -4,6 +4,10 @@
 //
 //	go run ./internal/cmd/buildlib
 //
+// The build helper downloads the matching miniaudio header automatically. Use
+// `-version x.y.z` if you need to override the default version from the
+// generated bindings.
+//
 // Supported platforms match the PureGo targets used by this package:
 // darwin, freebsd, linux, netbsd, and windows.
 //

@@ -300,10 +300,16 @@ Supported demo overrides:
 
 ### Recommended builder
 
-The repository includes a Go-native builder that chooses the right output name and compiler flags for the current host platform:
+The repository includes a Go-native builder that chooses the right output name and compiler flags for the current host platform and downloads `miniaudio.h` automatically:
 
 ```bash
 go run ./internal/cmd/buildlib
+```
+
+You can also target a specific upstream `miniaudio` release:
+
+```bash
+go run ./internal/cmd/buildlib -version 0.11.25
 ```
 
 There is also a convenience wrapper:

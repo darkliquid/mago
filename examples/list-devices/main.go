@@ -74,7 +74,7 @@ func findRepoRoot() (string, error) {
 }
 
 func ensureSharedLibrary(repoRoot, libPath string) error {
-	return buildlib.Build(repoRoot, libPath)
+	return buildlib.Build(repoRoot, libPath, "")
 }
 
 func backendCandidates() []struct {

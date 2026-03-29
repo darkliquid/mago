@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,15 +15,22 @@ func main() {
 		exit(err)
 	}
 
+	version := flag.String("version", "", "miniaudio version to download before building (defaults to the vendored version in zz_generated.bindings.go)")
+	flag.Parse()
+
 	outPath := ""
-	if len(os.Args) > 1 {
-		outPath = os.Args[1]
+	args := flag.Args()
+	if len(args) > 1 {
+		exit(fmt.Errorf("usage: buildlib [-version x.y.z] [output-path]"))
+	}
+	if len(args) == 1 {
+		outPath = args[0]
 		if !filepath.IsAbs(outPath) {
 			outPath = filepath.Join(root, outPath)
 		}
 	}
 
-	if err := buildlib.Build(root, outPath); err != nil {
+	if err := buildlib.Build(root, outPath, *version); err != nil {
 		exit(err)
 	}
 }

@@ -20,7 +20,7 @@ func main() {
 	must(err)
 
 	libPath := buildlib.DefaultOutputPath(repoRoot)
-	must(buildlib.Build(repoRoot, libPath))
+	must(buildlib.Build(repoRoot, libPath, ""))
 
 	engine, err := audio.Open(audio.Config{
 		LibraryPath: libPath,
