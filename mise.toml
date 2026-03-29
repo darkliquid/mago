@@ -20,10 +20,12 @@ sources = ["**/*.go"]
 [tasks.fetch-miniaudio]
 description = "Download and extract the miniaudio release"
 run = """
-wget -q https://github.com/mackron/miniaudio/archive/refs/tags/$MA_VER.zip
-unzip -p $MA_VER.zip miniaudio-$MA_VER/miniaudio.c > miniaudio.c
-unzip -p $MA_VER.zip miniaudio-$MA_VER/miniaudio.h > miniaudio.h
-rm $MA_VER.zip
+wget -q https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$MA_VER/miniaudio.c
+wget -q https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$MA_VER/miniaudio.h
+"""
+run_windows = """
+powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$env:MA_VER/miniaudio.c -OutFile miniaudio.c"
+powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/mackron/min
 """
 outputs = ["miniaudio.c", "miniaudio.h"]
 
