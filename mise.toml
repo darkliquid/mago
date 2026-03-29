@@ -25,7 +25,7 @@ wget -q https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$MA_VER/mi
 """
 run_windows = """
 powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$env:MA_VER/miniaudio.c -OutFile miniaudio.c"
-powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/mackron/min
+powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/mackron/miniaudio/refs/tags/$env:MA_VER/miniaudio.h -OutFile miniaudio.h"
 """
 outputs = ["miniaudio.c", "miniaudio.h"]
 
