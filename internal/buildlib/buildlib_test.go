@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -144,38 +146,92 @@ func newFakeCompiler(t *testing.T) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	scriptPath := filepath.Join(dir, "cc")
-	script := `#!/bin/sh
-set -eu
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+	binPath := filepath.Join(dir, "cc"+ext)
 
-outfile=""
-includedir=""
+	sourcePath := filepath.Join(dir, "main.go")
+	source := `package main
 
-while [ "$#" -gt 0 ]; do
-	case "$1" in
-		-o)
-			outfile="$2"
-			shift 2
-			;;
-		-I)
-			includedir="$2"
-			shift 2
-			;;
-		*)
-			shift
-			;;
-	esac
-done
+import (
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
+)
 
-test -n "$outfile"
-test -n "$includedir"
-test -f "$includedir/miniaudio.h"
+func main() {
+	if err := run(os.Args[1:]); err != nil {
+		_, _ = os.Stderr.WriteString(err.Error() + "\n")
+		os.Exit(1)
+	}
+}
 
-cp "$includedir/miniaudio.h" "$outfile.header"
-: > "$outfile"
+func run(args []string) error {
+	var outPath string
+	var includeDir string
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "-o":
+			if i+1 >= len(args) {
+				return errors.New("missing value for -o")
+			}
+			outPath = args[i+1]
+			i++
+		case "-I":
+			if i+1 >= len(args) {
+				return errors.New("missing value for -I")
+			}
+			includeDir = args[i+1]
+			i++
+		}
+	}
+
+	if outPath == "" {
+		return errors.New("missing -o")
+	}
+	if includeDir == "" {
+		return errors.New("missing -I")
+	}
+
+	headerPath := filepath.Join(includeDir, "miniaudio.h")
+	header, err := os.Open(headerPath)
+	if err != nil {
+		return err
+	}
+	defer header.Close()
+
+	headerCopy, err := os.Create(outPath + ".header")
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(headerCopy, header); err != nil {
+		_ = headerCopy.Close()
+		return err
+	}
+	if err := headerCopy.Close(); err != nil {
+		return err
+	}
+
+	outFile, err := os.Create(outPath)
+	if err != nil {
+		return err
+	}
+	return outFile.Close()
+}
 `
-	if err := os.WriteFile(scriptPath, []byte(script), 0o755); err != nil {
-		t.Fatalf("write fake compiler: %v", err)
+	if err := os.WriteFile(sourcePath, []byte(source), 0o644); err != nil {
+		t.Fatalf("write fake compiler source: %v", err)
+	}
+
+	cmd := exec.Command("go", "build", "-o", binPath, sourcePath)
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("build fake compiler: %v\n%s", err, output)
 	}
 
 	return dir
