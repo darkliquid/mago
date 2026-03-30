@@ -3,6 +3,7 @@ package mago
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -12,18 +13,14 @@ func TestCacheExtraction(t *testing.T) {
 		t.Skip("No embedded library data for this platform")
 	}
 
-	// We'll use a custom HOME/XDG_CACHE_HOME to avoid messing with the real one
+	// We'll use a custom environment to avoid messing with the real user cache.
+	// On windows, os.UserCacheDir uses LOCALAPPDATA.
+	// On darwin, it uses HOME/Library/Caches.
+	// On other unix, it uses XDG_CACHE_HOME then HOME/.cache.
 	tmpDir := t.TempDir()
-	oldCache := os.Getenv("XDG_CACHE_HOME")
-	os.Setenv("XDG_CACHE_HOME", tmpDir)
-	defer os.Setenv("XDG_CACHE_HOME", oldCache)
-
-	// On windows/darwin, UserCacheDir might use different env vars, 
-	// but on Linux it uses XDG_CACHE_HOME then .cache in HOME.
-	// For simplicity in this test on Linux:
-	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", oldHome)
+	t.Setenv("XDG_CACHE_HOME", tmpDir)
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("LOCALAPPDATA", tmpDir)
 
 	path, err := resolveCachedLibrary()
 	if err != nil {
@@ -35,7 +32,8 @@ func TestCacheExtraction(t *testing.T) {
 	}
 
 	// Check if it's in the expected place
-	if !filepath.HasPrefix(path, tmpDir) {
+	rel, err := filepath.Rel(tmpDir, path)
+	if err != nil || strings.HasPrefix(rel, "..") {
 		t.Errorf("expected cache path to be under %s, got %s", tmpDir, path)
 	}
 
@@ -44,7 +42,11 @@ func TestCacheExtraction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open extracted library: %v", err)
 	}
-	defer lib.Close()
+	defer func() {
+		if err := lib.Close(); err != nil {
+			t.Errorf("lib.Close failed: %v", err)
+		}
+	}()
 
 	version, err := lib.Version()
 	if err != nil {

@@ -272,7 +272,7 @@ func resolveCachedLibrary() (string, error) {
 func extractLibraryToCache(path string) error {
 	// Use a temporary file to avoid race conditions with other processes
 	tmpPath := path + ".tmp"
-	if err := os.WriteFile(tmpPath, embeddedLibData, 0o755); err != nil {
+	if err := os.WriteFile(tmpPath, embeddedLibData, 0o600); err != nil {
 		return fmt.Errorf("mago: could not write library to cache: %w", err)
 	}
 
