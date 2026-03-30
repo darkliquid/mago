@@ -36,7 +36,15 @@ func DefaultLibraryFilename(goos string) string {
 }
 
 func DefaultOutputPath(root string) string {
-	return filepath.Join(root, "native", DefaultLibraryFilename(runtime.GOOS))
+	goos := os.Getenv("GOOS")
+	if goos == "" {
+		goos = runtime.GOOS
+	}
+	goarch := os.Getenv("GOARCH")
+	if goarch == "" {
+		goarch = runtime.GOARCH
+	}
+	return filepath.Join(root, "internal", "lib", goos+"-"+goarch, DefaultLibraryFilename(goos))
 }
 
 func Build(root, outPath, version string) (err error) {
@@ -50,6 +58,12 @@ func Build(root, outPath, version string) (err error) {
 	if outPath == "" {
 		outPath = DefaultOutputPath(root)
 	}
+
+	goos := os.Getenv("GOOS")
+	if goos == "" {
+		goos = runtime.GOOS
+	}
+
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return err
 	}
@@ -83,7 +97,7 @@ func Build(root, outPath, version string) (err error) {
 	}
 
 	source := filepath.Join(root, "native", "miniaudio_bridge.c")
-	args, err := compilerArgs(outPath, source, includeDir)
+	args, err := compilerArgs(goos, outPath, source, includeDir)
 	if err != nil {
 		return err
 	}
@@ -173,8 +187,8 @@ func downloadMiniaudioHeader(version, dstPath string) (err error) {
 	return nil
 }
 
-func compilerArgs(outPath, source, includeDir string) ([]string, error) {
-	switch runtime.GOOS {
+func compilerArgs(goos, outPath, source, includeDir string) ([]string, error) {
+	switch goos {
 	case "linux":
 		return []string{
 			"-std=c11", "-O2", "-fPIC", "-shared",
@@ -211,6 +225,6 @@ func compilerArgs(outPath, source, includeDir string) ([]string, error) {
 			"-lm", "-lpthread",
 		}, nil
 	default:
-		return nil, fmt.Errorf("unsupported GOOS for shared library build: %s", runtime.GOOS)
+		return nil, fmt.Errorf("unsupported GOOS for shared library build: %s", goos)
 	}
 }

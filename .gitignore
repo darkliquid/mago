@@ -18,3 +18,8 @@ coverage.*
 # Miniaudio source files (fetched and generated)
 miniaudio.c
 miniaudio.h
+
+# Allow native libraries in internal/lib/ to be tracked in git for embedding
+!internal/lib/**/*.so
+!internal/lib/**/*.dylib
+!internal/lib/**/*.dll

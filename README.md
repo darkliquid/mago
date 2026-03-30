@@ -31,22 +31,17 @@ Like `miniaudio` itself, this project is intended to be available under a **publ
 
 The basic model is:
 
-1. Build the native bridge as a shared library.
-2. Ship that shared library with your application.
-3. Load it from Go with `mago.Open()`.
+1. `mago` embeds the platform-specific native bridge as a shared library.
+2. At runtime, it automatically extracts this library to your user cache directory (e.g. `~/.cache/mago/` on Linux) if it's not already there.
+3. It loads the library from the cache using `purego`.
 4. Use the Go wrapper for version checks, context creation, device enumeration, and playback callbacks.
 
 Important runtime rule:
 
-- **Building the shared library is not required at application build time.**
-- **Providing the correct shared library artifact at runtime is required.**
+- **Building the shared library is NOT required.** Everything is bundled by default.
+- **CGO is NOT required.** `mago` uses `purego` for runtime loading.
 
-In other words, your Go binary does not need CGO, but it does need access to the right dynamic library:
-
-- Linux: `libminiaudio.so`
-- macOS: `libminiaudio.dylib`
-- Windows: `miniaudio.dll`
-- FreeBSD / NetBSD: `libminiaudio.so`
+If you need to use a custom version of the library or want to override the automatic loading, you can still do so.
 
 
 ## Strict version matching
@@ -83,29 +78,9 @@ Examples included in this repo:
 
 ## How to use it
 
-### 1. Provide the shared library
+### 1. Open the library and create a context
 
-By default, `mago` looks for the platform-appropriate runtime library name in one of these places:
-
-- `native/<platform-library-name>` under the current working directory
-- `<platform-library-name>` under the current working directory
-- `native/<platform-library-name>` next to the executable
-- `<platform-library-name>` next to the executable
-
-You can also override the path explicitly:
-
-```go
-lib, err := mago.Open(mago.WithLibraryPath("/absolute/path/to/runtime-library"))
-```
-
-Or via environment variable:
-
-```bash
-export MAGO_MINIAUDIO_LIB=/absolute/path/to/runtime-library
-```
-
-
-### 2. Open the library and create a context
+Just call `mago.Open()`. By default, it will handle the extraction and loading of the embedded library for you:
 
 ```go
 lib, err := mago.Open()
@@ -113,7 +88,25 @@ if err != nil {
 	panic(err)
 }
 defer lib.Close()
+```
 
+### Manual overrides
+
+If you need to use a specific library file instead of the embedded one, you can override the behavior:
+
+1. **Explicit path:** Use `mago.WithLibraryPath("/path/to/lib")`.
+2. **Environment variable:** Set `MAGO_MINIAUDIO_LIB=/path/to/lib`.
+
+If an explicit path or environment variable is provided, `mago` will use that instead of the embedded one.
+
+If both of those are empty, and for some reason the embedded library is missing (e.g. an unsupported architecture), `mago` will search for the platform-appropriate runtime library name in several default locations (like the current working directory or next to the executable).
+
+
+### 2. Create a context
+
+Once the library is open, you can create a context for audio operations:
+
+```go
 ctx, err := lib.NewContext(mago.BackendNull)
 if err != nil {
 	panic(err)

@@ -70,3 +70,12 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
         run: mise run test
+
+      - name: Build examples
+        run: go build ./examples/...
+
+      - name: Upload runtime library artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-lib-${{ runner.os }}-${{ runner.arch }}
+          path: internal/lib/

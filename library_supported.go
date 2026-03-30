@@ -188,6 +188,11 @@ func validateLoadedVersion(actual Version, actualString string) error {
 	return nil
 }
 
+var (
+	embeddedLibData []byte
+	embeddedLibName string
+)
+
 func resolveLibraryPath(explicit string) (string, error) {
 	if explicit != "" {
 		return filepath.Abs(explicit)
@@ -195,6 +200,13 @@ func resolveLibraryPath(explicit string) (string, error) {
 
 	if envPath := os.Getenv(envLibraryPath); envPath != "" {
 		return filepath.Abs(envPath)
+	}
+
+	// Try to find the library in the cache if it's embedded
+	if len(embeddedLibData) > 0 {
+		if cachePath, err := resolveCachedLibrary(); err == nil {
+			return cachePath, nil
+		}
 	}
 
 	var candidates []string
@@ -225,4 +237,49 @@ func resolveLibraryPath(explicit string) (string, error) {
 	}
 
 	return "", fmt.Errorf("mago: could not find a runtime miniaudio library (%v); set %s or use WithLibraryPath (searched %v)", names, envLibraryPath, candidates)
+}
+
+func resolveCachedLibrary() (string, error) {
+	if len(embeddedLibData) == 0 || embeddedLibName == "" {
+		return "", errors.New("mago: no embedded library")
+	}
+
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("mago: could not determine user cache directory: %w", err)
+	}
+
+	// We include the version in the path to avoid conflicts between different mago versions
+	magoCacheDir := filepath.Join(cacheDir, "mago", fmt.Sprintf("%d.%d.%d", ExpectedMiniaudioVersionMajor, ExpectedMiniaudioVersionMinor, ExpectedMiniaudioVersionRevision))
+	if err := os.MkdirAll(magoCacheDir, 0o755); err != nil {
+		return "", fmt.Errorf("mago: could not create cache directory: %w", err)
+	}
+
+	cachePath := filepath.Join(magoCacheDir, embeddedLibName)
+	if _, err := os.Stat(cachePath); err == nil {
+		// Cache hit!
+		return cachePath, nil
+	}
+
+	// Cache miss, extract the library
+	if err := extractLibraryToCache(cachePath); err != nil {
+		return "", err
+	}
+
+	return cachePath, nil
+}
+
+func extractLibraryToCache(path string) error {
+	// Use a temporary file to avoid race conditions with other processes
+	tmpPath := path + ".tmp"
+	if err := os.WriteFile(tmpPath, embeddedLibData, 0o755); err != nil {
+		return fmt.Errorf("mago: could not write library to cache: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("mago: could not move library to final cache location: %w", err)
+	}
+
+	return nil
 }
