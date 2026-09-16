@@ -26,20 +26,64 @@ jobs:
       - name: Run lint checks
         run: mise run lint
 
-  build:
-    name: Build (${{ matrix.os }})
+  verify-embeds:
+    name: Verify embeds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up mise (Go)
+        uses: jdx/mise-action@v4
+        with:
+          cache: true
+
+      - name: Download miniaudio header for checksum
+        run: go run ./internal/cmd/buildlib -download-only miniaudio.h
+
+      - name: Check embed cache
+        id: embed-cache
+        uses: actions/cache@v4
+        with:
+          path: .buildlib-cache-marker
+          key: embeds-v1-${{ hashFiles('native/miniaudio_bridge.c', 'miniaudio.h') }}
+
+      - name: Set up osxcross Docker container
+        if: steps.embed-cache.outputs.cache-hit != 'true'
+        run: |
+          docker pull crazymax/osxcross:latest
+          docker tag crazymax/osxcross:latest dockercross/osxcross:latest
+          docker tag crazymax/osxcross:latest dockercross/osxcross
+
+      - name: Build runtime library for all targets
+        if: steps.embed-cache.outputs.cache-hit != 'true'
+        run: mise run build-lib-all
+
+      - name: Run code generation
+        if: steps.embed-cache.outputs.cache-hit != 'true'
+        run: mise run generate
+
+      - name: Verify embeds match repository
+        if: steps.embed-cache.outputs.cache-hit != 'true'
+        run: git diff --exit-code
+
+      - name: Create embed cache marker
+        if: steps.embed-cache.outputs.cache-hit != 'true'
+        run: touch .buildlib-cache-marker
+
+  test:
+    name: Test (${{ matrix.os }})
+    needs: [verify-embeds]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            cc: cc
-          - os: macos-latest
-            cc: clang
-          - os: windows-latest
-            cc: gcc
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,33 +93,8 @@ jobs:
         with:
           cache: true
 
-      - name: Set up MSYS2
-        if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: mingw-w64-x86_64-gcc
-          path-type: inherit
-
-      - name: Build runtime library
-        env:
-          CC: ${{ matrix.cc }}
-        run: mise run build-lib
-
-      - name: Build packages
-        run: mise run build
-
       - name: Run tests
-        env:
-          CC: ${{ matrix.cc }}
-        run: mise run test
+        run: go test -v ./...
 
       - name: Build examples
-        run: go build ./examples/...
-
-      - name: Upload runtime library artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: runtime-lib-${{ runner.os }}-${{ runner.arch }}
-          path: internal/lib/
+        run: go build -trimpath ./examples/...
