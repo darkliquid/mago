@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildlib-cache-marker
-          key: embeds-v1-${{ hashFiles('native/miniaudio_bridge.c', 'miniaudio.h') }}
+          key: embeds-v1-${{ hashFiles('native/miniaudio_bridge.c', 'miniaudio.h', 'internal/buildlib/**', 'internal/gen/**', 'mise.toml') }}
 
       - name: Set up osxcross Docker container
         if: steps.embed-cache.outputs.cache-hit != 'true'

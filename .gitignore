@@ -21,3 +21,6 @@ miniaudio.h
 
 # Native libraries in internal/lib/ are temporary build intermediates
 internal/lib/
+
+# CI embed verification cache marker
+.buildlib-cache-marker

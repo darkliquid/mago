@@ -17,6 +17,8 @@ jobs:
     name: Update Miniaudio & Regenerate Embeds
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      MINIAUDIO_VERSION: ${{ inputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,11 +39,17 @@ jobs:
           ENV LD_LIBRARY_PATH="/osxcross/lib:$LD_LIBRARY_PATH"
           EOF
 
+      - name: Download miniaudio header
+        run: go run ./internal/cmd/buildlib -download-only miniaudio.h -version "$MINIAUDIO_VERSION"
+
       - name: Build all native libraries
-        run: mise run build-lib-all -version ${{ inputs.version }}
+        run: mise run build-lib-all -version "$MINIAUDIO_VERSION"
 
       - name: Generate bindings and embeds
         run: mise run generate
+
+      - name: Run tests
+        run: go test -v ./...
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
