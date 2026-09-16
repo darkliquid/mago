@@ -199,7 +199,7 @@ func prepareIncludeDir(root, version string) (includeDir string, cleanup func(),
 			cleanup()
 			return "", nil, fmt.Errorf("open root miniaudio.h: %w", err)
 		}
-		defer src.Close()
+		defer func() { _ = src.Close() }()
 
 		dst, err := os.Create(filepath.Join(dir, "miniaudio.h"))
 		if err != nil {
@@ -255,7 +255,7 @@ func zigCompilerArgs(target Target, outPath, source, includeDir, root string) []
 	case "linux":
 		return append(commonFlags,
 			"-fPIC", "-shared",
-			"-Wl,-soname," + filepath.Base(outPath),
+			"-Wl,-soname,"+filepath.Base(outPath),
 			"-o", outPath, source,
 			"-ldl", "-lm", "-lpthread",
 		)
@@ -409,7 +409,7 @@ func buildDarwinTarget(target Target, root, outPath, source, includeDir string) 
 		"-lm",
 	}
 
-	cmd := exec.Command("docker", args...) // #nosec G204
+	cmd := exec.Command("docker", args...) // #nosec G204,G702
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

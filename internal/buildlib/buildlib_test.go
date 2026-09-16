@@ -356,7 +356,7 @@ func TestBuildAllReusesHeaderWithoutReDownload(t *testing.T) {
 	}()
 
 	downloadCount := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		downloadCount++
 		_, _ = io.WriteString(w, "/* dummy header */\n")
 	}))
@@ -398,7 +398,7 @@ func TestBuildAllUsesLocalHeaderWhenPresent(t *testing.T) {
 	}()
 
 	downloadCount := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		downloadCount++
 		_, _ = io.WriteString(w, "/* downloaded header */\n")
 	}))

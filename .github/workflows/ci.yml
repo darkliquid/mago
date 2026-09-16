@@ -52,9 +52,14 @@ jobs:
       - name: Set up osxcross Docker container
         if: steps.embed-cache.outputs.cache-hit != 'true'
         run: |
-          docker pull crazymax/osxcross:latest
-          docker tag crazymax/osxcross:latest dockercross/osxcross:latest
-          docker tag crazymax/osxcross:latest dockercross/osxcross
+          docker build -t dockercross/osxcross:latest - << 'EOF'
+          FROM ubuntu:24.04
+          ENV DEBIAN_FRONTEND=noninteractive
+          RUN apt-get update && apt-get install -y clang libxml2-dev libssl-dev && rm -rf /var/lib/apt/lists/*
+          COPY --from=crazymax/osxcross /osxcross /osxcross
+          ENV PATH="/osxcross/bin:$PATH"
+          ENV LD_LIBRARY_PATH="/osxcross/lib:$LD_LIBRARY_PATH"
+          EOF
 
       - name: Build runtime library for all targets
         if: steps.embed-cache.outputs.cache-hit != 'true'
