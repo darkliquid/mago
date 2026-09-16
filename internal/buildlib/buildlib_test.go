@@ -12,6 +12,185 @@ import (
 	"testing"
 )
 
+func TestSupportedTargets(t *testing.T) {
+	targets := AllTargets()
+	if len(targets) != 7 {
+		t.Fatalf("expected 7 supported targets, got %d", len(targets))
+	}
+
+	expected := map[string]string{
+		"linux-amd64":   "libminiaudio.so",
+		"linux-arm64":   "libminiaudio.so",
+		"windows-amd64": "miniaudio.dll",
+		"freebsd-amd64": "libminiaudio.so",
+		"netbsd-amd64":  "libminiaudio.so",
+		"darwin-amd64":  "libminiaudio.dylib",
+		"darwin-arm64":  "libminiaudio.dylib",
+	}
+
+	for _, target := range targets {
+		key := target.GOOS + "-" + target.GOARCH
+		expectedFilename, ok := expected[key]
+		if !ok {
+			t.Errorf("unexpected target: %s", key)
+			continue
+		}
+		if target.Filename != expectedFilename {
+			t.Errorf("target %s: expected filename %s, got %s", key, expectedFilename, target.Filename)
+		}
+	}
+}
+
+func TestCompilerArgsHardening(t *testing.T) {
+	target := Target{
+		GOOS:     "linux",
+		GOARCH:   "amd64",
+		Filename: "libminiaudio.so",
+		Triple:   "x86_64-linux-gnu",
+	}
+
+	args := zigCompilerArgs(target, "/repo/out.so", "/repo/native/miniaudio_bridge.c", "/tmp/inc", "/repo")
+	joined := strings.Join(args, " ")
+
+	if !strings.Contains(joined, "-ffile-prefix-map=/repo=.") {
+		t.Errorf("expected source prefix mapping, got %s", joined)
+	}
+	if !strings.Contains(joined, "-ffile-prefix-map=/tmp/inc=.") {
+		t.Errorf("expected include prefix mapping, got %s", joined)
+	}
+	if !strings.Contains(joined, "-fvisibility=hidden") {
+		t.Errorf("expected -fvisibility=hidden, got %s", joined)
+	}
+	if !strings.Contains(joined, "-s") {
+		t.Errorf("expected -s strip flag, got %s", joined)
+	}
+	if !strings.Contains(joined, "-target x86_64-linux-gnu") {
+		t.Errorf("expected target triple, got %s", joined)
+	}
+	if !strings.Contains(joined, "-fno-asynchronous-unwind-tables") {
+		t.Errorf("expected -fno-asynchronous-unwind-tables, got %s", joined)
+	}
+	if !strings.Contains(joined, "-fno-ident") {
+		t.Errorf("expected -fno-ident, got %s", joined)
+	}
+}
+
+func TestFindTarget(t *testing.T) {
+	tgt, err := FindTarget("linux", "amd64")
+	if err != nil {
+		t.Fatalf("FindTarget linux/amd64: %v", err)
+	}
+	if tgt.Triple != "x86_64-linux-gnu" {
+		t.Errorf("expected x86_64-linux-gnu, got %s", tgt.Triple)
+	}
+
+	_, err = FindTarget("unknown_os", "unknown_arch")
+	if err == nil {
+		t.Fatal("expected error for unknown target, got nil")
+	}
+}
+
+func TestResolveMiniaudioVersion(t *testing.T) {
+	root := newBuildRoot(t, "1.2.3")
+	ver, err := ResolveMiniaudioVersion(root, "")
+	if err != nil {
+		t.Fatalf("ResolveMiniaudioVersion with empty: %v", err)
+	}
+	if ver != "1.2.3" {
+		t.Errorf("expected 1.2.3, got %s", ver)
+	}
+
+	ver, err = ResolveMiniaudioVersion(root, "4.5.6")
+	if err != nil {
+		t.Fatalf("ResolveMiniaudioVersion with explicit: %v", err)
+	}
+	if ver != "4.5.6" {
+		t.Errorf("expected 4.5.6, got %s", ver)
+	}
+}
+
+func TestCompilerArgsPerPlatform(t *testing.T) {
+	// Windows
+	winTarget := Target{GOOS: "windows", GOARCH: "amd64", Filename: "miniaudio.dll", Triple: "x86_64-windows-gnu"}
+	winArgs := strings.Join(zigCompilerArgs(winTarget, "/out.dll", "/src.c", "/inc", "/root"), " ")
+	for _, expected := range []string{"-shared", "-lwinmm", "-lole32", "-luuid"} {
+		if !strings.Contains(winArgs, expected) {
+			t.Errorf("windows args missing %s: %s", expected, winArgs)
+		}
+	}
+
+	// FreeBSD
+	freebsdTarget := Target{GOOS: "freebsd", GOARCH: "amd64", Filename: "libminiaudio.so", Triple: "x86_64-freebsd"}
+	freebsdArgs := strings.Join(zigCompilerArgs(freebsdTarget, "/out.so", "/src.c", "/inc", "/root"), " ")
+	for _, expected := range []string{"-shared", "-fPIC", "-lm", "-lpthread"} {
+		if !strings.Contains(freebsdArgs, expected) {
+			t.Errorf("freebsd args missing %s: %s", expected, freebsdArgs)
+		}
+	}
+
+	// NetBSD
+	netbsdTarget := Target{GOOS: "netbsd", GOARCH: "amd64", Filename: "libminiaudio.so", Triple: "x86_64-netbsd"}
+	netbsdArgs := strings.Join(zigCompilerArgs(netbsdTarget, "/out.so", "/src.c", "/inc", "/root"), " ")
+	for _, expected := range []string{"-shared", "-fPIC", "-lm", "-lpthread"} {
+		if !strings.Contains(netbsdArgs, expected) {
+			t.Errorf("netbsd args missing %s: %s", expected, netbsdArgs)
+		}
+	}
+
+	// Darwin (unsupported in zigCompilerArgs, uses buildDarwinTarget)
+	darwinTarget := Target{GOOS: "darwin", GOARCH: "amd64", Filename: "libminiaudio.dylib", Triple: "x86_64-apple-darwin"}
+	darwinArgs := zigCompilerArgs(darwinTarget, "/out.dylib", "/src.c", "/inc", "/root")
+	if darwinArgs != nil {
+		t.Errorf("expected nil for darwin zigCompilerArgs, got %v", darwinArgs)
+	}
+}
+
+func TestCurrentTarget(t *testing.T) {
+	t.Setenv("GOOS", "windows")
+	t.Setenv("GOARCH", "amd64")
+	tgt, err := CurrentTarget()
+	if err != nil {
+		t.Fatalf("CurrentTarget: %v", err)
+	}
+	if tgt.Key() != "windows-amd64" || tgt.Filename != "miniaudio.dll" {
+		t.Errorf("unexpected current target: %+v", tgt)
+	}
+
+	t.Setenv("GOOS", "unsupported")
+	t.Setenv("GOARCH", "amd64")
+	_, err = CurrentTarget()
+	if err == nil {
+		t.Error("expected error for unsupported current target, got nil")
+	}
+}
+
+func TestDefaultLibraryFilenameAndOutputPath(t *testing.T) {
+	if got := DefaultLibraryFilename("windows"); got != "miniaudio.dll" {
+		t.Errorf("windows: expected miniaudio.dll, got %s", got)
+	}
+	if got := DefaultLibraryFilename("darwin"); got != "libminiaudio.dylib" {
+		t.Errorf("darwin: expected libminiaudio.dylib, got %s", got)
+	}
+	if got := DefaultLibraryFilename("linux"); got != "libminiaudio.so" {
+		t.Errorf("linux: expected libminiaudio.so, got %s", got)
+	}
+
+	t.Setenv("GOOS", "linux")
+	t.Setenv("GOARCH", "arm64")
+	outPath := DefaultOutputPath("/root")
+	expected := filepath.Join("/root", "internal", "lib", "linux-arm64", "libminiaudio.so")
+	if outPath != expected {
+		t.Errorf("expected %s, got %s", expected, outPath)
+	}
+}
+
+func TestDownloadMiniaudioHeaderValidation(t *testing.T) {
+	err := DownloadMiniaudioHeader("  ", "/tmp/miniaudio.h")
+	if err == nil {
+		t.Fatal("expected error for empty version, got nil")
+	}
+}
+
 func TestDefaultMiniaudioVersion(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "zz_generated.bindings.go"), []byte(`package mago
