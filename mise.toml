@@ -1,5 +1,6 @@
 [tools]
 go = "latest"
+zig = "0.16.0"
 golangci-lint = "latest"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 
@@ -14,12 +15,17 @@ run = "go test ./..."
 [tasks.build]
 depends = ["generate"]
 description = "Build test"
-run = "go build ./..."
+run = "go build -trimpath ./..."
 sources = ["**/*.go"]
 
 [tasks.build-lib]
-description = "Build the native miniaudio lib"
+description = "Build the native miniaudio lib for current host or target"
 run = "go run ./internal/cmd/buildlib"
+sources = ["miniaudio.h", "native/miniaudio_bridge.c"]
+
+[tasks.build-lib-all]
+description = "Build the native miniaudio lib for all supported targets"
+run = "go run ./internal/cmd/buildlib -all"
 sources = ["miniaudio.h", "native/miniaudio_bridge.c"]
 
 [tasks.generate]

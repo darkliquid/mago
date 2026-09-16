@@ -19,7 +19,5 @@ coverage.*
 miniaudio.c
 miniaudio.h
 
-# Allow native libraries in internal/lib/ to be tracked in git for embedding
-!internal/lib/**/*.so
-!internal/lib/**/*.dylib
-!internal/lib/**/*.dll
+# Native libraries in internal/lib/ are temporary build intermediates
+internal/lib/
