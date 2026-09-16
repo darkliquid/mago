@@ -93,11 +93,25 @@ The GitHub Actions workflow is redesigned around two distinct phases:
 
 ### Phase 1: Build & Verification Job (`ubuntu-latest`)
 1. Checks out repository.
-2. Sets up `mise` with Go and Zig 0.16.0.
-3. Runs `mise run build-lib-all` (using `zig cc` for 5 platforms and `osxcross` Docker container for Darwin).
-4. Runs `mise run generate` (re-generating bindings and all 7 `embed_*.go` files).
-5. Runs `git diff --exit-code`:
-   * Fails the build if any committed `embed_*.go` file is missing, outdated, or desynchronized with the bridge source or miniaudio version.
+2. Resolves / fetches `miniaudio.h` matching the vendored version.
+3. Checks GitHub Actions cache keyed off the input source hashes:
+   ```yaml
+   - name: Cache embed verification
+     id: embed-cache
+     uses: actions/cache@v4
+     with:
+       path: .buildlib-cache-marker
+       key: embeds-v1-${{ hashFiles('native/miniaudio_bridge.c', 'miniaudio.h') }}
+   ```
+4. **Conditional Rebuild & Verification (`if: steps.embed-cache.outputs.cache-hit != 'true'`):**
+   * Sets up `mise` with Go and Zig 0.16.0.
+   * Runs `mise run build-lib-all` (using `zig cc` for 5 platforms and `osxcross` Docker container for Darwin).
+   * Runs `mise run generate` (re-generating bindings and all 7 `embed_*.go` files).
+   * Runs `git diff --exit-code`:
+     * Fails the build if any committed `embed_*.go` file is missing, outdated, or desynchronized with the bridge source or miniaudio version.
+   * Writes `.buildlib-cache-marker` to save the successful verification into the action cache.
+5. If `cache-hit == 'true'`:
+   * Skips toolchain installation, cross-compilation, code generation, and diff verification entirely.
 
 ### Phase 2: Consumer Validation Matrix (`ubuntu-latest`, `macos-latest`, `windows-latest`)
 1. Checks out repository.
