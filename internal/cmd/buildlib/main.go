@@ -22,7 +22,37 @@ func main() {
 	downloadOnly := flag.String("download-only", "", "download miniaudio.h to target destination path and exit")
 	flag.Parse()
 
+	modesSet := 0
+	if *all {
+		modesSet++
+	}
+	if *targetFlag != "" {
+		modesSet++
+	}
 	if *downloadOnly != "" {
+		modesSet++
+	}
+	if modesSet > 1 {
+		exit(fmt.Errorf("cannot specify more than one of -all, -target, and -download-only"))
+	}
+
+	args := flag.Args()
+	if len(args) > 1 {
+		exit(fmt.Errorf("usage: buildlib [-version x.y.z] [-all | -target os/arch | -download-only path] [output-path]"))
+	}
+
+	outPath := ""
+	if len(args) == 1 {
+		outPath = args[0]
+		if !filepath.IsAbs(outPath) {
+			outPath = filepath.Join(root, outPath)
+		}
+	}
+
+	if *downloadOnly != "" {
+		if outPath != "" {
+			exit(fmt.Errorf("positional output path cannot be used with -download-only"))
+		}
 		ver, err := buildlib.ResolveMiniaudioVersion(root, *version)
 		if err != nil {
 			exit(err)
@@ -39,6 +69,9 @@ func main() {
 	}
 
 	if *all {
+		if outPath != "" {
+			exit(fmt.Errorf("positional output path cannot be used with -all"))
+		}
 		if err := buildlib.BuildAll(root, *version); err != nil {
 			exit(err)
 		}
@@ -54,21 +87,16 @@ func main() {
 		if err != nil {
 			exit(err)
 		}
-		if err := buildlib.BuildTarget(root, target, *version); err != nil {
-			exit(err)
+		if outPath != "" {
+			if err := buildlib.BuildTargetWithOutput(root, target, outPath, *version); err != nil {
+				exit(err)
+			}
+		} else {
+			if err := buildlib.BuildTarget(root, target, *version); err != nil {
+				exit(err)
+			}
 		}
 		return
-	}
-
-	outPath := ""
-	args := flag.Args()
-	if len(args) == 1 {
-		outPath = args[0]
-		if !filepath.IsAbs(outPath) {
-			outPath = filepath.Join(root, outPath)
-		}
-	} else if len(args) > 1 {
-		exit(fmt.Errorf("usage: buildlib [-version x.y.z] [-all] [-target os/arch] [-download-only path] [output-path]"))
 	}
 
 	if err := buildlib.Build(root, outPath, *version); err != nil {

@@ -104,12 +104,17 @@ var (
 		return "https://raw.githubusercontent.com/mackron/miniaudio/" + url.PathEscape(version) + "/miniaudio.h"
 	}
 	versionConstPattern = regexp.MustCompile(`ExpectedMiniaudioVersion(Major|Minor|Revision)\s+uint32\s*=\s*(\d+)`)
+	compilerOverride    string // used in tests to mock compilation without executing zig/osxcross
 )
 
 func DownloadMiniaudioHeader(version, dstPath string) (err error) {
 	version = strings.TrimSpace(version)
 	if version == "" {
 		return fmt.Errorf("miniaudio version must not be empty")
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+		return fmt.Errorf("create destination directory for miniaudio.h: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodGet, miniaudioHeaderURL(version), nil)
@@ -158,10 +163,6 @@ func DownloadMiniaudioHeader(version, dstPath string) (err error) {
 	return nil
 }
 
-func downloadMiniaudioHeader(version, dstPath string) error {
-	return DownloadMiniaudioHeader(version, dstPath)
-}
-
 func defaultMiniaudioVersion(root string) (string, error) {
 	content, err := os.ReadFile(filepath.Join(root, "zz_generated.bindings.go"))
 	if err != nil {
@@ -181,6 +182,60 @@ func defaultMiniaudioVersion(root string) (string, error) {
 	}
 
 	return major + "." + minor + "." + revision, nil
+}
+
+func prepareIncludeDir(root, version string) (includeDir string, cleanup func(), err error) {
+	rootHeader := filepath.Join(root, "miniaudio.h")
+	if info, statErr := os.Stat(rootHeader); statErr == nil && !info.IsDir() {
+		// Use existing miniaudio.h from root without re-downloading
+		dir, err := os.MkdirTemp("", "mago-buildlib-*")
+		if err != nil {
+			return "", nil, fmt.Errorf("create temporary include directory: %w", err)
+		}
+		cleanup = func() { _ = os.RemoveAll(dir) }
+
+		src, err := os.Open(rootHeader)
+		if err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("open root miniaudio.h: %w", err)
+		}
+		defer src.Close()
+
+		dst, err := os.Create(filepath.Join(dir, "miniaudio.h"))
+		if err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("copy miniaudio.h to include directory: %w", err)
+		}
+		if _, err := io.Copy(dst, src); err != nil {
+			_ = dst.Close()
+			cleanup()
+			return "", nil, fmt.Errorf("copy miniaudio.h content: %w", err)
+		}
+		if err := dst.Close(); err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("close copied miniaudio.h: %w", err)
+		}
+		return dir, cleanup, nil
+	}
+
+	resolvedVersion, err := ResolveMiniaudioVersion(root, version)
+	if err != nil {
+		return "", nil, err
+	}
+
+	dir, err := os.MkdirTemp("", "mago-buildlib-*")
+	if err != nil {
+		return "", nil, fmt.Errorf("create temporary include directory: %w", err)
+	}
+	cleanup = func() { _ = os.RemoveAll(dir) }
+
+	headerPath := filepath.Join(dir, "miniaudio.h")
+	if err := DownloadMiniaudioHeader(resolvedVersion, headerPath); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+
+	return dir, cleanup, nil
 }
 
 func zigCompilerArgs(target Target, outPath, source, includeDir, root string) []string {
@@ -221,43 +276,65 @@ func zigCompilerArgs(target Target, outPath, source, includeDir, root string) []
 	}
 }
 
-func BuildTarget(root string, target Target, version string) error {
-	outPath := filepath.Join(root, "internal", "lib", target.Key(), target.Filename)
-	return buildTarget(root, target, outPath, version)
+func darwinCompilerArgs(target Target, root, outPath, source, includeDir string) []string {
+	arch := target.GOARCH
+	if arch == "amd64" {
+		arch = "x86_64"
+	}
+
+	return []string{
+		"-arch", arch,
+		"-std=c11", "-O2", "-fPIC", "-dynamiclib",
+		"-fvisibility=hidden",
+		"-ffile-prefix-map=" + root + "=.",
+		"-ffile-prefix-map=" + includeDir + "=.",
+		"-I", includeDir,
+		"-install_name", "@rpath/" + filepath.Base(outPath),
+		"-Wl,-x",
+		"-o", outPath, source,
+		"-framework", "CoreAudio",
+		"-framework", "AudioToolbox",
+		"-framework", "AudioUnit",
+		"-framework", "Foundation",
+		"-framework", "CoreFoundation",
+		"-framework", "CoreServices",
+		"-lm",
+	}
 }
 
-func buildTarget(root string, target Target, outPath, version string) (err error) {
-	resolvedVersion, err := ResolveMiniaudioVersion(root, version)
+func BuildTarget(root string, target Target, version string) error {
+	outPath := filepath.Join(root, "internal", "lib", target.Key(), target.Filename)
+	return BuildTargetWithOutput(root, target, outPath, version)
+}
+
+func BuildTargetWithOutput(root string, target Target, outPath, version string) error {
+	if _, err := FindTarget(target.GOOS, target.GOARCH); err != nil {
+		return fmt.Errorf("unsupported target %s: %w", target, err)
+	}
+
+	includeDir, cleanup, err := prepareIncludeDir(root, version)
 	if err != nil {
 		return err
+	}
+	defer cleanup()
+
+	return buildTargetWithInclude(root, target, outPath, includeDir)
+}
+
+func buildTargetWithInclude(root string, target Target, outPath, includeDir string) error {
+	if _, err := FindTarget(target.GOOS, target.GOARCH); err != nil {
+		return fmt.Errorf("unsupported target %s: %w", target, err)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return err
 	}
 
-	includeDir, err := os.MkdirTemp("", "mago-buildlib-*")
-	if err != nil {
-		return fmt.Errorf("create temporary include directory: %w", err)
-	}
-	defer func() {
-		if cleanupErr := os.RemoveAll(includeDir); cleanupErr != nil && err == nil {
-			err = fmt.Errorf("remove temporary include directory: %w", cleanupErr)
-		}
-	}()
-
-	headerPath := filepath.Join(includeDir, "miniaudio.h")
-	if err := DownloadMiniaudioHeader(resolvedVersion, headerPath); err != nil {
-		return err
-	}
-
 	source := filepath.Join(root, "native", "miniaudio_bridge.c")
 
-	compiler := os.Getenv("CC")
-	if compiler != "" && !strings.Contains(compiler, "zig") {
-		// Use custom compiler if explicitly specified
+	if compilerOverride != "" {
 		args := []string{"-std=c11", "-O2", "-fvisibility=hidden", "-I", includeDir, "-o", outPath, source}
-		cmd := exec.Command(compiler, args...) // #nosec G204
+		cmd := exec.Command(compilerOverride, args...) // #nosec G204
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -270,7 +347,12 @@ func buildTarget(root string, target Target, outPath, version string) (err error
 		return buildDarwinTarget(target, root, outPath, source, includeDir)
 	}
 
-	args := append([]string{"cc"}, zigCompilerArgs(target, outPath, source, includeDir, root)...)
+	zigArgs := zigCompilerArgs(target, outPath, source, includeDir, root)
+	if len(zigArgs) == 0 {
+		return fmt.Errorf("unsupported target %s for zig compilation", target)
+	}
+
+	args := append([]string{"cc"}, zigArgs...)
 	cmd := exec.Command("zig", args...) // #nosec G204
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -283,23 +365,7 @@ func buildTarget(root string, target Target, outPath, version string) (err error
 func buildDarwinTarget(target Target, root, outPath, source, includeDir string) error {
 	if runtime.GOOS == "darwin" {
 		// Native macOS compilation
-		args := []string{
-			"-arch", target.GOARCH,
-			"-std=c11", "-O2", "-fPIC", "-dynamiclib",
-			"-fvisibility=hidden",
-			"-ffile-prefix-map=" + root + "=.",
-			"-ffile-prefix-map=" + includeDir + "=.",
-			"-I", includeDir,
-			"-Wl,-x",
-			"-o", outPath, source,
-			"-framework", "CoreAudio",
-			"-framework", "AudioToolbox",
-			"-framework", "AudioUnit",
-			"-framework", "Foundation",
-			"-framework", "CoreFoundation",
-			"-framework", "CoreServices",
-			"-lm",
-		}
+		args := darwinCompilerArgs(target, root, outPath, source, includeDir)
 		cmd := exec.Command("clang", args...) // #nosec G204
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -329,6 +395,7 @@ func buildDarwinTarget(target Target, root, outPath, source, includeDir string) 
 		"-ffile-prefix-map=/workspace=.",
 		"-ffile-prefix-map=/include=.",
 		"-I", "/include",
+		"-install_name", "@rpath/" + filepath.Base(outPath),
 		"-Wl,-x",
 		"-o", "/out/" + filepath.Base(outPath),
 		"/workspace/native/miniaudio_bridge.c",
@@ -351,10 +418,17 @@ func buildDarwinTarget(target Target, root, outPath, source, includeDir string) 
 }
 
 func BuildAll(root, version string) error {
+	includeDir, cleanup, err := prepareIncludeDir(root, version)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
 	targets := AllTargets()
 	for _, target := range targets {
 		fmt.Printf("Building %s (%s)...\n", target, target.Filename)
-		if err := BuildTarget(root, target, version); err != nil {
+		outPath := filepath.Join(root, "internal", "lib", target.Key(), target.Filename)
+		if err := buildTargetWithInclude(root, target, outPath, includeDir); err != nil {
 			return fmt.Errorf("build target %s: %w", target, err)
 		}
 	}
@@ -369,5 +443,5 @@ func Build(root, outPath, version string) error {
 	if outPath == "" {
 		outPath = DefaultOutputPath(root)
 	}
-	return buildTarget(root, target, outPath, version)
+	return BuildTargetWithOutput(root, target, outPath, version)
 }

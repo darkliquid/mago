@@ -145,6 +145,51 @@ func TestCompilerArgsPerPlatform(t *testing.T) {
 	}
 }
 
+func TestDarwinCompilerArgs(t *testing.T) {
+	// darwin amd64 -> -arch x86_64 (mapped from amd64 for apple clang)
+	amd64Target := Target{GOOS: "darwin", GOARCH: "amd64", Filename: "libminiaudio.dylib", Triple: "x86_64-apple-darwin"}
+	amd64Args := strings.Join(darwinCompilerArgs(amd64Target, "/repo", "/repo/out.dylib", "/repo/src.c", "/tmp/inc"), " ")
+
+	if !strings.Contains(amd64Args, "-arch x86_64") {
+		t.Errorf("expected -arch x86_64 for darwin/amd64, got %s", amd64Args)
+	}
+	if !strings.Contains(amd64Args, "-install_name @rpath/out.dylib") {
+		t.Errorf("expected -install_name @rpath/out.dylib, got %s", amd64Args)
+	}
+	if !strings.Contains(amd64Args, "-framework CoreAudio") {
+		t.Errorf("expected -framework CoreAudio, got %s", amd64Args)
+	}
+	if !strings.Contains(amd64Args, "-framework AudioToolbox") {
+		t.Errorf("expected -framework AudioToolbox, got %s", amd64Args)
+	}
+	if !strings.Contains(amd64Args, "-framework AudioUnit") {
+		t.Errorf("expected -framework AudioUnit, got %s", amd64Args)
+	}
+	if !strings.Contains(amd64Args, "-framework Foundation") {
+		t.Errorf("expected -framework Foundation, got %s", amd64Args)
+	}
+	if !strings.Contains(amd64Args, "-framework CoreFoundation") {
+		t.Errorf("expected -framework CoreFoundation, got %s", amd64Args)
+	}
+	if !strings.Contains(amd64Args, "-framework CoreServices") {
+		t.Errorf("expected -framework CoreServices, got %s", amd64Args)
+	}
+	if !strings.Contains(amd64Args, "-ffile-prefix-map=/repo=.") {
+		t.Errorf("expected -ffile-prefix-map=/repo=., got %s", amd64Args)
+	}
+
+	// darwin arm64 -> -arch arm64
+	arm64Target := Target{GOOS: "darwin", GOARCH: "arm64", Filename: "libminiaudio.dylib", Triple: "arm64-apple-darwin"}
+	arm64Args := strings.Join(darwinCompilerArgs(arm64Target, "/repo", "/repo/out.dylib", "/repo/src.c", "/tmp/inc"), " ")
+
+	if !strings.Contains(arm64Args, "-arch arm64") {
+		t.Errorf("expected -arch arm64 for darwin/arm64, got %s", arm64Args)
+	}
+	if !strings.Contains(arm64Args, "-install_name @rpath/out.dylib") {
+		t.Errorf("expected -install_name @rpath/out.dylib, got %s", arm64Args)
+	}
+}
+
 func TestCurrentTarget(t *testing.T) {
 	t.Setenv("GOOS", "windows")
 	t.Setenv("GOARCH", "amd64")
@@ -216,6 +261,13 @@ const (
 func TestBuildDownloadsRequestedHeader(t *testing.T) {
 	root := newBuildRoot(t, "0.11.25")
 	compilerDir := newFakeCompiler(t)
+	compilerOverride = filepath.Join(compilerDir, "cc")
+	if runtime.GOOS == "windows" {
+		compilerOverride += ".exe"
+	}
+	defer func() {
+		compilerOverride = ""
+	}()
 
 	var requestedPath string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -234,9 +286,6 @@ func TestBuildDownloadsRequestedHeader(t *testing.T) {
 		miniaudioHeaderURL = restoreURLBuilder
 		httpClient = restoreClient
 	}()
-
-	t.Setenv("CC", "cc")
-	t.Setenv("PATH", compilerDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	outPath := filepath.Join(t.TempDir(), "libminiaudio.so")
 	if err := Build(root, outPath, "9.8.7"); err != nil {
@@ -259,6 +308,13 @@ func TestBuildDownloadsRequestedHeader(t *testing.T) {
 func TestBuildUsesGeneratedVersionWhenUnset(t *testing.T) {
 	root := newBuildRoot(t, "3.4.5")
 	compilerDir := newFakeCompiler(t)
+	compilerOverride = filepath.Join(compilerDir, "cc")
+	if runtime.GOOS == "windows" {
+		compilerOverride += ".exe"
+	}
+	defer func() {
+		compilerOverride = ""
+	}()
 
 	var requestedPath string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -278,9 +334,6 @@ func TestBuildUsesGeneratedVersionWhenUnset(t *testing.T) {
 		httpClient = restoreClient
 	}()
 
-	t.Setenv("CC", "cc")
-	t.Setenv("PATH", compilerDir+string(os.PathListSeparator)+os.Getenv("PATH"))
-
 	outPath := filepath.Join(t.TempDir(), "libminiaudio.so")
 	if err := Build(root, outPath, ""); err != nil {
 		t.Fatalf("Build: %v", err)
@@ -288,6 +341,98 @@ func TestBuildUsesGeneratedVersionWhenUnset(t *testing.T) {
 
 	if requestedPath != "/3.4.5/miniaudio.h" {
 		t.Fatalf("unexpected default download path: %q", requestedPath)
+	}
+}
+
+func TestBuildAllReusesHeaderWithoutReDownload(t *testing.T) {
+	root := newBuildRoot(t, "1.2.3")
+	compilerDir := newFakeCompiler(t)
+	compilerOverride = filepath.Join(compilerDir, "cc")
+	if runtime.GOOS == "windows" {
+		compilerOverride += ".exe"
+	}
+	defer func() {
+		compilerOverride = ""
+	}()
+
+	downloadCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		downloadCount++
+		_, _ = io.WriteString(w, "/* dummy header */\n")
+	}))
+	defer server.Close()
+
+	restoreURLBuilder := miniaudioHeaderURL
+	restoreClient := httpClient
+	miniaudioHeaderURL = func(version string) string {
+		return server.URL + "/" + version + "/miniaudio.h"
+	}
+	httpClient = server.Client()
+	defer func() {
+		miniaudioHeaderURL = restoreURLBuilder
+		httpClient = restoreClient
+	}()
+
+	if err := BuildAll(root, "1.2.3"); err != nil {
+		t.Fatalf("BuildAll: %v", err)
+	}
+
+	if downloadCount != 1 {
+		t.Fatalf("expected exactly 1 download across all 7 targets, got %d", downloadCount)
+	}
+}
+
+func TestBuildAllUsesLocalHeaderWhenPresent(t *testing.T) {
+	root := newBuildRoot(t, "1.2.3")
+	if err := os.WriteFile(filepath.Join(root, "miniaudio.h"), []byte("/* local header */\n"), 0o644); err != nil {
+		t.Fatalf("write local miniaudio.h: %v", err)
+	}
+
+	compilerDir := newFakeCompiler(t)
+	compilerOverride = filepath.Join(compilerDir, "cc")
+	if runtime.GOOS == "windows" {
+		compilerOverride += ".exe"
+	}
+	defer func() {
+		compilerOverride = ""
+	}()
+
+	downloadCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		downloadCount++
+		_, _ = io.WriteString(w, "/* downloaded header */\n")
+	}))
+	defer server.Close()
+
+	restoreURLBuilder := miniaudioHeaderURL
+	restoreClient := httpClient
+	miniaudioHeaderURL = func(version string) string {
+		return server.URL + "/" + version + "/miniaudio.h"
+	}
+	httpClient = server.Client()
+	defer func() {
+		miniaudioHeaderURL = restoreURLBuilder
+		httpClient = restoreClient
+	}()
+
+	if err := BuildAll(root, "1.2.3"); err != nil {
+		t.Fatalf("BuildAll: %v", err)
+	}
+
+	if downloadCount != 0 {
+		t.Fatalf("expected 0 downloads when miniaudio.h is present in root, got %d", downloadCount)
+	}
+}
+
+func TestBuildTargetUnsupported(t *testing.T) {
+	root := newBuildRoot(t, "1.2.3")
+	unsupported := Target{GOOS: "unsupported", GOARCH: "arch"}
+	err := BuildTarget(root, unsupported, "")
+	if err == nil {
+		t.Fatal("expected error for unsupported target in BuildTarget, got nil")
+	}
+	if !strings.Contains(err.Error(), "unsupported target") {
+		t.Errorf("expected unsupported target error message, got: %v", err)
 	}
 }
 
