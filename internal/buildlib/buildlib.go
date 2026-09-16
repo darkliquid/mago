@@ -385,6 +385,7 @@ func buildDarwinTarget(target Target, root, outPath, source, includeDir string) 
 
 	args := []string{
 		"run", "--rm",
+		"-e", "LD_LIBRARY_PATH=/osxcross/lib",
 		"-v", root + ":/workspace:ro",
 		"-v", includeDir + ":/include:ro",
 		"-v", filepath.Dir(outPath) + ":/out",
