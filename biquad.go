@@ -40,16 +40,7 @@ func (lib *Library) NewBiquad(config BiquadConfig) (*Biquad, error) {
 	}
 	handle := (*biquadHandle)(raw)
 
-	nativeConfig := biquadConfigNative{
-		Format:   config.Format,
-		Channels: config.Channels,
-		B0:       config.B0,
-		B1:       config.B1,
-		B2:       config.B2,
-		A0:       config.A0,
-		A1:       config.A1,
-		A2:       config.A2,
-	}
+	nativeConfig := biquadConfigNative(config)
 
 	res := lib.bindings.maBiquadInit(&nativeConfig, nil, handle)
 	if res != Success {
@@ -72,16 +63,7 @@ func (b *Biquad) Reinit(config BiquadConfig) error {
 		return err
 	}
 
-	nativeConfig := biquadConfigNative{
-		Format:   config.Format,
-		Channels: config.Channels,
-		B0:       config.B0,
-		B1:       config.B1,
-		B2:       config.B2,
-		A0:       config.A0,
-		A1:       config.A1,
-		A2:       config.A2,
-	}
+	nativeConfig := biquadConfigNative(config)
 	return b.lib.resultError("ma_biquad_reinit", b.lib.bindings.maBiquadReinit(&nativeConfig, b.handle))
 }
 

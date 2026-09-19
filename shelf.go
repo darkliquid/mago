@@ -83,13 +83,7 @@ func (lib *Library) NewNotchFilter(config NotchFilterConfig) (*NotchFilter, erro
 	}
 	handle := (*notch2Handle)(raw)
 
-	nativeConfig := notch2ConfigNative{
-		Format:     config.Format,
-		Channels:   config.Channels,
-		SampleRate: config.SampleRate,
-		Q:          config.Q,
-		Frequency:  config.Frequency,
-	}
+	nativeConfig := notch2ConfigNative(config)
 
 	res := lib.bindings.maNotch2Init(&nativeConfig, nil, handle)
 	if res != Success {
@@ -117,13 +111,7 @@ func (f *NotchFilter) Reinit(config NotchFilterConfig) error {
 		return err
 	}
 
-	nativeConfig := notch2ConfigNative{
-		Format:     config.Format,
-		Channels:   config.Channels,
-		SampleRate: config.SampleRate,
-		Q:          config.Q,
-		Frequency:  config.Frequency,
-	}
+	nativeConfig := notch2ConfigNative(config)
 	return f.lib.resultError("ma_notch2_reinit", f.lib.bindings.maNotch2Reinit(&nativeConfig, f.handle))
 }
 
@@ -184,14 +172,7 @@ func (lib *Library) NewPeakFilter(config PeakFilterConfig) (*PeakFilter, error) 
 	}
 	handle := (*peak2Handle)(raw)
 
-	nativeConfig := peak2ConfigNative{
-		Format:     config.Format,
-		Channels:   config.Channels,
-		SampleRate: config.SampleRate,
-		GainDB:     config.GainDB,
-		Q:          config.Q,
-		Frequency:  config.Frequency,
-	}
+	nativeConfig := peak2ConfigNative(config)
 
 	res := lib.bindings.maPeak2Init(&nativeConfig, nil, handle)
 	if res != Success {
@@ -219,14 +200,7 @@ func (f *PeakFilter) Reinit(config PeakFilterConfig) error {
 		return err
 	}
 
-	nativeConfig := peak2ConfigNative{
-		Format:     config.Format,
-		Channels:   config.Channels,
-		SampleRate: config.SampleRate,
-		GainDB:     config.GainDB,
-		Q:          config.Q,
-		Frequency:  config.Frequency,
-	}
+	nativeConfig := peak2ConfigNative(config)
 	return f.lib.resultError("ma_peak2_reinit", f.lib.bindings.maPeak2Reinit(&nativeConfig, f.handle))
 }
 
@@ -287,14 +261,7 @@ func (lib *Library) NewLowShelfFilter(config LowShelfFilterConfig) (*LowShelfFil
 	}
 	handle := (*loshelf2Handle)(raw)
 
-	nativeConfig := loshelf2ConfigNative{
-		Format:     config.Format,
-		Channels:   config.Channels,
-		SampleRate: config.SampleRate,
-		GainDB:     config.GainDB,
-		ShelfSlope: config.ShelfSlope,
-		Frequency:  config.Frequency,
-	}
+	nativeConfig := loshelf2ConfigNative(config)
 
 	res := lib.bindings.maLoShelf2Init(&nativeConfig, nil, handle)
 	if res != Success {
@@ -327,14 +294,7 @@ func (f *LowShelfFilter) Reinit(config LowShelfFilterConfig) error {
 		return err
 	}
 
-	nativeConfig := loshelf2ConfigNative{
-		Format:     config.Format,
-		Channels:   config.Channels,
-		SampleRate: config.SampleRate,
-		GainDB:     config.GainDB,
-		ShelfSlope: config.ShelfSlope,
-		Frequency:  config.Frequency,
-	}
+	nativeConfig := loshelf2ConfigNative(config)
 	return f.lib.resultError("ma_loshelf2_reinit", f.lib.bindings.maLoShelf2Reinit(&nativeConfig, f.handle))
 }
 
@@ -395,14 +355,7 @@ func (lib *Library) NewHighShelfFilter(config HighShelfFilterConfig) (*HighShelf
 	}
 	handle := (*hishelf2Handle)(raw)
 
-	nativeConfig := hishelf2ConfigNative{
-		Format:     config.Format,
-		Channels:   config.Channels,
-		SampleRate: config.SampleRate,
-		GainDB:     config.GainDB,
-		ShelfSlope: config.ShelfSlope,
-		Frequency:  config.Frequency,
-	}
+	nativeConfig := hishelf2ConfigNative(config)
 
 	res := lib.bindings.maHiShelf2Init(&nativeConfig, nil, handle)
 	if res != Success {
@@ -435,14 +388,7 @@ func (f *HighShelfFilter) Reinit(config HighShelfFilterConfig) error {
 		return err
 	}
 
-	nativeConfig := hishelf2ConfigNative{
-		Format:     config.Format,
-		Channels:   config.Channels,
-		SampleRate: config.SampleRate,
-		GainDB:     config.GainDB,
-		ShelfSlope: config.ShelfSlope,
-		Frequency:  config.Frequency,
-	}
+	nativeConfig := hishelf2ConfigNative(config)
 	return f.lib.resultError("ma_hishelf2_reinit", f.lib.bindings.maHiShelf2Reinit(&nativeConfig, f.handle))
 }
 

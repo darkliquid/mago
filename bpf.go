@@ -55,13 +55,7 @@ func (lib *Library) NewBandPassFilter2(config BandPassFilter2Config) (*BandPassF
 	}
 	handle := (*bpf2Handle)(raw)
 
-	nativeConfig := bpf2ConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Q:               config.Q,
-	}
+	nativeConfig := bpf2ConfigNative(config)
 
 	res := lib.bindings.maBPF2Init(&nativeConfig, nil, handle)
 	if res != Success {
@@ -89,13 +83,7 @@ func (f *BandPassFilter2) Reinit(config BandPassFilter2Config) error {
 		return err
 	}
 
-	nativeConfig := bpf2ConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Q:               config.Q,
-	}
+	nativeConfig := bpf2ConfigNative(config)
 	return f.lib.resultError("ma_bpf2_reinit", f.lib.bindings.maBPF2Reinit(&nativeConfig, f.handle))
 }
 
@@ -158,13 +146,7 @@ func (lib *Library) NewBandPassFilter(config BandPassFilterConfig) (*BandPassFil
 	}
 	handle := (*bpfHandle)(raw)
 
-	nativeConfig := bpfConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Order:           config.Order,
-	}
+	nativeConfig := bpfConfigNative(config)
 
 	res := lib.bindings.maBPFInit(&nativeConfig, nil, handle)
 	if res != Success {
@@ -192,13 +174,7 @@ func (f *BandPassFilter) Reinit(config BandPassFilterConfig) error {
 		return err
 	}
 
-	nativeConfig := bpfConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Order:           config.Order,
-	}
+	nativeConfig := bpfConfigNative(config)
 	return f.lib.resultError("ma_bpf_reinit", f.lib.bindings.maBPFReinit(&nativeConfig, f.handle))
 }
 

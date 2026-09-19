@@ -186,13 +186,7 @@ func (lib *Library) NewLowPassFilter2(config LowPassFilter2Config) (*LowPassFilt
 	}
 	handle := (*lpf2Handle)(raw)
 
-	nativeConfig := lpf2ConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Q:               config.Q,
-	}
+	nativeConfig := lpf2ConfigNative(config)
 
 	res := lib.bindings.maLPF2Init(&nativeConfig, nil, handle)
 	if res != Success {
@@ -220,13 +214,7 @@ func (f *LowPassFilter2) Reinit(config LowPassFilter2Config) error {
 		return err
 	}
 
-	nativeConfig := lpf2ConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Q:               config.Q,
-	}
+	nativeConfig := lpf2ConfigNative(config)
 	return f.lib.resultError("ma_lpf2_reinit", f.lib.bindings.maLPF2Reinit(&nativeConfig, f.handle))
 }
 
@@ -299,13 +287,7 @@ func (lib *Library) NewLowPassFilter(config LowPassFilterConfig) (*LowPassFilter
 	}
 	handle := (*lpfHandle)(raw)
 
-	nativeConfig := lpfConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Order:           config.Order,
-	}
+	nativeConfig := lpfConfigNative(config)
 
 	res := lib.bindings.maLPFInit(&nativeConfig, nil, handle)
 	if res != Success {
@@ -334,13 +316,7 @@ func (f *LowPassFilter) Reinit(config LowPassFilterConfig) error {
 		return err
 	}
 
-	nativeConfig := lpfConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Order:           config.Order,
-	}
+	nativeConfig := lpfConfigNative(config)
 	if err := f.lib.resultError("ma_lpf_reinit", f.lib.bindings.maLPFReinit(&nativeConfig, f.handle)); err != nil {
 		return err
 	}

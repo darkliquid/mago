@@ -164,13 +164,7 @@ func (lib *Library) NewHighPassFilter2(config HighPassFilter2Config) (*HighPassF
 	}
 	handle := (*hpf2Handle)(raw)
 
-	nativeConfig := hpf2ConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Q:               config.Q,
-	}
+	nativeConfig := hpf2ConfigNative(config)
 
 	res := lib.bindings.maHPF2Init(&nativeConfig, nil, handle)
 	if res != Success {
@@ -198,13 +192,7 @@ func (f *HighPassFilter2) Reinit(config HighPassFilter2Config) error {
 		return err
 	}
 
-	nativeConfig := hpf2ConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Q:               config.Q,
-	}
+	nativeConfig := hpf2ConfigNative(config)
 	return f.lib.resultError("ma_hpf2_reinit", f.lib.bindings.maHPF2Reinit(&nativeConfig, f.handle))
 }
 
@@ -265,13 +253,7 @@ func (lib *Library) NewHighPassFilter(config HighPassFilterConfig) (*HighPassFil
 	}
 	handle := (*hpfHandle)(raw)
 
-	nativeConfig := hpfConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Order:           config.Order,
-	}
+	nativeConfig := hpfConfigNative(config)
 
 	res := lib.bindings.maHPFInit(&nativeConfig, nil, handle)
 	if res != Success {
@@ -299,13 +281,7 @@ func (f *HighPassFilter) Reinit(config HighPassFilterConfig) error {
 		return err
 	}
 
-	nativeConfig := hpfConfigNative{
-		Format:          config.Format,
-		Channels:        config.Channels,
-		SampleRate:      config.SampleRate,
-		CutoffFrequency: config.CutoffFrequency,
-		Order:           config.Order,
-	}
+	nativeConfig := hpfConfigNative(config)
 	return f.lib.resultError("ma_hpf_reinit", f.lib.bindings.maHPFReinit(&nativeConfig, f.handle))
 }
 
