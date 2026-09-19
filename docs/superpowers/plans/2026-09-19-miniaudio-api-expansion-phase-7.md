@@ -50,14 +50,14 @@
 - Regenerate: `zz_generated.bindings.go`, `embed_*.go`
 
 **Interfaces:**
-- Produces C: `MAGO_OBJECT_DECODER = 14`.
+- Produces C: `MAGO_OBJECT_DECODER = 30`.
 - Produces Go: `EncodingFormat`, `decoderConfigNative`, `decoderHandle`.
 - Produces bindings for every function used in Tasks 2-3.
 
 - [ ] **Step 1: Add the allocation type in C**
 
 ```c
-    MAGO_OBJECT_DECODER = 14
+    MAGO_OBJECT_DECODER = 30
 ```
 
 ```c
@@ -114,7 +114,7 @@ type decoderConfigNative struct {
 type decoderHandle struct{}
 ```
 
-Extend the object-type constants with `magoObjectDecoder = 14`.
+Extend the object-type constants with `magoObjectDecoder = 30`.
 
 - [ ] **Step 4: Add the bindings**
 

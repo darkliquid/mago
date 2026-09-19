@@ -291,6 +291,15 @@ type bindingSet struct {
 	maDelayGetDry                                func(*delayHandle) float32
 	maDelaySetDecay                              func(*delayHandle, float32)
 	maDelayGetDecay                              func(*delayHandle) float32
+	maDecoderInitMemory                          func(unsafe.Pointer, uintptr, *decoderConfigNative, *decoderHandle) Result
+	maDecoderInitFile                            func(string, *decoderConfigNative, *decoderHandle) Result
+	maDecoderUninit                              func(*decoderHandle)
+	maDecoderReadPCMFrames                       func(*decoderHandle, unsafe.Pointer, uint64, *uint64) Result
+	maDecoderSeekToPCMFrame                      func(*decoderHandle, uint64) Result
+	maDecoderGetDataFormat                       func(*decoderHandle, *Format, *uint32, *uint32, *uint8, uintptr) Result
+	maDecoderGetCursorInPCMFrames                func(*decoderHandle, *uint64) Result
+	maDecoderGetLengthInPCMFrames                func(*decoderHandle, *uint64) Result
+	maDecoderGetAvailableFrames                  func(*decoderHandle, *uint64) Result
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -515,6 +524,15 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maDelayGetDry, handle, "ma_delay_get_dry")
 	purego.RegisterLibFunc(&b.maDelaySetDecay, handle, "ma_delay_set_decay")
 	purego.RegisterLibFunc(&b.maDelayGetDecay, handle, "ma_delay_get_decay")
+	purego.RegisterLibFunc(&b.maDecoderInitMemory, handle, "ma_decoder_init_memory")
+	purego.RegisterLibFunc(&b.maDecoderInitFile, handle, "ma_decoder_init_file")
+	purego.RegisterLibFunc(&b.maDecoderUninit, handle, "ma_decoder_uninit")
+	purego.RegisterLibFunc(&b.maDecoderReadPCMFrames, handle, "ma_decoder_read_pcm_frames")
+	purego.RegisterLibFunc(&b.maDecoderSeekToPCMFrame, handle, "ma_decoder_seek_to_pcm_frame")
+	purego.RegisterLibFunc(&b.maDecoderGetDataFormat, handle, "ma_decoder_get_data_format")
+	purego.RegisterLibFunc(&b.maDecoderGetCursorInPCMFrames, handle, "ma_decoder_get_cursor_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maDecoderGetLengthInPCMFrames, handle, "ma_decoder_get_length_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maDecoderGetAvailableFrames, handle, "ma_decoder_get_available_frames")
 }
 
 var _ unsafe.Pointer

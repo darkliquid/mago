@@ -245,6 +245,15 @@ var functions = []functionSpec{
 	{FieldName: "maDelayGetDry", Symbol: "ma_delay_get_dry", Type: "func(*delayHandle) float32"},
 	{FieldName: "maDelaySetDecay", Symbol: "ma_delay_set_decay", Type: "func(*delayHandle, float32)"},
 	{FieldName: "maDelayGetDecay", Symbol: "ma_delay_get_decay", Type: "func(*delayHandle) float32"},
+	{FieldName: "maDecoderInitMemory", Symbol: "ma_decoder_init_memory", Type: "func(unsafe.Pointer, uintptr, *decoderConfigNative, *decoderHandle) Result"},
+	{FieldName: "maDecoderInitFile", Symbol: "ma_decoder_init_file", Type: "func(string, *decoderConfigNative, *decoderHandle) Result"},
+	{FieldName: "maDecoderUninit", Symbol: "ma_decoder_uninit", Type: "func(*decoderHandle)"},
+	{FieldName: "maDecoderReadPCMFrames", Symbol: "ma_decoder_read_pcm_frames", Type: "func(*decoderHandle, unsafe.Pointer, uint64, *uint64) Result"},
+	{FieldName: "maDecoderSeekToPCMFrame", Symbol: "ma_decoder_seek_to_pcm_frame", Type: "func(*decoderHandle, uint64) Result"},
+	{FieldName: "maDecoderGetDataFormat", Symbol: "ma_decoder_get_data_format", Type: "func(*decoderHandle, *Format, *uint32, *uint32, *uint8, uintptr) Result"},
+	{FieldName: "maDecoderGetCursorInPCMFrames", Symbol: "ma_decoder_get_cursor_in_pcm_frames", Type: "func(*decoderHandle, *uint64) Result"},
+	{FieldName: "maDecoderGetLengthInPCMFrames", Symbol: "ma_decoder_get_length_in_pcm_frames", Type: "func(*decoderHandle, *uint64) Result"},
+	{FieldName: "maDecoderGetAvailableFrames", Symbol: "ma_decoder_get_available_frames", Type: "func(*decoderHandle, *uint64) Result"},
 }
 
 var baseConstants = []constSpec{

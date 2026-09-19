@@ -124,5 +124,17 @@ int main(void)
     printf("sizeof:ma_loshelf2 %zu\n", sizeof(ma_loshelf2));
     printf("sizeof:ma_hishelf2 %zu\n", sizeof(ma_hishelf2));
     printf("sizeof:ma_delay %zu\n", sizeof(ma_delay));
+
+    printf("sizeof:ma_decoder_config %zu\n", sizeof(ma_decoder_config));
+    printf("offsetof:ma_decoder_config.pChannelMap %zu\n", offsetof(ma_decoder_config, pChannelMap));
+    printf("offsetof:ma_decoder_config.channelMixMode %zu\n", offsetof(ma_decoder_config, channelMixMode));
+    printf("offsetof:ma_decoder_config.ditherMode %zu\n", offsetof(ma_decoder_config, ditherMode));
+    printf("offsetof:ma_decoder_config.resampling %zu\n", offsetof(ma_decoder_config, resampling));
+    printf("offsetof:ma_decoder_config.allocationCallbacks %zu\n", offsetof(ma_decoder_config, allocationCallbacks));
+    printf("offsetof:ma_decoder_config.encodingFormat %zu\n", offsetof(ma_decoder_config, encodingFormat));
+    printf("offsetof:ma_decoder_config.seekPointCount %zu\n", offsetof(ma_decoder_config, seekPointCount));
+    printf("offsetof:ma_decoder_config.ppCustomBackendVTables %zu\n", offsetof(ma_decoder_config, ppCustomBackendVTables));
+    printf("offsetof:ma_decoder_config.customBackendCount %zu\n", offsetof(ma_decoder_config, customBackendCount));
+    printf("offsetof:ma_decoder_config.pCustomBackendUserData %zu\n", offsetof(ma_decoder_config, pCustomBackendUserData));
     return 0;
 }
