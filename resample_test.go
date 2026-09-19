@@ -66,3 +66,60 @@ func TestLinearResamplerPreservesToneEnergy(t *testing.T) {
 		t.Fatalf("down-sampled peak %v, want roughly 0.5", peak)
 	}
 }
+
+func TestDataConverterChangesFormatChannelsAndRate(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	converter, err := lib.NewDataConverter(DefaultDataConverterConfig(
+		FormatF32, FormatS16, 2, 1, 48_000, 24_000,
+	))
+	if err != nil {
+		t.Fatalf("NewDataConverter: %v", err)
+	}
+	defer func() { _ = converter.Close() }()
+
+	in := make([]float32, 480)
+	for i := range in {
+		in[i] = 0.5
+	}
+	out := make([]int16, 240)
+
+	_, usedOut, err := converter.ProcessPCMFrames(
+		unsafe.Pointer(&in[0]), uint64(len(in)/2),
+		unsafe.Pointer(&out[0]), uint64(len(out)),
+	)
+	if err != nil {
+		t.Fatalf("ProcessPCMFrames: %v", err)
+	}
+	if usedOut == 0 {
+		t.Fatal("expected output frames")
+	}
+	// The resampler has a little latency, so the very first output frame can be
+	// zero; the rest of the steady-state signal should be the scaled-down 0.5.
+	var peak int16
+	for i := 0; i < int(usedOut); i++ {
+		if out[i] > peak {
+			peak = out[i]
+		}
+	}
+	if peak < 1000 {
+		t.Fatalf("peak output sample = %d, want a scaled-down 0.5", peak)
+	}
+
+	if _, err := converter.InputChannelMap(); err != nil {
+		t.Fatalf("InputChannelMap: %v", err)
+	}
+	if _, err := converter.OutputChannelMap(); err != nil {
+		t.Fatalf("OutputChannelMap: %v", err)
+	}
+}
+
+func TestDataConverterRejectsCustomWeights(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	config := DefaultDataConverterConfig(FormatF32, FormatF32, 2, 2, 48_000, 48_000)
+	config.ChannelMixMode = ChannelMixModeCustomWeights
+	if _, err := lib.NewDataConverter(config); err == nil {
+		t.Fatal("expected custom weights to be rejected")
+	}
+}
