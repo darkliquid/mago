@@ -329,3 +329,154 @@ func (r *AudioBufferRef) Close() error {
 	r.dataRef = nil
 	return nil
 }
+
+// RingBuffer is a byte-oriented ring buffer.
+type RingBuffer struct {
+	lib    *Library
+	handle *ringBufferHandle
+}
+
+// NewRingBuffer creates a byte ring buffer of the given size.
+func (lib *Library) NewRingBuffer(bufferSizeInBytes uint) (*RingBuffer, error) {
+	return lib.newRingBuffer("ma_rb_init", func(handle *ringBufferHandle) Result {
+		return lib.bindings.maRBInit(uintptr(bufferSizeInBytes), nil, nil, handle)
+	})
+}
+
+// NewRingBufferEx creates a ring buffer with explicit sub-buffer geometry.
+func (lib *Library) NewRingBufferEx(subbufferSizeInBytes, subbufferCount, subbufferStrideInBytes uint) (*RingBuffer, error) {
+	return lib.newRingBuffer("ma_rb_init_ex", func(handle *ringBufferHandle) Result {
+		return lib.bindings.maRBInitEx(uintptr(subbufferSizeInBytes), uintptr(subbufferCount), uintptr(subbufferStrideInBytes), nil, nil, handle)
+	})
+}
+
+func (lib *Library) newRingBuffer(op string, init func(*ringBufferHandle) Result) (*RingBuffer, error) {
+	if err := lib.ensureOpen(); err != nil {
+		return nil, err
+	}
+
+	handle := (*ringBufferHandle)(lib.bindings.magoAlloc(magoObjectRingBuffer))
+	if handle == nil {
+		return nil, fmt.Errorf("mago: allocate ring buffer: out of memory")
+	}
+	if result := init(handle); result != Success {
+		lib.bindings.magoFree(unsafe.Pointer(handle))
+		return nil, lib.resultError(op, result)
+	}
+
+	return &RingBuffer{lib: lib, handle: handle}, nil
+}
+
+// AcquireRead returns the next readable region, requesting up to sizeInBytes.
+// The returned size may be smaller because the region is always contiguous.
+func (r *RingBuffer) AcquireRead(sizeInBytes uint) (unsafe.Pointer, uint, error) {
+	return r.acquire("ma_rb_acquire_read", sizeInBytes, r.lib.bindings.maRBAcquireRead)
+}
+
+// AcquireWrite returns the next writable region, requesting up to sizeInBytes.
+// The returned size may be smaller because the region is always contiguous.
+func (r *RingBuffer) AcquireWrite(sizeInBytes uint) (unsafe.Pointer, uint, error) {
+	return r.acquire("ma_rb_acquire_write", sizeInBytes, r.lib.bindings.maRBAcquireWrite)
+}
+
+func (r *RingBuffer) acquire(op string, sizeInBytes uint, fn func(*ringBufferHandle, *uintptr, *unsafe.Pointer) Result) (unsafe.Pointer, uint, error) {
+	if r == nil || r.handle == nil {
+		return nil, 0, fmt.Errorf("mago: nil ring buffer")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return nil, 0, err
+	}
+
+	size := uintptr(sizeInBytes)
+	var buffer unsafe.Pointer
+	if result := fn(r.handle, &size, &buffer); result != Success {
+		return nil, 0, r.lib.resultError(op, result)
+	}
+	return buffer, uint(size), nil
+}
+
+// CommitRead marks sizeInBytes as consumed.
+func (r *RingBuffer) CommitRead(sizeInBytes uint) error {
+	return r.commit("ma_rb_commit_read", func(handle *ringBufferHandle) Result {
+		return r.lib.bindings.maRBCommitRead(handle, uintptr(sizeInBytes))
+	})
+}
+
+// CommitWrite marks sizeInBytes as written.
+func (r *RingBuffer) CommitWrite(sizeInBytes uint) error {
+	return r.commit("ma_rb_commit_write", func(handle *ringBufferHandle) Result {
+		return r.lib.bindings.maRBCommitWrite(handle, uintptr(sizeInBytes))
+	})
+}
+
+func (r *RingBuffer) commit(op string, fn func(*ringBufferHandle) Result) error {
+	if r == nil || r.handle == nil {
+		return fmt.Errorf("mago: nil ring buffer")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return r.lib.resultError(op, fn(r.handle))
+}
+
+// SeekRead advances the read pointer by offsetInBytes.
+func (r *RingBuffer) SeekRead(offsetInBytes uint) error {
+	return r.commit("ma_rb_seek_read", func(handle *ringBufferHandle) Result {
+		return r.lib.bindings.maRBSeekRead(handle, uintptr(offsetInBytes))
+	})
+}
+
+// SeekWrite advances the write pointer by offsetInBytes.
+func (r *RingBuffer) SeekWrite(offsetInBytes uint) error {
+	return r.commit("ma_rb_seek_write", func(handle *ringBufferHandle) Result {
+		return r.lib.bindings.maRBSeekWrite(handle, uintptr(offsetInBytes))
+	})
+}
+
+// Reset empties the buffer.
+func (r *RingBuffer) Reset() {
+	if r == nil || r.handle == nil {
+		return
+	}
+	r.lib.bindings.maRBReset(r.handle)
+}
+
+// PointerDistance reports the bytes readable before the read pointer catches the
+// write pointer.
+func (r *RingBuffer) PointerDistance() int32 {
+	if r == nil || r.handle == nil {
+		return 0
+	}
+	return r.lib.bindings.maRBPointerDistance(r.handle)
+}
+
+// AvailableRead reports how many bytes can be read.
+func (r *RingBuffer) AvailableRead() uint32 {
+	if r == nil || r.handle == nil {
+		return 0
+	}
+	return r.lib.bindings.maRBAvailableRead(r.handle)
+}
+
+// AvailableWrite reports how many bytes can be written.
+func (r *RingBuffer) AvailableWrite() uint32 {
+	if r == nil || r.handle == nil {
+		return 0
+	}
+	return r.lib.bindings.maRBAvailableWrite(r.handle)
+}
+
+// Close uninitializes the ring buffer and frees it.
+func (r *RingBuffer) Close() error {
+	if r == nil || r.handle == nil {
+		return nil
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+
+	r.lib.bindings.maRBUninit(r.handle)
+	r.lib.bindings.magoFree(unsafe.Pointer(r.handle))
+	r.handle = nil
+	return nil
+}

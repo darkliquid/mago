@@ -69,3 +69,48 @@ func TestAudioBufferRefDoesNotOwnData(t *testing.T) {
 		t.Fatalf("read %d frames %v, want 2 starting at 1", read, out)
 	}
 }
+
+func TestRingBufferWriteThenRead(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	ring, err := lib.NewRingBuffer(256)
+	if err != nil {
+		t.Fatalf("NewRingBuffer: %v", err)
+	}
+	defer func() { _ = ring.Close() }()
+
+	if ring.AvailableWrite() == 0 {
+		t.Fatal("expected space to write into a fresh ring buffer")
+	}
+
+	ptr, size, err := ring.AcquireWrite(64)
+	if err != nil {
+		t.Fatalf("AcquireWrite: %v", err)
+	}
+	if ptr == nil || size == 0 {
+		t.Fatal("expected a writable region")
+	}
+	region := unsafe.Slice((*byte)(ptr), size)
+	for i := range region {
+		region[i] = byte(i)
+	}
+	if err := ring.CommitWrite(size); err != nil {
+		t.Fatalf("CommitWrite: %v", err)
+	}
+
+	if got := ring.AvailableRead(); got < uint32(size) {
+		t.Fatalf("available read = %d, want at least %d", got, size)
+	}
+
+	readPtr, readSize, err := ring.AcquireRead(64)
+	if err != nil {
+		t.Fatalf("AcquireRead: %v", err)
+	}
+	read := unsafe.Slice((*byte)(readPtr), readSize)
+	if read[0] != 0 || read[1] != 1 {
+		t.Fatalf("read %v, want the written bytes", read[:4])
+	}
+	if err := ring.CommitRead(readSize); err != nil {
+		t.Fatalf("CommitRead: %v", err)
+	}
+}

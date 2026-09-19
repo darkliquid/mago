@@ -333,7 +333,11 @@ git commit -m "feat: expose in-memory audio buffers and buffer references"
 **Interfaces:**
 - Consumes: `magoAlloc(magoObjectRingBuffer)`, the `maRB*` bindings.
 - Produces: `func (lib *Library) NewRingBuffer(bufferSizeInBytes uint) (*RingBuffer, error)` and `NewRingBufferEx(subbufferSizeInBytes, subbufferCount, subbufferStrideInBytes uint)`.
-- Produces: `RingBuffer` with `AcquireRead() (unsafe.Pointer, uint, error)`, `CommitRead(uint) error`, `AcquireWrite() (unsafe.Pointer, uint, error)`, `CommitWrite(uint) error`, `SeekRead`, `SeekWrite`, `Reset`, `PointerDistance() int32`, `AvailableRead() uint32`, `AvailableWrite() uint32`, `Close`.
+- Produces: `RingBuffer` with `AcquireRead(sizeInBytes uint) (unsafe.Pointer, uint, error)`, `CommitRead(uint) error`, `AcquireWrite(sizeInBytes uint) (unsafe.Pointer, uint, error)`, `CommitWrite(uint) error`, `SeekRead`, `SeekWrite`, `Reset`, `PointerDistance() int32`, `AvailableRead() uint32`, `AvailableWrite() uint32`, `Close`.
+
+> **Note:** `ma_rb_acquire_read`/`ma_rb_acquire_write` treat `*pSizeInBytes` as an
+> in/out parameter: you request a size and miniaudio clamps it to the largest
+> contiguous region. Passing 0 returns a nil region.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -420,7 +424,7 @@ git commit -m "feat: expose the byte ring buffer"
 **Interfaces:**
 - Consumes: `magoAlloc(magoObjectPCMRingBuffer)`, the `maPCMRB*` bindings.
 - Produces: `func (lib *Library) NewPCMRingBuffer(format Format, channels, bufferSizeInFrames uint32) (*PCMRingBuffer, error)` and `NewPCMRingBufferEx(format Format, channels, subbufferSizeInFrames, subbufferCount, subbufferStrideInFrames uint32)`.
-- Produces: `PCMRingBuffer` with frame-based `AcquireRead() (unsafe.Pointer, uint32, error)`, `CommitRead(uint32) error`, `AcquireWrite`, `CommitWrite`, `SeekRead`, `SeekWrite`, `Reset`, `PointerDistance() int32`, `AvailableRead()/AvailableWrite() uint32`, `Format() Format`, `Channels() uint32`, `SampleRate() uint32`, `Close`.
+- Produces: `PCMRingBuffer` with frame-based `AcquireRead(sizeInFrames uint32) (unsafe.Pointer, uint32, error)`, `CommitRead(uint32) error`, `AcquireWrite(sizeInFrames uint32)`, `CommitWrite`, `SeekRead`, `SeekWrite`, `Reset`, `PointerDistance() int32`, `AvailableRead()/AvailableWrite() uint32`, `Format() Format`, `Channels() uint32`, `SampleRate() uint32`, `Close`.
 
 - [ ] **Step 1: Write the failing test**
 
