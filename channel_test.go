@@ -85,3 +85,22 @@ func TestChannelConverterRejectsCustomWeights(t *testing.T) {
 		t.Fatal("expected custom weights to be rejected")
 	}
 }
+
+func TestDefaultChannelMapFor(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	def := lib.DefaultChannelMapFor(ChannelMap{}, 2)
+	if def.Len() != 2 {
+		t.Fatalf("length %d, want 2", def.Len())
+	}
+	if def.Get(0) != ChannelFrontLeft || def.Get(1) != ChannelFrontRight {
+		t.Fatalf("default 2-channel map = %v, want front-left, front-right", def.Channels())
+	}
+
+	// A supplied map must be copied rather than replaced with the default.
+	supplied := lib.NewBlankChannelMap(2)
+	copied := lib.DefaultChannelMapFor(supplied, 2)
+	if copied.Len() != 2 || copied.Get(0) != ChannelNone {
+		t.Fatalf("supplied map was not copied: %v", copied.Channels())
+	}
+}

@@ -69,6 +69,25 @@ func (m ChannelMap) Clone() ChannelMap {
 	return out
 }
 
+// DefaultChannelMapFor builds a channel map for the given channel count. When m
+// already holds a map, it is copied; otherwise miniaudio's default layout for
+// that channel count is used.
+func (lib *Library) DefaultChannelMapFor(m ChannelMap, channels uint32) ChannelMap {
+	out := ChannelMap{lib: lib}
+	if lib == nil || channels == 0 {
+		return out
+	}
+	out.channels = make([]uint8, channels)
+
+	var in *uint8
+	if len(m.channels) > 0 {
+		in = &m.channels[0]
+	}
+
+	lib.bindings.maChannelMapCopyOrDefault(&out.channels[0], uintptr(channels), in, channels)
+	return out
+}
+
 // String renders the map using miniaudio's channel names.
 func (m ChannelMap) String() string {
 	if m.lib == nil || len(m.channels) == 0 {
