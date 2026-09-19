@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"sync"
@@ -177,9 +178,18 @@ func (e *Engine) Devices() ([]DeviceInfo, []DeviceInfo, error) {
 	return e.ctx.Devices()
 }
 
-// Load decodes a WAV stream from r into an in-memory Clip.
+// Load decodes an encoded stream into an in-memory Clip. WAV is decoded by the
+// pure-Go path first; anything else falls back to miniaudio's decoder, which
+// also handles FLAC and MP3.
 func (e *Engine) Load(r io.Reader) (*Clip, error) {
-	return decodeWAV(r)
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	if clip, wavErr := decodeWAV(bytes.NewReader(data)); wavErr == nil {
+		return clip, nil
+	}
+	return e.decodeWithDecoder(data)
 }
 
 // LoadReadSeeker rewinds rs to the beginning and decodes it into an in-memory Clip.
@@ -187,7 +197,56 @@ func (e *Engine) LoadReadSeeker(rs io.ReadSeeker) (*Clip, error) {
 	if _, err := rs.Seek(0, io.SeekStart); err != nil {
 		return nil, err
 	}
-	return decodeWAV(rs)
+	return e.Load(rs)
+}
+
+// decodeWithDecoder decodes data through miniaudio's decoder. It returns an
+// error rather than panicking when the engine has no library, which only happens
+// for a zero-value Engine.
+func (e *Engine) decodeWithDecoder(data []byte) (*Clip, error) {
+	if e == nil || e.lib == nil {
+		return nil, fmt.Errorf("audio: no library available to decode this stream")
+	}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("audio: empty stream")
+	}
+
+	decoder, err := e.lib.NewDecoderMemory(data, mago.DefaultDecoderConfig())
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = decoder.Close() }()
+
+	format, channels, sampleRate, err := decoder.DataFormat()
+	if err != nil {
+		return nil, err
+	}
+	if format != mago.FormatF32 || channels == 0 || sampleRate == 0 {
+		return nil, fmt.Errorf("audio: decoder produced format %d with %d channels at %d Hz", format, channels, sampleRate)
+	}
+
+	samples := make([]float32, 0, 64*int(channels))
+	buffer := make([]float32, 4096*int(channels))
+	for {
+		read, err := decoder.ReadF32(buffer)
+		if err != nil {
+			return nil, err
+		}
+		if read == 0 {
+			break
+		}
+		samples = append(samples, buffer[:read*uint64(channels)]...)
+	}
+	if len(samples) == 0 {
+		return nil, fmt.Errorf("audio: decoder produced no frames")
+	}
+
+	return &Clip{
+		samples:    samples,
+		channels:   int(channels),
+		sampleRate: int(sampleRate),
+		frameCount: len(samples) / int(channels),
+	}, nil
 }
 
 // Play creates a new stream for clip and registers it with the engine mixer.

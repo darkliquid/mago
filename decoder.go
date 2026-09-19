@@ -117,7 +117,8 @@ func (d *Decoder) DataFormat() (Format, uint32, uint32, error) {
 }
 
 // ReadF32 decodes up to len(out) float32 samples into out, returning the number
-// of frames read. The decoder must be configured for f32 output.
+// of frames read. The decoder must be configured for f32 output. Reaching the
+// end of the stream is reported as a read of zero frames, not an error.
 func (d *Decoder) ReadF32(out []float32) (uint64, error) {
 	if d == nil || d.handle == nil {
 		return 0, fmt.Errorf("mago: nil decoder")
@@ -137,14 +138,16 @@ func (d *Decoder) ReadF32(out []float32) (uint64, error) {
 	}
 
 	var read uint64
-	if result := d.lib.bindings.maDecoderReadPCMFrames(d.handle, unsafe.Pointer(&out[0]), frameCount, &read); result != Success {
+	result := d.lib.bindings.maDecoderReadPCMFrames(d.handle, unsafe.Pointer(&out[0]), frameCount, &read)
+	if result != Success && result != AtEnd {
 		return read, d.lib.resultError("ma_decoder_read_pcm_frames", result)
 	}
 	return read, nil
 }
 
 // ReadS16 decodes up to len(out) signed 16-bit samples into out, returning the
-// number of frames read. The decoder must be configured for s16 output.
+// number of frames read. The decoder must be configured for s16 output. Reaching
+// the end of the stream is reported as a read of zero frames, not an error.
 func (d *Decoder) ReadS16(out []int16) (uint64, error) {
 	if d == nil || d.handle == nil {
 		return 0, fmt.Errorf("mago: nil decoder")
@@ -164,7 +167,8 @@ func (d *Decoder) ReadS16(out []int16) (uint64, error) {
 	}
 
 	var read uint64
-	if result := d.lib.bindings.maDecoderReadPCMFrames(d.handle, unsafe.Pointer(&out[0]), frameCount, &read); result != Success {
+	result := d.lib.bindings.maDecoderReadPCMFrames(d.handle, unsafe.Pointer(&out[0]), frameCount, &read)
+	if result != Success && result != AtEnd {
 		return read, d.lib.resultError("ma_decoder_read_pcm_frames", result)
 	}
 	return read, nil
