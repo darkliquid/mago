@@ -2,6 +2,11 @@
 
 package mago
 
+import (
+	"fmt"
+	"unsafe"
+)
+
 // ChannelMap is an ordered list of channel positions.
 type ChannelMap struct {
 	lib      *Library
@@ -50,7 +55,7 @@ func (m ChannelMap) Get(i int) Channel {
 	if m.lib == nil || i < 0 || i >= len(m.channels) {
 		return ChannelNone
 	}
-	return m.lib.bindings.maChannelMapGetChannel(&m.channels[0], uint32(len(m.channels)), uint32(i))
+	return m.lib.bindings.maChannelMapGetChannel(&m.channels[0], uint32(len(m.channels)), uint32(i)) //nolint:gosec // bounded by the map length
 }
 
 // Clone returns an independent copy of the map.
@@ -60,7 +65,7 @@ func (m ChannelMap) Clone() ChannelMap {
 		return out
 	}
 	out.channels = make([]uint8, len(m.channels))
-	m.lib.bindings.maChannelMapCopy(&out.channels[0], &m.channels[0], uint32(len(m.channels)))
+	m.lib.bindings.maChannelMapCopy(&out.channels[0], &m.channels[0], uint32(len(m.channels))) //nolint:gosec // bounded by the map length
 	return out
 }
 
@@ -70,9 +75,141 @@ func (m ChannelMap) String() string {
 		return ""
 	}
 	var buffer [512]byte
-	length := m.lib.bindings.maChannelMapToString(&m.channels[0], uint32(len(m.channels)), &buffer[0], uintptr(len(buffer)))
+	length := m.lib.bindings.maChannelMapToString(&m.channels[0], uint32(len(m.channels)), &buffer[0], uintptr(len(buffer))) //nolint:gosec // bounded by the map length
 	if length > uintptr(len(buffer)) {
 		length = uintptr(len(buffer))
 	}
 	return string(buffer[:length])
+}
+
+// ChannelConverterConfig describes a channel conversion.
+type ChannelConverterConfig struct {
+	Format                          Format
+	ChannelsIn                      uint32
+	ChannelsOut                     uint32
+	ChannelMapIn                    ChannelMap
+	ChannelMapOut                   ChannelMap
+	MixingMode                      ChannelMixMode
+	CalculateLFEFromSpatialChannels bool
+}
+
+// ChannelConverter mixes between channel layouts for a fixed format.
+type ChannelConverter struct {
+	lib         *Library
+	handle      *channelConverterHandle
+	channelsIn  uint32
+	channelsOut uint32
+}
+
+// NewChannelConverter creates a channel converter. Custom mixing weights are not
+// supported yet and are rejected.
+func (lib *Library) NewChannelConverter(config ChannelConverterConfig) (*ChannelConverter, error) {
+	if err := lib.ensureOpen(); err != nil {
+		return nil, err
+	}
+	if config.ChannelsIn == 0 || config.ChannelsOut == 0 {
+		return nil, fmt.Errorf("mago: channel converter requires non-zero channel counts")
+	}
+	if config.MixingMode == ChannelMixModeCustomWeights {
+		return nil, fmt.Errorf("mago: custom channel mixing weights are not supported")
+	}
+
+	native := channelConverterConfigNative{
+		Format:                          config.Format,
+		ChannelsIn:                      config.ChannelsIn,
+		ChannelsOut:                     config.ChannelsOut,
+		ChannelMapIn:                    channelMapDataPtr(config.ChannelMapIn),
+		ChannelMapOut:                   channelMapDataPtr(config.ChannelMapOut),
+		MixingMode:                      config.MixingMode,
+		CalculateLFEFromSpatialChannels: boolToBool32(config.CalculateLFEFromSpatialChannels),
+	}
+
+	handle := (*channelConverterHandle)(lib.bindings.magoAlloc(magoObjectChannelConverter))
+	if handle == nil {
+		return nil, fmt.Errorf("mago: allocate channel converter: out of memory")
+	}
+	if result := lib.bindings.maChannelConverterInit(&native, nil, handle); result != Success {
+		lib.bindings.magoFree(unsafe.Pointer(handle))
+		return nil, lib.resultError("ma_channel_converter_init", result)
+	}
+
+	return &ChannelConverter{
+		lib:         lib,
+		handle:      handle,
+		channelsIn:  config.ChannelsIn,
+		channelsOut: config.ChannelsOut,
+	}, nil
+}
+
+func channelMapDataPtr(m ChannelMap) *uint8 {
+	if len(m.channels) == 0 {
+		return nil
+	}
+	return &m.channels[0]
+}
+
+// ProcessPCMFrames converts frameCount interleaved frames from the input buffer
+// to the output buffer.
+func (c *ChannelConverter) ProcessPCMFrames(out unsafe.Pointer, in unsafe.Pointer, frameCount uint64) error {
+	if c == nil || c.handle == nil {
+		return fmt.Errorf("mago: nil channel converter")
+	}
+	if err := c.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return c.lib.resultError("ma_channel_converter_process_pcm_frames",
+		c.lib.bindings.maChannelConverterProcessPCMFrames(c.handle, out, in, frameCount))
+}
+
+// InputChannelMap reports the converter's resolved input channel map.
+func (c *ChannelConverter) InputChannelMap() (ChannelMap, error) {
+	if c == nil || c.handle == nil {
+		return ChannelMap{}, fmt.Errorf("mago: nil channel converter")
+	}
+	if err := c.lib.ensureOpen(); err != nil {
+		return ChannelMap{}, err
+	}
+	if c.channelsIn == 0 {
+		return ChannelMap{}, nil
+	}
+
+	m := ChannelMap{lib: c.lib, channels: make([]uint8, c.channelsIn)}
+	if result := c.lib.bindings.maChannelConverterGetInputChannelMap(c.handle, &m.channels[0], uintptr(c.channelsIn)); result != Success {
+		return ChannelMap{}, c.lib.resultError("ma_channel_converter_get_input_channel_map", result)
+	}
+	return m, nil
+}
+
+// OutputChannelMap reports the converter's resolved output channel map.
+func (c *ChannelConverter) OutputChannelMap() (ChannelMap, error) {
+	if c == nil || c.handle == nil {
+		return ChannelMap{}, fmt.Errorf("mago: nil channel converter")
+	}
+	if err := c.lib.ensureOpen(); err != nil {
+		return ChannelMap{}, err
+	}
+	if c.channelsOut == 0 {
+		return ChannelMap{}, nil
+	}
+
+	m := ChannelMap{lib: c.lib, channels: make([]uint8, c.channelsOut)}
+	if result := c.lib.bindings.maChannelConverterGetOutputChannelMap(c.handle, &m.channels[0], uintptr(c.channelsOut)); result != Success {
+		return ChannelMap{}, c.lib.resultError("ma_channel_converter_get_output_channel_map", result)
+	}
+	return m, nil
+}
+
+// Close uninitializes the converter and frees it.
+func (c *ChannelConverter) Close() error {
+	if c == nil || c.handle == nil {
+		return nil
+	}
+	if err := c.lib.ensureOpen(); err != nil {
+		return err
+	}
+
+	c.lib.bindings.maChannelConverterUninit(c.handle, nil)
+	c.lib.bindings.magoFree(unsafe.Pointer(c.handle))
+	c.handle = nil
+	return nil
 }

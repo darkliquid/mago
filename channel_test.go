@@ -1,6 +1,9 @@
 package mago
 
-import "testing"
+import (
+	"testing"
+	"unsafe"
+)
 
 func TestStandardStereoChannelMap(t *testing.T) {
 	lib := newNullLibrary(t)
@@ -33,5 +36,52 @@ func TestBlankChannelMap(t *testing.T) {
 		if m.Get(i) != ChannelNone {
 			t.Fatalf("blank map[%d] = %v, want none", i, m.Get(i))
 		}
+	}
+}
+
+func TestChannelConverterStereoToMono(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	converter, err := lib.NewChannelConverter(ChannelConverterConfig{
+		Format:      FormatF32,
+		ChannelsIn:  2,
+		ChannelsOut: 1,
+		MixingMode:  ChannelMixModeRectangular,
+	})
+	if err != nil {
+		t.Fatalf("NewChannelConverter: %v", err)
+	}
+	defer func() { _ = converter.Close() }()
+
+	in := []float32{0.5, 0.5, -0.5, -0.5}
+	out := make([]float32, 2)
+
+	if err := converter.ProcessPCMFrames(
+		unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), 2,
+	); err != nil {
+		t.Fatalf("ProcessPCMFrames: %v", err)
+	}
+	if out[0] == 0 {
+		t.Fatal("expected a non-zero down-mix")
+	}
+
+	if _, err := converter.InputChannelMap(); err != nil {
+		t.Fatalf("InputChannelMap: %v", err)
+	}
+	if _, err := converter.OutputChannelMap(); err != nil {
+		t.Fatalf("OutputChannelMap: %v", err)
+	}
+}
+
+func TestChannelConverterRejectsCustomWeights(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	if _, err := lib.NewChannelConverter(ChannelConverterConfig{
+		Format:      FormatF32,
+		ChannelsIn:  2,
+		ChannelsOut: 2,
+		MixingMode:  ChannelMixModeCustomWeights,
+	}); err == nil {
+		t.Fatal("expected custom weights to be rejected")
 	}
 }
