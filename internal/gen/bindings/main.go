@@ -153,12 +153,27 @@ var functions = []functionSpec{
 	{FieldName: "maPCMRBGetSubbufferStride", Symbol: "ma_pcm_rb_get_subbuffer_stride", Type: "func(*pcmRingBufferHandle) uint32"},
 	{FieldName: "maPCMRBGetSubbufferOffset", Symbol: "ma_pcm_rb_get_subbuffer_offset", Type: "func(*pcmRingBufferHandle, uint32) uint32"},
 	{FieldName: "maPCMRBGetSubbufferPtr", Symbol: "ma_pcm_rb_get_subbuffer_ptr", Type: "func(*pcmRingBufferHandle, uint32, unsafe.Pointer) unsafe.Pointer"},
+	{FieldName: "maWaveformInit", Symbol: "ma_waveform_init", Type: "func(*waveformConfigNative, *waveformHandle) Result"},
+	{FieldName: "maWaveformUninit", Symbol: "ma_waveform_uninit", Type: "func(*waveformHandle)"},
+	{FieldName: "maWaveformReadPCMFrames", Symbol: "ma_waveform_read_pcm_frames", Type: "func(*waveformHandle, unsafe.Pointer, uint64, *uint64) Result"},
+	{FieldName: "maWaveformSeekToPCMFrame", Symbol: "ma_waveform_seek_to_pcm_frame", Type: "func(*waveformHandle, uint64) Result"},
+	{FieldName: "maWaveformSetAmplitude", Symbol: "ma_waveform_set_amplitude", Type: "func(*waveformHandle, float64) Result"},
+	{FieldName: "maWaveformSetFrequency", Symbol: "ma_waveform_set_frequency", Type: "func(*waveformHandle, float64) Result"},
+	{FieldName: "maWaveformSetType", Symbol: "ma_waveform_set_type", Type: "func(*waveformHandle, WaveformType) Result"},
+	{FieldName: "maWaveformSetSampleRate", Symbol: "ma_waveform_set_sample_rate", Type: "func(*waveformHandle, uint32) Result"},
+	{FieldName: "maNoiseInit", Symbol: "ma_noise_init", Type: "func(*noiseConfigNative, unsafe.Pointer, *noiseHandle) Result"},
+	{FieldName: "maNoiseUninit", Symbol: "ma_noise_uninit", Type: "func(*noiseHandle, unsafe.Pointer)"},
+	{FieldName: "maNoiseReadPCMFrames", Symbol: "ma_noise_read_pcm_frames", Type: "func(*noiseHandle, unsafe.Pointer, uint64, *uint64) Result"},
+	{FieldName: "maNoiseSetAmplitude", Symbol: "ma_noise_set_amplitude", Type: "func(*noiseHandle, float64) Result"},
+	{FieldName: "maNoiseSetSeed", Symbol: "ma_noise_set_seed", Type: "func(*noiseHandle, int32) Result"},
+	{FieldName: "maNoiseSetType", Symbol: "ma_noise_set_type", Type: "func(*noiseHandle, NoiseType) Result"},
 }
 
 var baseConstants = []constSpec{
 	{Name: "Success", Type: "Result", Value: "0"},
 	{Name: "Error", Type: "Result", Value: "-1"},
 	{Name: "InvalidArgs", Type: "Result", Value: "-2"},
+	{Name: "InvalidOperation", Type: "Result", Value: "-3"},
 	{Name: "OutOfMemory", Type: "Result", Value: "-4"},
 	{Name: "NoBackend", Type: "Result", Value: "-203"},
 	{Name: "NoDevice", Type: "Result", Value: "-204"},
@@ -203,6 +218,13 @@ var baseConstants = []constSpec{
 	{Name: "NotificationInterruptionBegan", Type: "NotificationType", Value: "3"},
 	{Name: "NotificationInterruptionEnded", Type: "NotificationType", Value: "4"},
 	{Name: "NotificationUnlocked", Type: "NotificationType", Value: "5"},
+	{Name: "WaveformTypeSine", Type: "WaveformType", Value: "0"},
+	{Name: "WaveformTypeSquare", Type: "WaveformType", Value: "1"},
+	{Name: "WaveformTypeTriangle", Type: "WaveformType", Value: "2"},
+	{Name: "WaveformTypeSawtooth", Type: "WaveformType", Value: "3"},
+	{Name: "NoiseTypeWhite", Type: "NoiseType", Value: "0"},
+	{Name: "NoiseTypePink", Type: "NoiseType", Value: "1"},
+	{Name: "NoiseTypeBrownian", Type: "NoiseType", Value: "2"},
 }
 
 func resolveVersion(root, versionFlag string) (major, minor, revision string, err error) {

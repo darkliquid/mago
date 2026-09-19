@@ -103,4 +103,46 @@ func TestMirroredStructLayouts(t *testing.T) {
 			t.Errorf("offsetof ma_audio_buffer_config.%s: mirror %d, header %d", name, got, want)
 		}
 	}
+
+	if got, want := uint64(unsafe.Sizeof(waveformConfigNative{})), probe["sizeof:ma_waveform_config"]; got != want {
+		t.Errorf("sizeof waveformConfigNative: mirror %d, header %d", got, want)
+	}
+	waveformCfg := waveformConfigNative{}
+	waveformOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"format":     {unsafe.Offsetof(waveformCfg.Format), "offsetof:ma_waveform_config.format"},
+		"channels":   {unsafe.Offsetof(waveformCfg.Channels), "offsetof:ma_waveform_config.channels"},
+		"sampleRate": {unsafe.Offsetof(waveformCfg.SampleRate), "offsetof:ma_waveform_config.sampleRate"},
+		"type":       {unsafe.Offsetof(waveformCfg.Type), "offsetof:ma_waveform_config.type"},
+		"amplitude":  {unsafe.Offsetof(waveformCfg.Amplitude), "offsetof:ma_waveform_config.amplitude"},
+		"frequency":  {unsafe.Offsetof(waveformCfg.Frequency), "offsetof:ma_waveform_config.frequency"},
+	}
+	for name, check := range waveformOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_waveform_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
+
+	if got, want := uint64(unsafe.Sizeof(noiseConfigNative{})), probe["sizeof:ma_noise_config"]; got != want {
+		t.Errorf("sizeof noiseConfigNative: mirror %d, header %d", got, want)
+	}
+	noiseCfg := noiseConfigNative{}
+	noiseOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"format":            {unsafe.Offsetof(noiseCfg.Format), "offsetof:ma_noise_config.format"},
+		"channels":          {unsafe.Offsetof(noiseCfg.Channels), "offsetof:ma_noise_config.channels"},
+		"type":              {unsafe.Offsetof(noiseCfg.Type), "offsetof:ma_noise_config.type"},
+		"seed":              {unsafe.Offsetof(noiseCfg.Seed), "offsetof:ma_noise_config.seed"},
+		"amplitude":         {unsafe.Offsetof(noiseCfg.Amplitude), "offsetof:ma_noise_config.amplitude"},
+		"duplicateChannels": {unsafe.Offsetof(noiseCfg.DuplicateChannels), "offsetof:ma_noise_config.duplicateChannels"},
+	}
+	for name, check := range noiseOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_noise_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
 }

@@ -264,3 +264,41 @@ func (*PCMRingBuffer) Format() Format           { return FormatUnknown }
 func (*PCMRingBuffer) Channels() uint32         { return 0 }
 func (*PCMRingBuffer) SampleRate() uint32       { return 0 }
 func (*PCMRingBuffer) Close() error             { return errUnsupportedPlatform }
+
+type WaveformConfig struct {
+	Format     Format
+	Channels   uint32
+	SampleRate uint32
+	Type       WaveformType
+	Amplitude  float64
+	Frequency  float64
+}
+type Waveform struct{}
+
+func (*Library) NewWaveform(WaveformConfig) (*Waveform, error) { return nil, errUnsupportedPlatform }
+func (*Waveform) ReadPCMFrames(unsafe.Pointer, uint64) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*Waveform) SeekToPCMFrame(uint64) error { return errUnsupportedPlatform }
+func (*Waveform) SetAmplitude(float64) error  { return errUnsupportedPlatform }
+func (*Waveform) SetFrequency(float64) error  { return errUnsupportedPlatform }
+func (*Waveform) SetType(WaveformType) error  { return errUnsupportedPlatform }
+func (*Waveform) SetSampleRate(uint32) error  { return errUnsupportedPlatform }
+func (*Waveform) Close() error                { return errUnsupportedPlatform }
+
+type NoiseConfig struct {
+	Format            Format
+	Channels          uint32
+	Type              NoiseType
+	Seed              int32
+	Amplitude         float64
+	DuplicateChannels bool
+}
+type Noise struct{}
+
+func (*Library) NewNoise(NoiseConfig) (*Noise, error)               { return nil, errUnsupportedPlatform }
+func (*Noise) ReadPCMFrames(unsafe.Pointer, uint64) (uint64, error) { return 0, errUnsupportedPlatform }
+func (*Noise) SetAmplitude(float64) error                           { return errUnsupportedPlatform }
+func (*Noise) SetSeed(int32) error                                  { return errUnsupportedPlatform }
+func (*Noise) SetType(NoiseType) error                              { return errUnsupportedPlatform }
+func (*Noise) Close() error                                         { return errUnsupportedPlatform }

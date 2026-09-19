@@ -244,7 +244,7 @@ func PrepareIncludeDir(root, version string) (includeDir string, cleanup func(),
 func zigCompilerArgs(target Target, outPath, source, includeDir, root string) []string {
 	commonFlags := []string{
 		"-target", target.Triple,
-		"-std=c11", "-O2",
+		"-std=c11", "-O2", "-DNDEBUG",
 		"-fvisibility=hidden",
 		"-fno-asynchronous-unwind-tables",
 		"-fno-ident",
@@ -287,7 +287,7 @@ func darwinCompilerArgs(target Target, root, outPath, source, includeDir string)
 
 	return []string{
 		"-arch", arch,
-		"-std=c11", "-O2", "-fPIC", "-dynamiclib",
+		"-std=c11", "-O2", "-DNDEBUG", "-fPIC", "-dynamiclib",
 		"-fvisibility=hidden",
 		"-ffile-prefix-map=" + root + "=.",
 		"-ffile-prefix-map=" + includeDir + "=.",
@@ -336,7 +336,7 @@ func buildTargetWithInclude(root string, target Target, outPath, includeDir stri
 	source := filepath.Join(root, "native", "miniaudio_bridge.c")
 
 	if compilerOverride != "" {
-		args := []string{"-std=c11", "-O2", "-fvisibility=hidden", "-I", includeDir, "-o", outPath, source}
+		args := []string{"-std=c11", "-O2", "-DNDEBUG", "-fvisibility=hidden", "-I", includeDir, "-o", outPath, source}
 		cmd := exec.Command(compilerOverride, args...) // #nosec G204
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -394,7 +394,7 @@ func buildDarwinTarget(target Target, root, outPath, source, includeDir string) 
 		"-v", filepath.Dir(outPath) + ":/out",
 		image,
 		compiler,
-		"-std=c11", "-O2", "-fPIC", "-dynamiclib",
+		"-std=c11", "-O2", "-DNDEBUG", "-fPIC", "-dynamiclib",
 		"-fvisibility=hidden",
 		"-ffile-prefix-map=/workspace=.",
 		"-ffile-prefix-map=/include=.",
