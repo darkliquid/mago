@@ -184,7 +184,10 @@ func defaultMiniaudioVersion(root string) (string, error) {
 	return major + "." + minor + "." + revision, nil
 }
 
-func prepareIncludeDir(root, version string) (includeDir string, cleanup func(), err error) {
+// PrepareIncludeDir ensures a directory containing miniaudio.h is available,
+// reusing a header in the repository root when present and downloading it
+// otherwise. The caller must invoke cleanup when finished.
+func PrepareIncludeDir(root, version string) (includeDir string, cleanup func(), err error) {
 	rootHeader := filepath.Join(root, "miniaudio.h")
 	if info, statErr := os.Stat(rootHeader); statErr == nil && !info.IsDir() {
 		// Use existing miniaudio.h from root without re-downloading
@@ -312,7 +315,7 @@ func BuildTargetWithOutput(root string, target Target, outPath, version string) 
 		return fmt.Errorf("unsupported target %s: %w", target, err)
 	}
 
-	includeDir, cleanup, err := prepareIncludeDir(root, version)
+	includeDir, cleanup, err := PrepareIncludeDir(root, version)
 	if err != nil {
 		return err
 	}
@@ -419,7 +422,7 @@ func buildDarwinTarget(target Target, root, outPath, source, includeDir string) 
 }
 
 func BuildAll(root, version string) error {
-	includeDir, cleanup, err := prepareIncludeDir(root, version)
+	includeDir, cleanup, err := PrepareIncludeDir(root, version)
 	if err != nil {
 		return err
 	}

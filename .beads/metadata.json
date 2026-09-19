@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "mago",
+  "project_id": "d887c676-8410-4094-a59b-2496ec6da9b4"
+}

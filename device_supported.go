@@ -74,6 +74,28 @@ var (
 		state.onNotify(state.device, NotificationType(notificationType))
 		return 0
 	})
+
+	// enumerateCallbackPtr backs ma_context_enumerate_devices. miniaudio passes
+	// the device info by pointer and our token as user data, so no C trampoline
+	// is needed and the full ma_device_info layout is never mirrored.
+	enumerateCallbackPtr = purego.NewCallback(func(_ uintptr, deviceType uint32, info uintptr, token uintptr) uintptr {
+		value, ok := callbacks.Load(token)
+		if !ok || info == 0 {
+			return 1
+		}
+		collector, ok := value.(*deviceEnumerator)
+		if !ok {
+			return 1
+		}
+		item := copyDeviceInfo((*deviceInfoNative)(unsafe.Pointer(info)))
+		switch DeviceType(deviceType) {
+		case DeviceTypePlayback:
+			collector.playback = append(collector.playback, item)
+		case DeviceTypeCapture:
+			collector.capture = append(collector.capture, item)
+		}
+		return 1 // continue enumeration
+	})
 )
 
 func DefaultPlaybackDeviceConfig() PlaybackDeviceConfig {

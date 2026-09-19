@@ -34,7 +34,13 @@ description = "Run go generate (internal task)"
 run = "go generate ./..."
 sources = ["**/*.go"]
 
+[tasks.check-cgo]
+description = "Fail if any Go source uses cgo"
+run = "go test ./internal/cgoguard/ -run TestRepositoryHasNoCgo"
+sources = ["**/*.go"]
+
 [tasks.lint]
+depends = ["check-cgo"]
 description = "Run Go linting (golangci-lint + govulncheck)"
 run = """
 #!/usr/bin/env bash
