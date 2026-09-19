@@ -22,4 +22,28 @@ func TestMirroredStructLayouts(t *testing.T) {
 	if got, want := uint64(unsafe.Offsetof(deviceInfoNative{}.IsDefault)), probe["offsetof:ma_device_info.isDefault"]; got != want {
 		t.Errorf("offsetof ma_device_info.isDefault: mirror %d, header %d", got, want)
 	}
+
+	if got, want := uint64(unsafe.Sizeof(Channel(0))), probe["sizeof:ma_channel"]; got != want {
+		t.Errorf("sizeof ma_channel: mirror %d, header %d", got, want)
+	}
+	if got, want := uint64(unsafe.Sizeof(channelConverterConfigNative{})), probe["sizeof:ma_channel_converter_config"]; got != want {
+		t.Errorf("sizeof channelConverterConfigNative: mirror %d, header %d", got, want)
+	}
+
+	mirror := channelConverterConfigNative{}
+	offsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"pChannelMapIn":                   {unsafe.Offsetof(mirror.ChannelMapIn), "offsetof:ma_channel_converter_config.pChannelMapIn"},
+		"pChannelMapOut":                  {unsafe.Offsetof(mirror.ChannelMapOut), "offsetof:ma_channel_converter_config.pChannelMapOut"},
+		"mixingMode":                      {unsafe.Offsetof(mirror.MixingMode), "offsetof:ma_channel_converter_config.mixingMode"},
+		"calculateLFEFromSpatialChannels": {unsafe.Offsetof(mirror.CalculateLFEFromSpatialChannels), "offsetof:ma_channel_converter_config.calculateLFEFromSpatialChannels"},
+		"ppWeights":                       {unsafe.Offsetof(mirror.Weights), "offsetof:ma_channel_converter_config.ppWeights"},
+	}
+	for name, check := range offsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_channel_converter_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
 }

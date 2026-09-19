@@ -55,6 +55,20 @@ var functions = []functionSpec{
 	{FieldName: "magoLogUnregisterCallback", Symbol: "mago_log_unregister_callback", Type: "func(*logHandle, uintptr, uintptr) Result"},
 	{FieldName: "magoContextConfigInit", Symbol: "mago_context_config_init", Type: "func(unsafe.Pointer)"},
 	{FieldName: "magoContextConfigSetLog", Symbol: "mago_context_config_set_log", Type: "func(unsafe.Pointer, *logHandle)"},
+	{FieldName: "maPCMConvert", Symbol: "ma_pcm_convert", Type: "func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, DitherMode)"},
+	{FieldName: "maConvertPCMFramesFormat", Symbol: "ma_convert_pcm_frames_format", Type: "func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, uint32, DitherMode)"},
+	{FieldName: "maConvertFrames", Symbol: "ma_convert_frames", Type: "func(unsafe.Pointer, uint64, Format, uint32, uint32, unsafe.Pointer, uint64, Format, uint32, uint32) uint64"},
+	{FieldName: "maChannelMapInitStandard", Symbol: "ma_channel_map_init_standard", Type: "func(StandardChannelMap, *uint8, uintptr, uint32)"},
+	{FieldName: "maChannelMapInitBlank", Symbol: "ma_channel_map_init_blank", Type: "func(*uint8, uint32)"},
+	{FieldName: "maChannelMapCopy", Symbol: "ma_channel_map_copy", Type: "func(*uint8, *uint8, uint32)"},
+	{FieldName: "maChannelMapCopyOrDefault", Symbol: "ma_channel_map_copy_or_default", Type: "func(*uint8, uintptr, *uint8, uint32)"},
+	{FieldName: "maChannelMapGetChannel", Symbol: "ma_channel_map_get_channel", Type: "func(*uint8, uint32, uint32) Channel"},
+	{FieldName: "maChannelMapToString", Symbol: "ma_channel_map_to_string", Type: "func(*uint8, uint32, *byte, uintptr) uintptr"},
+	{FieldName: "maChannelConverterInit", Symbol: "ma_channel_converter_init", Type: "func(*channelConverterConfigNative, unsafe.Pointer, *channelConverterHandle) Result"},
+	{FieldName: "maChannelConverterUninit", Symbol: "ma_channel_converter_uninit", Type: "func(*channelConverterHandle, unsafe.Pointer)"},
+	{FieldName: "maChannelConverterProcessPCMFrames", Symbol: "ma_channel_converter_process_pcm_frames", Type: "func(*channelConverterHandle, unsafe.Pointer, unsafe.Pointer, uint64) Result"},
+	{FieldName: "maChannelConverterGetInputChannelMap", Symbol: "ma_channel_converter_get_input_channel_map", Type: "func(*channelConverterHandle, *uint8, uintptr) Result"},
+	{FieldName: "maChannelConverterGetOutputChannelMap", Symbol: "ma_channel_converter_get_output_channel_map", Type: "func(*channelConverterHandle, *uint8, uintptr) Result"},
 }
 
 var baseConstants = []constSpec{
