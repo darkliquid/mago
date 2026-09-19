@@ -4,18 +4,29 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
-func TestBuildlibCLIUsageAndTargetValidation(t *testing.T) {
-	// Build the buildlib binary
-	binDir := t.TempDir()
-	binPath := filepath.Join(binDir, "buildlib")
+func buildBuildlib(t *testing.T) string {
+	t.Helper()
+
+	binPath := filepath.Join(t.TempDir(), "buildlib")
+	if runtime.GOOS == "windows" {
+		binPath += ".exe"
+	}
+
 	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
 	if out, err := buildCmd.CombinedOutput(); err != nil {
 		t.Fatalf("failed to build buildlib binary: %v\n%s", err, out)
 	}
+
+	return binPath
+}
+
+func TestBuildlibCLIUsageAndTargetValidation(t *testing.T) {
+	binPath := buildBuildlib(t)
 
 	// Test invalid target format
 	cmd := exec.Command(binPath, "-target", "invalid-target-format")
@@ -49,12 +60,7 @@ func TestBuildlibCLIUsageAndTargetValidation(t *testing.T) {
 }
 
 func TestBuildlibCLIConflictingFlags(t *testing.T) {
-	binDir := t.TempDir()
-	binPath := filepath.Join(binDir, "buildlib")
-	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
-	if out, err := buildCmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to build buildlib binary: %v\n%s", err, out)
-	}
+	binPath := buildBuildlib(t)
 
 	// -all and -target
 	cmd := exec.Command(binPath, "-all", "-target", "linux/amd64")
@@ -108,12 +114,7 @@ func TestBuildlibCLIConflictingFlags(t *testing.T) {
 }
 
 func TestBuildlibDownloadOnly(t *testing.T) {
-	binDir := t.TempDir()
-	binPath := filepath.Join(binDir, "buildlib")
-	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
-	if out, err := buildCmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to build buildlib binary: %v\n%s", err, out)
-	}
+	binPath := buildBuildlib(t)
 
 	dstPath := filepath.Join(t.TempDir(), "miniaudio.h")
 	// Using a dummy version that will fail HTTP download or root without bindings, checking error handling
@@ -132,12 +133,7 @@ func TestBuildlibDownloadOnly(t *testing.T) {
 }
 
 func TestBuildlibTargetWithPositionalOutputPath(t *testing.T) {
-	binDir := t.TempDir()
-	binPath := filepath.Join(binDir, "buildlib")
-	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
-	if out, err := buildCmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to build buildlib binary: %v\n%s", err, out)
-	}
+	binPath := buildBuildlib(t)
 
 	outPath := filepath.Join(t.TempDir(), "custom-out", "libminiaudio.so")
 	cmd := exec.Command(binPath, "-version", "0.0.0-dummy", "-target", "linux/amd64", outPath)
