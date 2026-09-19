@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -19,6 +18,8 @@ func main() {
 	deviceIndexFlag := flag.Int("device-index", getenvInt("MAGO_DEVICE_INDEX", -1), "playback device index from the enumerated list")
 	deviceNameFlag := flag.String("device-name", getenv("MAGO_DEVICE_NAME", ""), "substring to match in the playback device name")
 	durationFlag := flag.Duration("duration", getenvDuration("MAGO_TONE_DURATION", 3*time.Second), "how long to play the tones")
+	waveformFlag := flag.String("waveform", getenv("MAGO_WAVEFORM", "sine"), "waveform shape: sine, square, triangle, sawtooth")
+	freqFlag := flag.Float64("freq", 440.0, "frequency in Hz")
 	flag.Parse()
 
 	lib, err := mago.Open()
@@ -62,25 +63,24 @@ func main() {
 	config.SampleRate = 48_000
 	config.PeriodSizeInFrames = 256
 
-	var phaseA float64
-	var phaseB float64
-	config.DataCallback = func(_ *mago.Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
-		_ = input
-		samples := unsafe.Slice((*float32)(output), int(frameCount*config.Channels))
-		for frame := 0; frame < int(frameCount); frame++ {
-			value := float32(0.18*math.Sin(phaseA) + 0.12*math.Sin(phaseB))
-			phaseA += 2 * math.Pi * 220 / float64(config.SampleRate)
-			phaseB += 2 * math.Pi * 440 / float64(config.SampleRate)
-			if phaseA >= 2*math.Pi {
-				phaseA -= 2 * math.Pi
-			}
-			if phaseB >= 2*math.Pi {
-				phaseB -= 2 * math.Pi
-			}
-			for ch := 0; ch < int(config.Channels); ch++ {
-				samples[frame*int(config.Channels)+ch] = value
-			}
-		}
+	wfType, err := parseWaveformType(*waveformFlag)
+	must(err)
+
+	waveform, err := lib.NewWaveform(mago.WaveformConfig{
+		Format:     mago.FormatF32,
+		Channels:   config.Channels,
+		SampleRate: config.SampleRate,
+		Type:       wfType,
+		Amplitude:  0.25,
+		Frequency:  *freqFlag,
+	})
+	must(err)
+	defer func() {
+		must(waveform.Close())
+	}()
+
+	config.DataCallback = func(_ *mago.Device, output unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
+		_, _ = waveform.ReadPCMFrames(output, uint64(frameCount))
 	}
 
 	device, err := ctx.NewPlaybackDevice(config)
@@ -261,3 +261,19 @@ func must(err error) {
 		os.Exit(1)
 	}
 }
+
+func parseWaveformType(s string) (mago.WaveformType, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "sine", "":
+		return mago.WaveformTypeSine, nil
+	case "square":
+		return mago.WaveformTypeSquare, nil
+	case "triangle":
+		return mago.WaveformTypeTriangle, nil
+	case "sawtooth":
+		return mago.WaveformTypeSawtooth, nil
+	default:
+		return 0, fmt.Errorf("unknown waveform type %q (expected sine, square, triangle, or sawtooth)", s)
+	}
+}
+
