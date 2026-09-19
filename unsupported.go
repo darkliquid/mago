@@ -302,3 +302,100 @@ func (*Noise) SetAmplitude(float64) error                           { return err
 func (*Noise) SetSeed(int32) error                                  { return errUnsupportedPlatform }
 func (*Noise) SetType(NoiseType) error                              { return errUnsupportedPlatform }
 func (*Noise) Close() error                                         { return errUnsupportedPlatform }
+
+type BiquadConfig struct {
+	Format   Format
+	Channels uint32
+	B0       float64
+	B1       float64
+	B2       float64
+	A0       float64
+	A1       float64
+	A2       float64
+}
+type Biquad struct{}
+
+func (*Library) NewBiquad(BiquadConfig) (*Biquad, error) { return nil, errUnsupportedPlatform }
+func (*Biquad) Reinit(BiquadConfig) error                { return errUnsupportedPlatform }
+func (*Biquad) ClearCache() error                        { return errUnsupportedPlatform }
+func (*Biquad) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*Biquad) Latency() uint32 { return 0 }
+func (*Biquad) Close() error    { return errUnsupportedPlatform }
+
+type LowPassFilter1Config struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+}
+type LowPassFilter2Config struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+	Q               float64
+}
+type LowPassFilterConfig struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+	Order           uint32
+}
+
+type (
+	LPF1Config = LowPassFilter1Config
+	LPF2Config = LowPassFilter2Config
+	LPFConfig  = LowPassFilterConfig
+	LPF1       = LowPassFilter1
+	LPF2       = LowPassFilter2
+	LPF        = LowPassFilter
+)
+
+type LowPassFilter1 struct{}
+type LowPassFilter2 struct{}
+type LowPassFilter struct{}
+
+func (*Library) NewLowPassFilter1(LowPassFilter1Config) (*LowPassFilter1, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewLPF1(LowPassFilter1Config) (*LowPassFilter1, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*LowPassFilter1) Reinit(LowPassFilter1Config) error { return errUnsupportedPlatform }
+func (*LowPassFilter1) ClearCache() error                 { return errUnsupportedPlatform }
+func (*LowPassFilter1) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*LowPassFilter1) Latency() uint32 { return 0 }
+func (*LowPassFilter1) Close() error    { return errUnsupportedPlatform }
+
+func (*Library) NewLowPassFilter2(LowPassFilter2Config) (*LowPassFilter2, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewLPF2(LowPassFilter2Config) (*LowPassFilter2, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*LowPassFilter2) Reinit(LowPassFilter2Config) error { return errUnsupportedPlatform }
+func (*LowPassFilter2) ClearCache() error                 { return errUnsupportedPlatform }
+func (*LowPassFilter2) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*LowPassFilter2) Latency() uint32 { return 0 }
+func (*LowPassFilter2) Close() error    { return errUnsupportedPlatform }
+
+func (*Library) NewLowPassFilter(LowPassFilterConfig) (*LowPassFilter, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewLPF(LowPassFilterConfig) (*LowPassFilter, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*LowPassFilter) Reinit(LowPassFilterConfig) error { return errUnsupportedPlatform }
+func (*LowPassFilter) ClearCache() error                { return errUnsupportedPlatform }
+func (*LowPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*LowPassFilter) Latency() uint32 { return 0 }
+func (*LowPassFilter) Close() error    { return errUnsupportedPlatform }
