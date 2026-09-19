@@ -399,3 +399,130 @@ func (*LowPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) e
 }
 func (*LowPassFilter) Latency() uint32 { return 0 }
 func (*LowPassFilter) Close() error    { return errUnsupportedPlatform }
+
+type HighPassFilter1Config struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+}
+
+type HighPassFilter2Config struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+	Q               float64
+}
+
+type HighPassFilterConfig struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+	Order           uint32
+}
+
+type (
+	HPF1Config = HighPassFilter1Config
+	HPF2Config = HighPassFilter2Config
+	HPFConfig  = HighPassFilterConfig
+	HPF1       = HighPassFilter1
+	HPF2       = HighPassFilter2
+	HPF        = HighPassFilter
+)
+
+type HighPassFilter1 struct{}
+type HighPassFilter2 struct{}
+type HighPassFilter struct{}
+
+func (*Library) NewHighPassFilter1(HighPassFilter1Config) (*HighPassFilter1, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewHPF1(HighPassFilter1Config) (*HighPassFilter1, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*HighPassFilter1) Reinit(HighPassFilter1Config) error { return errUnsupportedPlatform }
+func (*HighPassFilter1) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*HighPassFilter1) Latency() uint32 { return 0 }
+func (*HighPassFilter1) Close() error    { return errUnsupportedPlatform }
+
+func (*Library) NewHighPassFilter2(HighPassFilter2Config) (*HighPassFilter2, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewHPF2(HighPassFilter2Config) (*HighPassFilter2, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*HighPassFilter2) Reinit(HighPassFilter2Config) error { return errUnsupportedPlatform }
+func (*HighPassFilter2) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*HighPassFilter2) Latency() uint32 { return 0 }
+func (*HighPassFilter2) Close() error    { return errUnsupportedPlatform }
+
+func (*Library) NewHighPassFilter(HighPassFilterConfig) (*HighPassFilter, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewHPF(HighPassFilterConfig) (*HighPassFilter, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*HighPassFilter) Reinit(HighPassFilterConfig) error { return errUnsupportedPlatform }
+func (*HighPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*HighPassFilter) Latency() uint32 { return 0 }
+func (*HighPassFilter) Close() error    { return errUnsupportedPlatform }
+
+type BandPassFilter2Config struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+	Q               float64
+}
+
+type BandPassFilterConfig struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+	Order           uint32
+}
+
+type (
+	BPF2Config = BandPassFilter2Config
+	BPFConfig  = BandPassFilterConfig
+	BPF2       = BandPassFilter2
+	BPF        = BandPassFilter
+)
+
+type BandPassFilter2 struct{}
+type BandPassFilter struct{}
+
+func (*Library) NewBandPassFilter2(BandPassFilter2Config) (*BandPassFilter2, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewBPF2(BandPassFilter2Config) (*BandPassFilter2, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*BandPassFilter2) Reinit(BandPassFilter2Config) error { return errUnsupportedPlatform }
+func (*BandPassFilter2) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*BandPassFilter2) Latency() uint32 { return 0 }
+func (*BandPassFilter2) Close() error    { return errUnsupportedPlatform }
+
+func (*Library) NewBandPassFilter(BandPassFilterConfig) (*BandPassFilter, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewBPF(BandPassFilterConfig) (*BandPassFilter, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*BandPassFilter) Reinit(BandPassFilterConfig) error { return errUnsupportedPlatform }
+func (*BandPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*BandPassFilter) Latency() uint32 { return 0 }
+func (*BandPassFilter) Close() error    { return errUnsupportedPlatform }
