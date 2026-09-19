@@ -9,7 +9,9 @@
  *      cgo, and the sizes of miniaudio's objects are not available to Go.
  *   2. Building a by-value, large config struct. ma_device_config_init returns
  *      ma_device_config by value and that struct is large, backend-specific and
- *      version-unstable, so Go must not mirror it.
+ *      version-unstable, so Go must not mirror it. mago_device_init generalizes
+ *      this across all four device types (playback, capture, duplex, loopback),
+ *      and the mago_context_config_* helpers do the same for ma_context_config.
  *   3. Callback trampolines for C signatures that carry no user data. The device
  *      data and notification callbacks receive no `pUserData`; user data travels
  *      through `pDevice->pUserData`, which Go cannot read without mirroring the
@@ -44,19 +46,23 @@
 
 enum mago_object_type
 {
-    MAGO_OBJECT_CONTEXT = 1,
-    MAGO_OBJECT_DEVICE  = 2,
-    MAGO_OBJECT_LOG     = 3
+    MAGO_OBJECT_CONTEXT        = 1,
+    MAGO_OBJECT_DEVICE         = 2,
+    MAGO_OBJECT_LOG            = 3,
+    MAGO_OBJECT_DEVICE_INFO    = 4,
+    MAGO_OBJECT_CONTEXT_CONFIG = 5
 };
 
 MAGO_API void* mago_alloc(int type)
 {
     switch (type)
     {
-        case MAGO_OBJECT_CONTEXT: return calloc(1, sizeof(ma_context));
-        case MAGO_OBJECT_DEVICE:  return calloc(1, sizeof(ma_device));
-        case MAGO_OBJECT_LOG:     return calloc(1, sizeof(ma_log));
-        default:                  return NULL;
+        case MAGO_OBJECT_CONTEXT:        return calloc(1, sizeof(ma_context));
+        case MAGO_OBJECT_DEVICE:         return calloc(1, sizeof(ma_device));
+        case MAGO_OBJECT_LOG:            return calloc(1, sizeof(ma_log));
+        case MAGO_OBJECT_DEVICE_INFO:    return calloc(1, sizeof(ma_device_info));
+        case MAGO_OBJECT_CONTEXT_CONFIG: return calloc(1, sizeof(ma_context_config));
+        default:                         return NULL;
     }
 }
 
@@ -88,10 +94,17 @@ typedef struct
     ma_bool32 noClip;
     ma_bool32 noDisableDenormals;
     ma_bool32 noFixedSizedCallback;
+} mago_stream_config;
+
+typedef struct
+{
+    ma_uint32 deviceType;
+    const mago_stream_config* pPlayback;
+    const mago_stream_config* pCapture;
     uintptr_t dataCallback;
     uintptr_t notificationCallback;
     uintptr_t userData;
-} mago_playback_device_config;
+} mago_device_config;
 
 typedef struct
 {
@@ -136,15 +149,81 @@ static void mago_on_device_notification(const ma_device_notification* pNotificat
     pBridge->notificationCallback(pBridge->userData, (ma_uint32)pNotification->type);
 }
 
-MAGO_API ma_result mago_device_init_playback(
+static ma_result mago_resolve_device_id(
     ma_context* pContext,
-    const mago_playback_device_config* pMagoConfig,
+    ma_device_type type,
+    const mago_stream_config* pStream,
+    const ma_device_id** ppDeviceID)
+{
+    ma_device_info* pInfos;
+    ma_uint32 count;
+
+    *ppDeviceID = pStream->pDeviceID;
+    if (pStream->deviceIndex < 0)
+    {
+        return MA_SUCCESS;
+    }
+
+    if (pContext == NULL)
+    {
+        return MA_INVALID_ARGS;
+    }
+
+    if (type == ma_device_type_capture || type == ma_device_type_loopback)
+    {
+        if (ma_context_get_devices(pContext, NULL, NULL, &pInfos, &count) != MA_SUCCESS)
+        {
+            return MA_NO_DEVICE;
+        }
+    }
+    else
+    {
+        if (ma_context_get_devices(pContext, &pInfos, &count, NULL, NULL) != MA_SUCCESS)
+        {
+            return MA_NO_DEVICE;
+        }
+    }
+
+    if ((ma_uint32)pStream->deviceIndex >= count)
+    {
+        return MA_NO_DEVICE;
+    }
+
+    *ppDeviceID = &pInfos[pStream->deviceIndex].id;
+    return MA_SUCCESS;
+}
+
+static void mago_apply_stream_config(
+    ma_device_config* pConfig,
+    ma_device_type type,
+    const mago_stream_config* pStream,
+    const ma_device_id* pDeviceID)
+{
+    if (type == ma_device_type_capture || type == ma_device_type_loopback)
+    {
+        pConfig->capture.pDeviceID = pDeviceID;
+        pConfig->capture.format = pStream->format;
+        pConfig->capture.channels = pStream->channels;
+        pConfig->capture.shareMode = pStream->shareMode;
+    }
+    else
+    {
+        pConfig->playback.pDeviceID = pDeviceID;
+        pConfig->playback.format = pStream->format;
+        pConfig->playback.channels = pStream->channels;
+        pConfig->playback.shareMode = pStream->shareMode;
+    }
+}
+
+MAGO_API ma_result mago_device_init(
+    ma_context* pContext,
+    const mago_device_config* pMagoConfig,
     ma_device** ppDevice)
 {
     ma_device_config config;
     ma_device* pDevice;
     mago_device_bridge* pBridge;
-    const ma_device_id* pDeviceID;
+    ma_device_type type;
     ma_result result;
 
     if (pMagoConfig == NULL || ppDevice == NULL)
@@ -153,6 +232,7 @@ MAGO_API ma_result mago_device_init_playback(
     }
 
     *ppDevice = NULL;
+    type = (ma_device_type)pMagoConfig->deviceType;
 
     pDevice = (ma_device*)calloc(1, sizeof(ma_device));
     if (pDevice == NULL)
@@ -170,54 +250,78 @@ MAGO_API ma_result mago_device_init_playback(
     pBridge->dataCallback = (mago_data_callback)pMagoConfig->dataCallback;
     pBridge->notificationCallback = (mago_notification_callback)pMagoConfig->notificationCallback;
     pBridge->userData = pMagoConfig->userData;
-    pDeviceID = pMagoConfig->pDeviceID;
 
-    if (pMagoConfig->deviceIndex >= 0) {
-        ma_device_info* pPlaybackDeviceInfos;
-        ma_uint32 playbackDeviceCount;
+    config = ma_device_config_init(type);
 
-        if (pContext == NULL) {
+    if (type == ma_device_type_playback || type == ma_device_type_duplex)
+    {
+        const ma_device_id* pDeviceID;
+
+        if (pMagoConfig->pPlayback == NULL)
+        {
             free(pBridge);
             free(pDevice);
             return MA_INVALID_ARGS;
         }
 
-        result = ma_context_get_devices(pContext, &pPlaybackDeviceInfos, &playbackDeviceCount, NULL, NULL);
-        if (result != MA_SUCCESS) {
+        result = mago_resolve_device_id(pContext, ma_device_type_playback, pMagoConfig->pPlayback, &pDeviceID);
+        if (result != MA_SUCCESS)
+        {
             free(pBridge);
             free(pDevice);
             return result;
         }
 
-        if ((ma_uint32)pMagoConfig->deviceIndex >= playbackDeviceCount) {
-            free(pBridge);
-            free(pDevice);
-            return MA_NO_DEVICE;
-        }
-
-        pDeviceID = &pPlaybackDeviceInfos[pMagoConfig->deviceIndex].id;
+        mago_apply_stream_config(&config, ma_device_type_playback, pMagoConfig->pPlayback, pDeviceID);
+        config.sampleRate = pMagoConfig->pPlayback->sampleRate;
+        config.periodSizeInFrames = pMagoConfig->pPlayback->periodSizeInFrames;
+        config.periodSizeInMilliseconds = pMagoConfig->pPlayback->periodSizeInMilliseconds;
+        config.periods = pMagoConfig->pPlayback->periods;
+        config.performanceProfile = pMagoConfig->pPlayback->performanceProfile;
+        config.noPreSilencedOutputBuffer = (ma_bool8)pMagoConfig->pPlayback->noPreSilencedOutputBuffer;
+        config.noClip = (ma_bool8)pMagoConfig->pPlayback->noClip;
+        config.noDisableDenormals = (ma_bool8)pMagoConfig->pPlayback->noDisableDenormals;
+        config.noFixedSizedCallback = (ma_bool8)pMagoConfig->pPlayback->noFixedSizedCallback;
     }
 
-    config = ma_device_config_init(ma_device_type_playback);
-    config.playback.pDeviceID = pDeviceID;
-    config.playback.format = pMagoConfig->format;
-    config.playback.channels = pMagoConfig->channels;
-    config.playback.shareMode = pMagoConfig->shareMode;
-    config.sampleRate = pMagoConfig->sampleRate;
-    config.periodSizeInFrames = pMagoConfig->periodSizeInFrames;
-    config.periodSizeInMilliseconds = pMagoConfig->periodSizeInMilliseconds;
-    config.periods = pMagoConfig->periods;
-    config.performanceProfile = pMagoConfig->performanceProfile;
-    config.noPreSilencedOutputBuffer = (ma_bool8)pMagoConfig->noPreSilencedOutputBuffer;
-    config.noClip = (ma_bool8)pMagoConfig->noClip;
-    config.noDisableDenormals = (ma_bool8)pMagoConfig->noDisableDenormals;
-    config.noFixedSizedCallback = (ma_bool8)pMagoConfig->noFixedSizedCallback;
+    if (type == ma_device_type_capture || type == ma_device_type_duplex || type == ma_device_type_loopback)
+    {
+        const ma_device_id* pDeviceID;
+
+        if (pMagoConfig->pCapture == NULL)
+        {
+            free(pBridge);
+            free(pDevice);
+            return MA_INVALID_ARGS;
+        }
+
+        result = mago_resolve_device_id(pContext, type, pMagoConfig->pCapture, &pDeviceID);
+        if (result != MA_SUCCESS)
+        {
+            free(pBridge);
+            free(pDevice);
+            return result;
+        }
+
+        mago_apply_stream_config(&config, type, pMagoConfig->pCapture, pDeviceID);
+        if (type != ma_device_type_duplex)
+        {
+            config.sampleRate = pMagoConfig->pCapture->sampleRate;
+            config.periodSizeInFrames = pMagoConfig->pCapture->periodSizeInFrames;
+            config.periodSizeInMilliseconds = pMagoConfig->pCapture->periodSizeInMilliseconds;
+            config.periods = pMagoConfig->pCapture->periods;
+            config.performanceProfile = pMagoConfig->pCapture->performanceProfile;
+            config.noFixedSizedCallback = (ma_bool8)pMagoConfig->pCapture->noFixedSizedCallback;
+        }
+    }
+
     config.dataCallback = pBridge->dataCallback != NULL ? mago_on_device_data : NULL;
     config.notificationCallback = pBridge->notificationCallback != NULL ? mago_on_device_notification : NULL;
     config.pUserData = pBridge;
 
     result = ma_device_init(pContext, &config, pDevice);
-    if (result != MA_SUCCESS) {
+    if (result != MA_SUCCESS)
+    {
         free(pBridge);
         free(pDevice);
         return result;
@@ -259,4 +363,26 @@ MAGO_API ma_result mago_log_unregister_callback(ma_log* pLog, uintptr_t onLog, u
 {
     ma_log_callback callback = ma_log_callback_init((ma_log_callback_proc)onLog, (void*)userData);
     return ma_log_unregister_callback(pLog, callback);
+}
+
+/* -------------------------------------------------------------------------
+ * Context config helpers.
+ * ma_context_config is 240 bytes of backend-specific state returned by value,
+ * so Go treats it as an opaque buffer and only sets the log pointer.
+ * ---------------------------------------------------------------------- */
+
+MAGO_API void mago_context_config_init(void* pOut)
+{
+    if (pOut != NULL)
+    {
+        *(ma_context_config*)pOut = ma_context_config_init();
+    }
+}
+
+MAGO_API void mago_context_config_set_log(void* pConfig, ma_log* pLog)
+{
+    if (pConfig != NULL)
+    {
+        ((ma_context_config*)pConfig)->pLog = pLog;
+    }
 }

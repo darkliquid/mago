@@ -144,7 +144,7 @@ func (lib *Library) NewPlaybackDevice(ctx *Context, config PlaybackDeviceConfig)
 		notifyPtr = notificationCallbackPtr
 	}
 
-	nativeConfig := playbackDeviceConfigNative{
+	stream := streamConfigNative{
 		DeviceIndex:               int32(config.DeviceIndex),
 		Format:                    config.Format,
 		Channels:                  config.Channels,
@@ -158,12 +158,17 @@ func (lib *Library) NewPlaybackDevice(ctx *Context, config PlaybackDeviceConfig)
 		NoClip:                    boolToBool32(config.NoClip),
 		NoDisableDenormals:        boolToBool32(config.NoDisableDenormals),
 		NoFixedSizedCallback:      boolToBool32(config.NoFixedSizedCallback),
-		DataCallback:              dataPtr,
-		NotificationCallback:      notifyPtr,
-		UserData:                  token,
 	}
 
-	result := lib.bindings.magoDeviceInitPlayback(ctxHandle, &nativeConfig, &handle)
+	nativeConfig := deviceConfigNative{
+		DeviceType:           uint32(DeviceTypePlayback),
+		Playback:             &stream,
+		DataCallback:         dataPtr,
+		NotificationCallback: notifyPtr,
+		UserData:             token,
+	}
+
+	result := lib.bindings.magoDeviceInit(ctxHandle, &nativeConfig, &handle)
 	if result != Success {
 		callbacks.Delete(token)
 		return nil, lib.resultError("ma_device_init", result)
