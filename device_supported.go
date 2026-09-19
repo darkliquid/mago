@@ -415,6 +415,62 @@ func (device *Device) Context() *Context {
 	return &Context{lib: device.lib, handle: handle, owned: false}
 }
 
+// SetMasterVolume sets the linear master volume for the device.
+func (device *Device) SetMasterVolume(volume float64) error {
+	if device == nil || device.handle == nil {
+		return fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return device.lib.resultError("ma_device_set_master_volume",
+		device.lib.bindings.maDeviceSetMasterVolume(device.handle, float32(volume)))
+}
+
+// MasterVolume reports the linear master volume for the device.
+func (device *Device) MasterVolume() (float64, error) {
+	if device == nil || device.handle == nil {
+		return 0, fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return 0, err
+	}
+
+	var volume float32
+	if result := device.lib.bindings.maDeviceGetMasterVolume(device.handle, &volume); result != Success {
+		return 0, device.lib.resultError("ma_device_get_master_volume", result)
+	}
+	return float64(volume), nil
+}
+
+// SetMasterVolumeDB sets the master volume in decibels.
+func (device *Device) SetMasterVolumeDB(gainDB float64) error {
+	if device == nil || device.handle == nil {
+		return fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return device.lib.resultError("ma_device_set_master_volume_db",
+		device.lib.bindings.maDeviceSetMasterVolumeDB(device.handle, float32(gainDB)))
+}
+
+// MasterVolumeDB reports the master volume in decibels.
+func (device *Device) MasterVolumeDB() (float64, error) {
+	if device == nil || device.handle == nil {
+		return 0, fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return 0, err
+	}
+
+	var gainDB float32
+	if result := device.lib.bindings.maDeviceGetMasterVolumeDB(device.handle, &gainDB); result != Success {
+		return 0, device.lib.resultError("ma_device_get_master_volume_db", result)
+	}
+	return float64(gainDB), nil
+}
+
 func boolToBool32(v bool) uint32 {
 	if v {
 		return 1
