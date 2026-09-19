@@ -2,7 +2,6 @@ package mago
 
 import (
 	"testing"
-	"unsafe"
 )
 
 func TestNotchFilterFrequencyAttenuation(t *testing.T) {
@@ -33,14 +32,14 @@ func TestNotchFilterFrequencyAttenuation(t *testing.T) {
 	outMid := make([]float32, frames)
 	outHigh := make([]float32, frames)
 
-	if err := nf.ProcessPCMFrames(unsafe.Pointer(&outLow[0]), unsafe.Pointer(&lowFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames low: %v", err)
+	if err := nf.Process(outLow, lowFreq); err != nil {
+		t.Fatalf("Process low: %v", err)
 	}
-	if err := nf.ProcessPCMFrames(unsafe.Pointer(&outMid[0]), unsafe.Pointer(&midFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames mid: %v", err)
+	if err := nf.Process(outMid, midFreq); err != nil {
+		t.Fatalf("Process mid: %v", err)
 	}
-	if err := nf.ProcessPCMFrames(unsafe.Pointer(&outHigh[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames high: %v", err)
+	if err := nf.Process(outHigh, highFreq); err != nil {
+		t.Fatalf("Process high: %v", err)
 	}
 
 	lowRMS := rms(outLow)
@@ -84,8 +83,8 @@ func TestPeakFilterGain(t *testing.T) {
 	inputRMS := rms(midFreq)
 
 	outBoost := make([]float32, frames)
-	if err := pfBoost.ProcessPCMFrames(unsafe.Pointer(&outBoost[0]), unsafe.Pointer(&midFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames boost: %v", err)
+	if err := pfBoost.Process(outBoost, midFreq); err != nil {
+		t.Fatalf("Process boost: %v", err)
 	}
 	boostRMS := rms(outBoost)
 
@@ -108,8 +107,8 @@ func TestPeakFilterGain(t *testing.T) {
 	defer func() { _ = pfCut.Close() }()
 
 	outCut := make([]float32, frames)
-	if err := pfCut.ProcessPCMFrames(unsafe.Pointer(&outCut[0]), unsafe.Pointer(&midFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames cut: %v", err)
+	if err := pfCut.Process(outCut, midFreq); err != nil {
+		t.Fatalf("Process cut: %v", err)
 	}
 	cutRMS := rms(outCut)
 
@@ -148,11 +147,11 @@ func TestLowShelfFilterGain(t *testing.T) {
 	outLow := make([]float32, frames)
 	outHigh := make([]float32, frames)
 
-	if err := ls.ProcessPCMFrames(unsafe.Pointer(&outLow[0]), unsafe.Pointer(&lowFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames low: %v", err)
+	if err := ls.Process(outLow, lowFreq); err != nil {
+		t.Fatalf("Process low: %v", err)
 	}
-	if err := ls.ProcessPCMFrames(unsafe.Pointer(&outHigh[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames high: %v", err)
+	if err := ls.Process(outHigh, highFreq); err != nil {
+		t.Fatalf("Process high: %v", err)
 	}
 
 	lowRMS := rms(outLow)
@@ -197,11 +196,11 @@ func TestHighShelfFilterGain(t *testing.T) {
 	outLow := make([]float32, frames)
 	outHigh := make([]float32, frames)
 
-	if err := hs.ProcessPCMFrames(unsafe.Pointer(&outLow[0]), unsafe.Pointer(&lowFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames low: %v", err)
+	if err := hs.Process(outLow, lowFreq); err != nil {
+		t.Fatalf("Process low: %v", err)
 	}
-	if err := hs.ProcessPCMFrames(unsafe.Pointer(&outHigh[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames high: %v", err)
+	if err := hs.Process(outHigh, highFreq); err != nil {
+		t.Fatalf("Process high: %v", err)
 	}
 
 	lowRMS := rms(outLow)
@@ -333,31 +332,31 @@ func TestShelfFiltersLifecycleAndControls(t *testing.T) {
 	if err := nilNF.Close(); err != nil {
 		t.Errorf("nilNF.Close: %v", err)
 	}
-	if err := nilNF.ProcessPCMFrames(nil, nil, 0); err == nil {
-		t.Error("nilNF.ProcessPCMFrames expected error")
+	if err := nilNF.Process(nil, nil); err == nil {
+		t.Error("nilNF.Process expected error")
 	}
 
 	var nilPF *PeakFilter
 	if err := nilPF.Close(); err != nil {
 		t.Errorf("nilPF.Close: %v", err)
 	}
-	if err := nilPF.ProcessPCMFrames(nil, nil, 0); err == nil {
-		t.Error("nilPF.ProcessPCMFrames expected error")
+	if err := nilPF.Process(nil, nil); err == nil {
+		t.Error("nilPF.Process expected error")
 	}
 
 	var nilLS *LowShelfFilter
 	if err := nilLS.Close(); err != nil {
 		t.Errorf("nilLS.Close: %v", err)
 	}
-	if err := nilLS.ProcessPCMFrames(nil, nil, 0); err == nil {
-		t.Error("nilLS.ProcessPCMFrames expected error")
+	if err := nilLS.Process(nil, nil); err == nil {
+		t.Error("nilLS.Process expected error")
 	}
 
 	var nilHS *HighShelfFilter
 	if err := nilHS.Close(); err != nil {
 		t.Errorf("nilHS.Close: %v", err)
 	}
-	if err := nilHS.ProcessPCMFrames(nil, nil, 0); err == nil {
-		t.Error("nilHS.ProcessPCMFrames expected error")
+	if err := nilHS.Process(nil, nil); err == nil {
+		t.Error("nilHS.Process expected error")
 	}
 }

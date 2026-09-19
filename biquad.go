@@ -21,8 +21,9 @@ type BiquadConfig struct {
 
 // Biquad wraps miniaudio's ma_biquad filter.
 type Biquad struct {
-	handle *biquadHandle
-	lib    *Library
+	handle   *biquadHandle
+	lib      *Library
+	channels uint32
 }
 
 // NewBiquad creates and initializes a biquad filter.
@@ -49,8 +50,9 @@ func (lib *Library) NewBiquad(config BiquadConfig) (*Biquad, error) {
 	}
 
 	return &Biquad{
-		handle: handle,
-		lib:    lib,
+		handle:   handle,
+		lib:      lib,
+		channels: config.Channels,
 	}, nil
 }
 
@@ -64,7 +66,11 @@ func (b *Biquad) Reinit(config BiquadConfig) error {
 	}
 
 	nativeConfig := biquadConfigNative(config)
-	return b.lib.resultError("ma_biquad_reinit", b.lib.bindings.maBiquadReinit(&nativeConfig, b.handle))
+	if err := b.lib.resultError("ma_biquad_reinit", b.lib.bindings.maBiquadReinit(&nativeConfig, b.handle)); err != nil {
+		return err
+	}
+	b.channels = config.Channels
+	return nil
 }
 
 // ClearCache clears the internal state/history buffer of the filter.
@@ -78,16 +84,38 @@ func (b *Biquad) ClearCache() error {
 	return b.lib.resultError("ma_biquad_clear_cache", b.lib.bindings.maBiquadClearCache(b.handle))
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-// pFramesOut and pFramesIn can point to the same buffer for in-place processing.
-func (b *Biquad) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (b *Biquad) Process(out, in []float32) error {
 	if b == nil || b.handle == nil {
 		return fmt.Errorf("mago: nil biquad")
 	}
 	if err := b.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return b.lib.resultError("ma_biquad_process_pcm_frames", b.lib.bindings.maBiquadProcessPCMFrames(b.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(b.channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return b.lib.resultError("ma_biquad_process_pcm_frames",
+		b.lib.bindings.maBiquadProcessPCMFrames(b.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (b *Biquad) ProcessS16(out, in []int16) error {
+	if b == nil || b.handle == nil {
+		return fmt.Errorf("mago: nil biquad")
+	}
+	if err := b.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(b.channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return b.lib.resultError("ma_biquad_process_pcm_frames",
+		b.lib.bindings.maBiquadProcessPCMFrames(b.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.

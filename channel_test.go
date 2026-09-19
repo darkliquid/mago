@@ -2,7 +2,6 @@ package mago
 
 import (
 	"testing"
-	"unsafe"
 )
 
 func TestStandardStereoChannelMap(t *testing.T) {
@@ -56,13 +55,20 @@ func TestChannelConverterStereoToMono(t *testing.T) {
 	in := []float32{0.5, 0.5, -0.5, -0.5}
 	out := make([]float32, 2)
 
-	if err := converter.ProcessPCMFrames(
-		unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), 2,
-	); err != nil {
-		t.Fatalf("ProcessPCMFrames: %v", err)
+	if err := converter.Process(out, in); err != nil {
+		t.Fatalf("Process: %v", err)
 	}
 	if out[0] == 0 {
 		t.Fatal("expected a non-zero down-mix")
+	}
+
+	badIn := []float32{0.5}
+	if err := converter.Process(out, badIn); err != ErrInvalidSliceLength {
+		t.Errorf("expected ErrInvalidSliceLength, got %v", err)
+	}
+	shortOut := make([]float32, 1)
+	if err := converter.Process(shortOut, in); err != ErrOutputTooSmall {
+		t.Errorf("expected ErrOutputTooSmall, got %v", err)
 	}
 
 	if _, err := converter.InputChannelMap(); err != nil {

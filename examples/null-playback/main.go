@@ -5,7 +5,6 @@ import (
 	"os"
 	"sync/atomic"
 	"time"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 )
@@ -32,12 +31,10 @@ func main() {
 	config.Channels = 1
 	config.SampleRate = 48_000
 	config.PeriodSizeInFrames = 128
-	config.DataCallback = func(_ *mago.Device, output unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
-		if output != nil {
-			samples := unsafe.Slice((*float32)(output), int(frameCount))
-			for i := range samples {
-				samples[i] = 0
-			}
+	config.DataCallback = func(_ *mago.Device, io mago.DeviceIO) {
+		samples := io.OutputF32()
+		for i := range samples {
+			samples[i] = 0
 		}
 		callbackCount.Add(1)
 	}

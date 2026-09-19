@@ -4,7 +4,6 @@ package mago
 
 import (
 	"errors"
-	"unsafe"
 )
 
 var errUnsupportedPlatform = errors.New("mago: this package is currently supported on darwin, freebsd, linux, netbsd, and windows")
@@ -14,10 +13,24 @@ type Context struct{}
 type Device struct{}
 
 type LibraryOption func(*struct{})
-type DataCallback func(*Device, unsafe.Pointer, unsafe.Pointer, uint32)
+type DeviceIO struct{}
+
+func (DeviceIO) FrameCount() uint32   { return 0 }
+func (DeviceIO) OutputF32() []float32 { return nil }
+func (DeviceIO) OutputS16() []int16   { return nil }
+func (DeviceIO) OutputBytes() []byte  { return nil }
+func (DeviceIO) InputF32() []float32  { return nil }
+func (DeviceIO) InputS16() []int16    { return nil }
+func (DeviceIO) InputBytes() []byte   { return nil }
+
+type DataCallback func(*Device, DeviceIO)
 type NotificationCallback func(*Device, NotificationType)
-type PlaybackDeviceConfig struct{}
-type StreamConfig struct{}
+type PlaybackDeviceConfig struct {
+	DeviceID *DeviceID
+}
+type StreamConfig struct {
+	DeviceID *DeviceID
+}
 type DeviceConfig struct{}
 
 type OpError struct {
@@ -38,7 +51,7 @@ func (*Context) NewDevice(DeviceConfig) (*Device, error) { return nil, errUnsupp
 func (*Library) NewContextWithLog(*Log, ...Backend) (*Context, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*Context) DeviceInfo(DeviceType, unsafe.Pointer) (DeviceInfo, error) {
+func (*Context) DeviceInfo(DeviceType, *DeviceID) (DeviceInfo, error) {
 	return DeviceInfo{}, errUnsupportedPlatform
 }
 func (*Library) NewPlaybackDevice(*Context, PlaybackDeviceConfig) (*Device, error) {
@@ -83,7 +96,10 @@ func (ChannelMap) String() string                                            { r
 func (*Library) NewChannelConverter(ChannelConverterConfig) (*ChannelConverter, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*ChannelConverter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*ChannelConverter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*ChannelConverter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*ChannelConverter) InputChannelMap() (ChannelMap, error) {
@@ -94,13 +110,19 @@ func (*ChannelConverter) OutputChannelMap() (ChannelMap, error) {
 }
 func (*ChannelConverter) Close() error { return errUnsupportedPlatform }
 
-func (*Library) ConvertPCMSamples(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, DitherMode) error {
+func (*Library) ConvertPCMFrames([]byte, []byte, Format, Format, uint32, DitherMode) error {
 	return errUnsupportedPlatform
 }
-func (*Library) ConvertPCMFramesFormat(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, uint32, DitherMode) error {
+func (*Library) ConvertF32ToS16([]int16, []float32, DitherMode) error {
 	return errUnsupportedPlatform
 }
-func (*Library) ConvertFrames(unsafe.Pointer, uint64, Format, uint32, uint32, unsafe.Pointer, uint64, Format, uint32, uint32) (uint64, error) {
+func (*Library) ConvertS16ToF32([]float32, []int16) error {
+	return errUnsupportedPlatform
+}
+func (*Library) ConvertFrames([]byte, Format, uint32, uint32, []byte, Format, uint32, uint32) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*Library) ConvertFramesF32ToS16([]int16, uint32, uint32, []float32, uint32, uint32) (uint64, error) {
 	return 0, errUnsupportedPlatform
 }
 func BytesPerSample(Format) uint32 { return 0 }
@@ -125,7 +147,7 @@ func DefaultDataConverterConfig(Format, Format, uint32, uint32, uint32, uint32) 
 func (*Library) NewResampler(ResamplerConfig) (*Resampler, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*Resampler) ProcessPCMFrames(unsafe.Pointer, uint64, unsafe.Pointer, uint64) (uint64, uint64, error) {
+func (*Resampler) Process([]float32, []float32) (uint64, uint64, error) {
 	return 0, 0, errUnsupportedPlatform
 }
 func (*Resampler) SetRate(uint32, uint32) error { return errUnsupportedPlatform }
@@ -142,7 +164,7 @@ func (*Resampler) Close() error { return errUnsupportedPlatform }
 func (*Library) NewLinearResampler(LinearResamplerConfig) (*LinearResampler, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*LinearResampler) ProcessPCMFrames(unsafe.Pointer, uint64, unsafe.Pointer, uint64) (uint64, uint64, error) {
+func (*LinearResampler) Process([]float32, []float32) (uint64, uint64, error) {
 	return 0, 0, errUnsupportedPlatform
 }
 func (*LinearResampler) SetRate(uint32, uint32) error { return errUnsupportedPlatform }
@@ -159,7 +181,19 @@ func (*LinearResampler) Close() error { return errUnsupportedPlatform }
 func (*Library) NewDataConverter(DataConverterConfig) (*DataConverter, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*DataConverter) ProcessPCMFrames(unsafe.Pointer, uint64, unsafe.Pointer, uint64) (uint64, uint64, error) {
+func (*DataConverter) Process([]byte, []byte) (uint64, uint64, error) {
+	return 0, 0, errUnsupportedPlatform
+}
+func (*DataConverter) ProcessF32([]float32, []float32) (uint64, uint64, error) {
+	return 0, 0, errUnsupportedPlatform
+}
+func (*DataConverter) ProcessF32ToS16([]float32, []int16) (uint64, uint64, error) {
+	return 0, 0, errUnsupportedPlatform
+}
+func (*DataConverter) ProcessS16ToF32([]int16, []float32) (uint64, uint64, error) {
+	return 0, 0, errUnsupportedPlatform
+}
+func (*DataConverter) ProcessS16([]int16, []int16) (uint64, uint64, error) {
 	return 0, 0, errUnsupportedPlatform
 }
 func (*DataConverter) SetRate(uint32, uint32) error { return errUnsupportedPlatform }
@@ -179,7 +213,14 @@ func (*DataConverter) OutputChannelMap() (ChannelMap, error) {
 }
 func (*DataConverter) Close() error { return errUnsupportedPlatform }
 
-type AudioBufferConfig struct{}
+type AudioBufferConfig struct {
+	Format       Format
+	Channels     uint32
+	SampleRate   uint32
+	SizeInFrames uint64
+	Data         []byte
+	DataF32      []float32
+}
 type AudioBuffer struct{}
 type AudioBufferRef struct{}
 type RingBuffer struct{}
@@ -191,28 +232,38 @@ func (*Library) NewAudioBuffer(AudioBufferConfig) (*AudioBuffer, error) {
 func (*Library) NewAudioBufferCopy(AudioBufferConfig) (*AudioBuffer, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*AudioBuffer) ReadPCMFrames(unsafe.Pointer, uint64, bool) (uint64, error) {
+func (*AudioBuffer) Read([]float32, bool) (uint64, error) {
 	return 0, errUnsupportedPlatform
 }
-func (*AudioBuffer) SeekToPCMFrame(uint64) error          { return errUnsupportedPlatform }
-func (*AudioBuffer) Map() (unsafe.Pointer, uint64, error) { return nil, 0, errUnsupportedPlatform }
-func (*AudioBuffer) Unmap(uint64) error                   { return errUnsupportedPlatform }
-func (*AudioBuffer) CursorInPCMFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
-func (*AudioBuffer) LengthInPCMFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
-func (*AudioBuffer) AvailableFrames() (uint64, error)     { return 0, errUnsupportedPlatform }
-func (*AudioBuffer) Close() error                         { return errUnsupportedPlatform }
+func (*AudioBuffer) ReadS16([]int16, bool) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*AudioBuffer) SeekToPCMFrame(uint64) error        { return errUnsupportedPlatform }
+func (*AudioBuffer) MapF32() ([]float32, error)         { return nil, errUnsupportedPlatform }
+func (*AudioBuffer) MapBytes() ([]byte, error)          { return nil, errUnsupportedPlatform }
+func (*AudioBuffer) Unmap(uint64) error                 { return errUnsupportedPlatform }
+func (*AudioBuffer) CursorInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*AudioBuffer) LengthInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*AudioBuffer) AvailableFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
+func (*AudioBuffer) Close() error                       { return errUnsupportedPlatform }
 
-func (*Library) NewAudioBufferRef(Format, uint32, unsafe.Pointer, uint64, ...any) (*AudioBufferRef, error) {
+func (*Library) NewAudioBufferRef(Format, uint32, []byte) (*AudioBufferRef, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*AudioBufferRef) SetData(unsafe.Pointer, uint64, ...any) error { return errUnsupportedPlatform }
-func (*AudioBufferRef) ReadPCMFrames(unsafe.Pointer, uint64, bool) (uint64, error) {
+func (*Library) NewAudioBufferRefF32(uint32, []float32) (*AudioBufferRef, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*AudioBufferRef) SetData([]byte) error       { return errUnsupportedPlatform }
+func (*AudioBufferRef) SetDataF32([]float32) error { return errUnsupportedPlatform }
+func (*AudioBufferRef) Read([]float32, bool) (uint64, error) {
 	return 0, errUnsupportedPlatform
 }
-func (*AudioBufferRef) SeekToPCMFrame(uint64) error { return errUnsupportedPlatform }
-func (*AudioBufferRef) Map() (unsafe.Pointer, uint64, error) {
-	return nil, 0, errUnsupportedPlatform
+func (*AudioBufferRef) ReadS16([]int16, bool) (uint64, error) {
+	return 0, errUnsupportedPlatform
 }
+func (*AudioBufferRef) SeekToPCMFrame(uint64) error        { return errUnsupportedPlatform }
+func (*AudioBufferRef) MapF32() ([]float32, error)         { return nil, errUnsupportedPlatform }
+func (*AudioBufferRef) MapBytes() ([]byte, error)          { return nil, errUnsupportedPlatform }
 func (*AudioBufferRef) Unmap(uint64) error                 { return errUnsupportedPlatform }
 func (*AudioBufferRef) AtEnd() bool                        { return true }
 func (*AudioBufferRef) CursorInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
@@ -224,11 +275,11 @@ func (*Library) NewRingBuffer(uint) (*RingBuffer, error) { return nil, errUnsupp
 func (*Library) NewRingBufferEx(uint, uint, uint) (*RingBuffer, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*RingBuffer) AcquireRead(uint) (unsafe.Pointer, uint, error) {
-	return nil, 0, errUnsupportedPlatform
+func (*RingBuffer) AcquireRead(uint) ([]byte, error) {
+	return nil, errUnsupportedPlatform
 }
-func (*RingBuffer) AcquireWrite(uint) (unsafe.Pointer, uint, error) {
-	return nil, 0, errUnsupportedPlatform
+func (*RingBuffer) AcquireWrite(uint) ([]byte, error) {
+	return nil, errUnsupportedPlatform
 }
 func (*RingBuffer) CommitRead(uint) error  { return errUnsupportedPlatform }
 func (*RingBuffer) CommitWrite(uint) error { return errUnsupportedPlatform }
@@ -246,11 +297,11 @@ func (*Library) NewPCMRingBuffer(Format, uint32, uint32) (*PCMRingBuffer, error)
 func (*Library) NewPCMRingBufferEx(Format, uint32, uint32, uint32, uint32) (*PCMRingBuffer, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*PCMRingBuffer) AcquireRead(uint32) (unsafe.Pointer, uint32, error) {
-	return nil, 0, errUnsupportedPlatform
+func (*PCMRingBuffer) AcquireRead(uint32) ([]float32, error) {
+	return nil, errUnsupportedPlatform
 }
-func (*PCMRingBuffer) AcquireWrite(uint32) (unsafe.Pointer, uint32, error) {
-	return nil, 0, errUnsupportedPlatform
+func (*PCMRingBuffer) AcquireWrite(uint32) ([]float32, error) {
+	return nil, errUnsupportedPlatform
 }
 func (*PCMRingBuffer) CommitRead(uint32) error  { return errUnsupportedPlatform }
 func (*PCMRingBuffer) CommitWrite(uint32) error { return errUnsupportedPlatform }
@@ -276,7 +327,7 @@ type WaveformConfig struct {
 type Waveform struct{}
 
 func (*Library) NewWaveform(WaveformConfig) (*Waveform, error) { return nil, errUnsupportedPlatform }
-func (*Waveform) ReadPCMFrames(unsafe.Pointer, uint64) (uint64, error) {
+func (*Waveform) Read([]float32) (uint64, error) {
 	return 0, errUnsupportedPlatform
 }
 func (*Waveform) SeekToPCMFrame(uint64) error { return errUnsupportedPlatform }
@@ -296,12 +347,13 @@ type NoiseConfig struct {
 }
 type Noise struct{}
 
-func (*Library) NewNoise(NoiseConfig) (*Noise, error)               { return nil, errUnsupportedPlatform }
-func (*Noise) ReadPCMFrames(unsafe.Pointer, uint64) (uint64, error) { return 0, errUnsupportedPlatform }
-func (*Noise) SetAmplitude(float64) error                           { return errUnsupportedPlatform }
-func (*Noise) SetSeed(int32) error                                  { return errUnsupportedPlatform }
-func (*Noise) SetType(NoiseType) error                              { return errUnsupportedPlatform }
-func (*Noise) Close() error                                         { return errUnsupportedPlatform }
+func (*Library) NewNoise(NoiseConfig) (*Noise, error) { return nil, errUnsupportedPlatform }
+func (*Noise) Read([]float32) (uint64, error)         { return 0, errUnsupportedPlatform }
+func (*Noise) ReadS16([]int16) (uint64, error)        { return 0, errUnsupportedPlatform }
+func (*Noise) SetAmplitude(float64) error             { return errUnsupportedPlatform }
+func (*Noise) SetSeed(int32) error                    { return errUnsupportedPlatform }
+func (*Noise) SetType(NoiseType) error                { return errUnsupportedPlatform }
+func (*Noise) Close() error                           { return errUnsupportedPlatform }
 
 type BiquadConfig struct {
 	Format   Format
@@ -318,11 +370,10 @@ type Biquad struct{}
 func (*Library) NewBiquad(BiquadConfig) (*Biquad, error) { return nil, errUnsupportedPlatform }
 func (*Biquad) Reinit(BiquadConfig) error                { return errUnsupportedPlatform }
 func (*Biquad) ClearCache() error                        { return errUnsupportedPlatform }
-func (*Biquad) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
-	return errUnsupportedPlatform
-}
-func (*Biquad) Latency() uint32 { return 0 }
-func (*Biquad) Close() error    { return errUnsupportedPlatform }
+func (*Biquad) Process([]float32, []float32) error       { return errUnsupportedPlatform }
+func (*Biquad) ProcessS16([]int16, []int16) error        { return errUnsupportedPlatform }
+func (*Biquad) Latency() uint32                          { return 0 }
+func (*Biquad) Close() error                             { return errUnsupportedPlatform }
 
 type LowPassFilter1Config struct {
 	Format          Format
@@ -366,7 +417,10 @@ func (*Library) NewLPF1(LowPassFilter1Config) (*LowPassFilter1, error) {
 }
 func (*LowPassFilter1) Reinit(LowPassFilter1Config) error { return errUnsupportedPlatform }
 func (*LowPassFilter1) ClearCache() error                 { return errUnsupportedPlatform }
-func (*LowPassFilter1) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*LowPassFilter1) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*LowPassFilter1) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*LowPassFilter1) Latency() uint32 { return 0 }
@@ -380,7 +434,10 @@ func (*Library) NewLPF2(LowPassFilter2Config) (*LowPassFilter2, error) {
 }
 func (*LowPassFilter2) Reinit(LowPassFilter2Config) error { return errUnsupportedPlatform }
 func (*LowPassFilter2) ClearCache() error                 { return errUnsupportedPlatform }
-func (*LowPassFilter2) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*LowPassFilter2) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*LowPassFilter2) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*LowPassFilter2) Latency() uint32 { return 0 }
@@ -394,7 +451,10 @@ func (*Library) NewLPF(LowPassFilterConfig) (*LowPassFilter, error) {
 }
 func (*LowPassFilter) Reinit(LowPassFilterConfig) error { return errUnsupportedPlatform }
 func (*LowPassFilter) ClearCache() error                { return errUnsupportedPlatform }
-func (*LowPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*LowPassFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*LowPassFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*LowPassFilter) Latency() uint32 { return 0 }
@@ -443,7 +503,10 @@ func (*Library) NewHPF1(HighPassFilter1Config) (*HighPassFilter1, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*HighPassFilter1) Reinit(HighPassFilter1Config) error { return errUnsupportedPlatform }
-func (*HighPassFilter1) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*HighPassFilter1) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*HighPassFilter1) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*HighPassFilter1) Latency() uint32 { return 0 }
@@ -456,7 +519,10 @@ func (*Library) NewHPF2(HighPassFilter2Config) (*HighPassFilter2, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*HighPassFilter2) Reinit(HighPassFilter2Config) error { return errUnsupportedPlatform }
-func (*HighPassFilter2) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*HighPassFilter2) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*HighPassFilter2) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*HighPassFilter2) Latency() uint32 { return 0 }
@@ -469,7 +535,10 @@ func (*Library) NewHPF(HighPassFilterConfig) (*HighPassFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*HighPassFilter) Reinit(HighPassFilterConfig) error { return errUnsupportedPlatform }
-func (*HighPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*HighPassFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*HighPassFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*HighPassFilter) Latency() uint32 { return 0 }
@@ -508,7 +577,10 @@ func (*Library) NewBPF2(BandPassFilter2Config) (*BandPassFilter2, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*BandPassFilter2) Reinit(BandPassFilter2Config) error { return errUnsupportedPlatform }
-func (*BandPassFilter2) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*BandPassFilter2) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*BandPassFilter2) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*BandPassFilter2) Latency() uint32 { return 0 }
@@ -521,7 +593,10 @@ func (*Library) NewBPF(BandPassFilterConfig) (*BandPassFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*BandPassFilter) Reinit(BandPassFilterConfig) error { return errUnsupportedPlatform }
-func (*BandPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*BandPassFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*BandPassFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*BandPassFilter) Latency() uint32 { return 0 }
@@ -589,7 +664,10 @@ func (*Library) NewNotch2(NotchFilterConfig) (*NotchFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*NotchFilter) Reinit(NotchFilterConfig) error { return errUnsupportedPlatform }
-func (*NotchFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*NotchFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*NotchFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*NotchFilter) Latency() uint32 { return 0 }
@@ -602,7 +680,10 @@ func (*Library) NewPeak2(PeakFilterConfig) (*PeakFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*PeakFilter) Reinit(PeakFilterConfig) error { return errUnsupportedPlatform }
-func (*PeakFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*PeakFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*PeakFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*PeakFilter) Latency() uint32 { return 0 }
@@ -618,7 +699,10 @@ func (*Library) NewLowShelf2(LowShelfFilterConfig) (*LowShelfFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*LowShelfFilter) Reinit(LowShelfFilterConfig) error { return errUnsupportedPlatform }
-func (*LowShelfFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*LowShelfFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*LowShelfFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*LowShelfFilter) Latency() uint32 { return 0 }
@@ -634,7 +718,10 @@ func (*Library) NewHighShelf2(HighShelfFilterConfig) (*HighShelfFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*HighShelfFilter) Reinit(HighShelfFilterConfig) error { return errUnsupportedPlatform }
-func (*HighShelfFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*HighShelfFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*HighShelfFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*HighShelfFilter) Latency() uint32 { return 0 }
@@ -667,7 +754,7 @@ type Delay struct{}
 func (*Library) NewDelay(DelayConfig) (*Delay, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*Delay) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint32) error {
+func (*Delay) Process([]float32, []float32) error {
 	return errUnsupportedPlatform
 }
 func (*Delay) Wet() float32           { return 0 }

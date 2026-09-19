@@ -1,12 +1,12 @@
 // Command convert-formats shows PCM conversion: changing sample formats with
-// ConvertPCMSamples, reporting BytesPerSample, and converting format, channel
-// count and sample rate in one ConvertFrames call. It needs no audio device.
+// ConvertF32ToS16 and ConvertS16ToF32, reporting BytesPerSample, and converting
+// format, channel count and sample rate in one ConvertFramesF32ToS16 call.
+// It needs no audio device.
 package main
 
 import (
 	"fmt"
 	"math"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 	"github.com/darkliquid/mago/examples/internal/example"
@@ -33,22 +33,14 @@ func main() {
 	}
 
 	s16 := make([]int16, frames)
-	example.Must(lib.ConvertPCMSamples(
-		unsafe.Pointer(&s16[0]), mago.FormatS16,
-		unsafe.Pointer(&source[0]), mago.FormatF32,
-		uint64(frames), mago.DitherModeNone,
-	))
+	example.Must(lib.ConvertF32ToS16(s16, source, mago.DitherModeNone))
 	fmt.Println("converted to s16:")
 	fmt.Printf("  %v\n", s16)
 
-	u8 := make([]uint8, frames)
-	example.Must(lib.ConvertPCMSamples(
-		unsafe.Pointer(&u8[0]), mago.FormatU8,
-		unsafe.Pointer(&source[0]), mago.FormatF32,
-		uint64(frames), mago.DitherModeNone,
-	))
-	fmt.Println("converted to u8:")
-	fmt.Printf("  %v\n", u8)
+	f32Restored := make([]float32, frames)
+	example.Must(lib.ConvertS16ToF32(f32Restored, s16))
+	fmt.Println("converted back to f32:")
+	fmt.Printf("  %v\n", f32Restored)
 
 	fmt.Println("bytes per sample:")
 	for _, format := range []mago.Format{mago.FormatU8, mago.FormatS16, mago.FormatS24, mago.FormatS32, mago.FormatF32} {
@@ -64,9 +56,9 @@ func main() {
 	}
 
 	downsampled := make([]int16, frames)
-	written, err := lib.ConvertFrames(
-		unsafe.Pointer(&downsampled[0]), uint64(len(downsampled)), mago.FormatS16, 1, sampleRate/2,
-		unsafe.Pointer(&stereo[0]), uint64(frames), mago.FormatF32, 2, sampleRate,
+	written, err := lib.ConvertFramesF32ToS16(
+		downsampled, 1, sampleRate/2,
+		stereo, 2, sampleRate,
 	)
 	example.Must(err)
 	fmt.Printf("ConvertFrames: stereo f32 @%dHz -> mono s16 @%dHz, wrote %d frames\n", sampleRate, sampleRate/2, written)

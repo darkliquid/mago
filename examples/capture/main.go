@@ -11,7 +11,6 @@ import (
 	"math"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 	"github.com/darkliquid/mago/examples/internal/example"
@@ -65,14 +64,14 @@ func main() {
 			SampleRate:         sampleRate,
 			PeriodSizeInFrames: 256,
 		},
-		DataCallback: func(_ *mago.Device, _ unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
-			if input == nil {
+		DataCallback: func(_ *mago.Device, io mago.DeviceIO) {
+			samples := io.InputF32()
+			if len(samples) == 0 {
 				return
 			}
-			samples := unsafe.Slice((*float32)(input), int(frameCount)*channels)
 			mu.Lock()
 			defer mu.Unlock()
-			frames += uint64(frameCount)
+			frames += uint64(io.FrameCount())
 			for _, sample := range samples {
 				value := float64(sample)
 				if magnitude := math.Abs(value); magnitude > peak {

@@ -47,6 +47,7 @@ type (
 type HighPassFilter1 struct {
 	handle *hpf1Handle
 	lib    *Library
+	config HighPassFilter1Config
 }
 
 // NewHighPassFilter1 creates and initializes a first-order high-pass filter.
@@ -80,6 +81,7 @@ func (lib *Library) NewHighPassFilter1(config HighPassFilter1Config) (*HighPassF
 	return &HighPassFilter1{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -103,19 +105,45 @@ func (f *HighPassFilter1) Reinit(config HighPassFilter1Config) error {
 		SampleRate:      config.SampleRate,
 		CutoffFrequency: config.CutoffFrequency,
 	}
-	return f.lib.resultError("ma_hpf1_reinit", f.lib.bindings.maHPF1Reinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_hpf1_reinit", f.lib.bindings.maHPF1Reinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-// pFramesOut and pFramesIn can point to the same buffer for in-place processing.
-func (f *HighPassFilter1) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *HighPassFilter1) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil hpf1")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_hpf1_process_pcm_frames", f.lib.bindings.maHPF1ProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_hpf1_process_pcm_frames",
+		f.lib.bindings.maHPF1ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *HighPassFilter1) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil hpf1")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_hpf1_process_pcm_frames",
+		f.lib.bindings.maHPF1ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.
@@ -147,6 +175,7 @@ func (f *HighPassFilter1) Close() error {
 type HighPassFilter2 struct {
 	handle *hpf2Handle
 	lib    *Library
+	config HighPassFilter2Config
 }
 
 // NewHighPassFilter2 creates and initializes a second-order high-pass filter.
@@ -175,6 +204,7 @@ func (lib *Library) NewHighPassFilter2(config HighPassFilter2Config) (*HighPassF
 	return &HighPassFilter2{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -193,18 +223,45 @@ func (f *HighPassFilter2) Reinit(config HighPassFilter2Config) error {
 	}
 
 	nativeConfig := hpf2ConfigNative(config)
-	return f.lib.resultError("ma_hpf2_reinit", f.lib.bindings.maHPF2Reinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_hpf2_reinit", f.lib.bindings.maHPF2Reinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-func (f *HighPassFilter2) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *HighPassFilter2) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil hpf2")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_hpf2_process_pcm_frames", f.lib.bindings.maHPF2ProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_hpf2_process_pcm_frames",
+		f.lib.bindings.maHPF2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *HighPassFilter2) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil hpf2")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_hpf2_process_pcm_frames",
+		f.lib.bindings.maHPF2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.
@@ -236,6 +293,7 @@ func (f *HighPassFilter2) Close() error {
 type HighPassFilter struct {
 	handle *hpfHandle
 	lib    *Library
+	config HighPassFilterConfig
 }
 
 // NewHighPassFilter creates and initializes an Nth-order high-pass filter.
@@ -264,6 +322,7 @@ func (lib *Library) NewHighPassFilter(config HighPassFilterConfig) (*HighPassFil
 	return &HighPassFilter{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -282,18 +341,45 @@ func (f *HighPassFilter) Reinit(config HighPassFilterConfig) error {
 	}
 
 	nativeConfig := hpfConfigNative(config)
-	return f.lib.resultError("ma_hpf_reinit", f.lib.bindings.maHPFReinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_hpf_reinit", f.lib.bindings.maHPFReinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-func (f *HighPassFilter) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *HighPassFilter) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil hpf")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_hpf_process_pcm_frames", f.lib.bindings.maHPFProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_hpf_process_pcm_frames",
+		f.lib.bindings.maHPFProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *HighPassFilter) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil hpf")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_hpf_process_pcm_frames",
+		f.lib.bindings.maHPFProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.

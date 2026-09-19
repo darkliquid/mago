@@ -128,16 +128,38 @@ func (f *LowPassFilter1) ClearCache() error {
 	return f.Reinit(f.config)
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-// pFramesOut and pFramesIn can point to the same buffer for in-place processing.
-func (f *LowPassFilter1) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *LowPassFilter1) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil lpf1")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_lpf1_process_pcm_frames", f.lib.bindings.maLPF1ProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_lpf1_process_pcm_frames",
+		f.lib.bindings.maLPF1ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *LowPassFilter1) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil lpf1")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_lpf1_process_pcm_frames",
+		f.lib.bindings.maLPF1ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.
@@ -169,6 +191,7 @@ func (f *LowPassFilter1) Close() error {
 type LowPassFilter2 struct {
 	handle *lpf2Handle
 	lib    *Library
+	config LowPassFilter2Config
 }
 
 // NewLowPassFilter2 creates and initializes a second-order low-pass filter.
@@ -197,6 +220,7 @@ func (lib *Library) NewLowPassFilter2(config LowPassFilter2Config) (*LowPassFilt
 	return &LowPassFilter2{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -215,7 +239,11 @@ func (f *LowPassFilter2) Reinit(config LowPassFilter2Config) error {
 	}
 
 	nativeConfig := lpf2ConfigNative(config)
-	return f.lib.resultError("ma_lpf2_reinit", f.lib.bindings.maLPF2Reinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_lpf2_reinit", f.lib.bindings.maLPF2Reinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
 // ClearCache clears the internal state/history buffer of the filter.
@@ -229,15 +257,38 @@ func (f *LowPassFilter2) ClearCache() error {
 	return f.lib.resultError("ma_lpf2_clear_cache", f.lib.bindings.maLPF2ClearCache(f.handle))
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-func (f *LowPassFilter2) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *LowPassFilter2) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil lpf2")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_lpf2_process_pcm_frames", f.lib.bindings.maLPF2ProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_lpf2_process_pcm_frames",
+		f.lib.bindings.maLPF2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *LowPassFilter2) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil lpf2")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_lpf2_process_pcm_frames",
+		f.lib.bindings.maLPF2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.
@@ -341,15 +392,38 @@ func (f *LowPassFilter) ClearCache() error {
 	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-func (f *LowPassFilter) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *LowPassFilter) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil lpf")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_lpf_process_pcm_frames", f.lib.bindings.maLPFProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_lpf_process_pcm_frames",
+		f.lib.bindings.maLPFProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *LowPassFilter) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil lpf")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_lpf_process_pcm_frames",
+		f.lib.bindings.maLPFProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.

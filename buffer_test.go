@@ -2,7 +2,6 @@ package mago
 
 import (
 	"testing"
-	"unsafe"
 )
 
 func TestAudioBufferReadAndSeek(t *testing.T) {
@@ -14,8 +13,7 @@ func TestAudioBufferReadAndSeek(t *testing.T) {
 		Channels:     1,
 		SampleRate:   48_000,
 		SizeInFrames: uint64(len(samples)),
-		Data:         unsafe.Pointer(&samples[0]),
-		DataRef:      samples,
+		DataF32:      samples,
 	})
 	if err != nil {
 		t.Fatalf("NewAudioBuffer: %v", err)
@@ -27,15 +25,26 @@ func TestAudioBufferReadAndSeek(t *testing.T) {
 	}
 
 	out := make([]float32, 4)
-	read, err := buffer.ReadPCMFrames(unsafe.Pointer(&out[0]), uint64(len(out)), false)
+	read, err := buffer.Read(out, false)
 	if err != nil {
-		t.Fatalf("ReadPCMFrames: %v", err)
+		t.Fatalf("Read: %v", err)
 	}
 	if read != uint64(len(out)) {
 		t.Fatalf("read %d frames, want %d", read, len(out))
 	}
 	if out[0] != samples[0] || out[3] != samples[3] {
 		t.Fatalf("read %v, want the first four source samples", out)
+	}
+
+	mapped, err := buffer.MapF32()
+	if err != nil {
+		t.Fatalf("MapF32: %v", err)
+	}
+	if len(mapped) != 4 || mapped[0] != samples[4] {
+		t.Fatalf("mapped %v, want remaining 4 samples starting at 4", mapped)
+	}
+	if err := buffer.Unmap(4); err != nil {
+		t.Fatalf("Unmap: %v", err)
 	}
 
 	if err := buffer.SeekToPCMFrame(0); err != nil {
@@ -50,9 +59,9 @@ func TestAudioBufferRefDoesNotOwnData(t *testing.T) {
 	lib := newNullLibrary(t)
 
 	samples := []float32{1, 2, 3, 4}
-	ref, err := lib.NewAudioBufferRef(FormatF32, 1, unsafe.Pointer(&samples[0]), uint64(len(samples)), samples)
+	ref, err := lib.NewAudioBufferRefF32(1, samples)
 	if err != nil {
-		t.Fatalf("NewAudioBufferRef: %v", err)
+		t.Fatalf("NewAudioBufferRefF32: %v", err)
 	}
 	defer func() { _ = ref.Close() }()
 
@@ -61,12 +70,26 @@ func TestAudioBufferRefDoesNotOwnData(t *testing.T) {
 	}
 
 	out := make([]float32, 2)
-	read, err := ref.ReadPCMFrames(unsafe.Pointer(&out[0]), 2, false)
+	read, err := ref.Read(out, false)
 	if err != nil {
-		t.Fatalf("ReadPCMFrames: %v", err)
+		t.Fatalf("Read: %v", err)
 	}
 	if read != 2 || out[0] != 1 {
 		t.Fatalf("read %d frames %v, want 2 starting at 1", read, out)
+	}
+
+	mapped, err := ref.MapF32()
+	if err != nil {
+		t.Fatalf("MapF32: %v", err)
+	}
+	if len(mapped) != 2 || mapped[0] != 3 {
+		t.Fatalf("mapped %v, want remaining 2 samples starting at 3", mapped)
+	}
+	if err := ref.Unmap(2); err != nil {
+		t.Fatalf("Unmap: %v", err)
+	}
+	if !ref.AtEnd() {
+		t.Fatal("expected reference to be at end after unmapping remaining frames")
 	}
 }
 
@@ -83,34 +106,32 @@ func TestRingBufferWriteThenRead(t *testing.T) {
 		t.Fatal("expected space to write into a fresh ring buffer")
 	}
 
-	ptr, size, err := ring.AcquireWrite(64)
+	region, err := ring.AcquireWrite(64)
 	if err != nil {
 		t.Fatalf("AcquireWrite: %v", err)
 	}
-	if ptr == nil || size == 0 {
+	if len(region) == 0 {
 		t.Fatal("expected a writable region")
 	}
-	region := unsafe.Slice((*byte)(ptr), size)
 	for i := range region {
 		region[i] = byte(i)
 	}
-	if err := ring.CommitWrite(size); err != nil {
+	if err := ring.CommitWrite(uint(len(region))); err != nil {
 		t.Fatalf("CommitWrite: %v", err)
 	}
 
-	if got := ring.AvailableRead(); got < uint32(size) {
-		t.Fatalf("available read = %d, want at least %d", got, size)
+	if got := ring.AvailableRead(); got < uint32(len(region)) {
+		t.Fatalf("available read = %d, want at least %d", got, len(region))
 	}
 
-	readPtr, readSize, err := ring.AcquireRead(64)
+	read, err := ring.AcquireRead(64)
 	if err != nil {
 		t.Fatalf("AcquireRead: %v", err)
 	}
-	read := unsafe.Slice((*byte)(readPtr), readSize)
-	if read[0] != 0 || read[1] != 1 {
+	if len(read) == 0 || read[0] != 0 || read[1] != 1 {
 		t.Fatalf("read %v, want the written bytes", read[:4])
 	}
-	if err := ring.CommitRead(readSize); err != nil {
+	if err := ring.CommitRead(uint(len(read))); err != nil {
 		t.Fatalf("CommitRead: %v", err)
 	}
 }
@@ -128,33 +149,28 @@ func TestPCMRingBufferRoundTrip(t *testing.T) {
 		t.Fatalf("ring reports format %v channels %d", ring.Format(), ring.Channels())
 	}
 
-	ptr, frames, err := ring.AcquireWrite(16)
+	region, err := ring.AcquireWrite(16)
 	if err != nil {
 		t.Fatalf("AcquireWrite: %v", err)
 	}
-	if frames == 0 {
+	if len(region) == 0 {
 		t.Fatal("expected writable frames")
 	}
-	region := unsafe.Slice((*float32)(ptr), frames)
 	for i := range region {
 		region[i] = float32(i)
 	}
-	if err := ring.CommitWrite(frames); err != nil {
+	if err := ring.CommitWrite(uint32(len(region))); err != nil {
 		t.Fatalf("CommitWrite: %v", err)
 	}
 
-	readPtr, readFrames, err := ring.AcquireRead(16)
+	read, err := ring.AcquireRead(16)
 	if err != nil {
 		t.Fatalf("AcquireRead: %v", err)
 	}
-	if readFrames == 0 {
-		t.Fatal("expected readable frames")
-	}
-	read := unsafe.Slice((*float32)(readPtr), readFrames)
-	if read[0] != 0 || read[1] != 1 {
+	if len(read) == 0 || read[0] != 0 || read[1] != 1 {
 		t.Fatalf("read %v, want the written frames", read[:4])
 	}
-	if err := ring.CommitRead(readFrames); err != nil {
+	if err := ring.CommitRead(uint32(len(read))); err != nil {
 		t.Fatalf("CommitRead: %v", err)
 	}
 }

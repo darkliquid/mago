@@ -19,8 +19,9 @@ type WaveformConfig struct {
 
 // Waveform generates periodic audio waveforms (sine, square, triangle, sawtooth).
 type Waveform struct {
-	lib    *Library
-	handle *waveformHandle
+	lib      *Library
+	handle   *waveformHandle
+	channels uint32
 }
 
 // NewWaveform creates and initializes a new Waveform generator.
@@ -42,19 +43,27 @@ func (lib *Library) NewWaveform(config WaveformConfig) (*Waveform, error) {
 		return nil, lib.resultError("ma_waveform_init", result)
 	}
 
-	return &Waveform{lib: lib, handle: handle}, nil
+	return &Waveform{lib: lib, handle: handle, channels: config.Channels}, nil
 }
 
-// ReadPCMFrames writes up to frameCount frames into out, returning how many were written.
-func (w *Waveform) ReadPCMFrames(out unsafe.Pointer, frameCount uint64) (uint64, error) {
+// Read writes up to len(out)/channels frames into out, returning how many frames were written.
+// out must contain an exact multiple of the configured channel count.
+func (w *Waveform) Read(out []float32) (uint64, error) {
 	if w == nil || w.handle == nil {
 		return 0, fmt.Errorf("mago: nil waveform")
 	}
 	if err := w.lib.ensureOpen(); err != nil {
 		return 0, err
 	}
+	if len(out) == 0 {
+		return 0, nil
+	}
+	if w.channels == 0 || len(out)%int(w.channels) != 0 {
+		return 0, ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(out) / int(w.channels))
 	var framesRead uint64
-	result := w.lib.bindings.maWaveformReadPCMFrames(w.handle, out, frameCount, &framesRead)
+	result := w.lib.bindings.maWaveformReadPCMFrames(w.handle, unsafe.Pointer(&out[0]), frameCount, &framesRead)
 	if result != Success {
 		return framesRead, w.lib.resultError("ma_waveform_read_pcm_frames", result)
 	}

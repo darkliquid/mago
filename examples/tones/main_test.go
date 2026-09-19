@@ -3,7 +3,6 @@ package main
 import (
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 )
@@ -38,8 +37,8 @@ func TestTonesWithNullBackend(t *testing.T) {
 	config.Channels = 2
 	config.SampleRate = 48000
 	config.PeriodSizeInFrames = 256
-	config.DataCallback = func(_ *mago.Device, output unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
-		_, _ = waveform.ReadPCMFrames(output, uint64(frameCount))
+	config.DataCallback = func(_ *mago.Device, io mago.DeviceIO) {
+		_, _ = waveform.Read(io.OutputF32())
 	}
 
 	device, err := ctx.NewPlaybackDevice(config)

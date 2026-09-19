@@ -167,17 +167,50 @@ func channelMapDataPtr(m ChannelMap) *uint8 {
 	return &m.channels[0]
 }
 
-// ProcessPCMFrames converts frameCount interleaved frames from the input buffer
-// to the output buffer.
-func (c *ChannelConverter) ProcessPCMFrames(out unsafe.Pointer, in unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the channel converter.
+func (c *ChannelConverter) Process(out, in []float32) error {
 	if c == nil || c.handle == nil {
 		return fmt.Errorf("mago: nil channel converter")
 	}
 	if err := c.lib.ensureOpen(); err != nil {
 		return err
 	}
+	if len(in) == 0 {
+		return nil
+	}
+	if c.channelsIn == 0 || len(in)%int(c.channelsIn) != 0 {
+		return ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(in) / int(c.channelsIn))
+	requiredOut := int(frameCount * uint64(c.channelsOut))
+	if len(out) < requiredOut {
+		return ErrOutputTooSmall
+	}
 	return c.lib.resultError("ma_channel_converter_process_pcm_frames",
-		c.lib.bindings.maChannelConverterProcessPCMFrames(c.handle, out, in, frameCount))
+		c.lib.bindings.maChannelConverterProcessPCMFrames(c.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the channel converter.
+func (c *ChannelConverter) ProcessS16(out, in []int16) error {
+	if c == nil || c.handle == nil {
+		return fmt.Errorf("mago: nil channel converter")
+	}
+	if err := c.lib.ensureOpen(); err != nil {
+		return err
+	}
+	if len(in) == 0 {
+		return nil
+	}
+	if c.channelsIn == 0 || len(in)%int(c.channelsIn) != 0 {
+		return ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(in) / int(c.channelsIn))
+	requiredOut := int(frameCount * uint64(c.channelsOut))
+	if len(out) < requiredOut {
+		return ErrOutputTooSmall
+	}
+	return c.lib.resultError("ma_channel_converter_process_pcm_frames",
+		c.lib.bindings.maChannelConverterProcessPCMFrames(c.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // InputChannelMap reports the converter's resolved input channel map.

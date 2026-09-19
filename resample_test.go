@@ -3,8 +3,32 @@ package mago
 import (
 	"math"
 	"testing"
-	"unsafe"
 )
+
+func TestResamplerProcessSlice(t *testing.T) {
+	lib := newNullLibrary(t)
+	r, err := lib.NewResampler(ResamplerConfig{
+		Format:        FormatF32,
+		Channels:      1,
+		SampleRateIn:  44100,
+		SampleRateOut: 48000,
+		Algorithm:     ResampleAlgorithmLinear,
+	})
+	if err != nil {
+		t.Fatalf("NewResampler: %v", err)
+	}
+	defer func() { _ = r.Close() }()
+
+	in := make([]float32, 441)
+	out := make([]float32, 480)
+	inRead, outWritten, err := r.Process(in, out)
+	if err != nil {
+		t.Fatalf("r.Process: %v", err)
+	}
+	if inRead == 0 || outWritten == 0 {
+		t.Errorf("expected frames processed, got in=%d, out=%d", inRead, outWritten)
+	}
+}
 
 func TestResamplerUpsamplesF32(t *testing.T) {
 	lib := newNullLibrary(t)
@@ -21,12 +45,9 @@ func TestResamplerUpsamplesF32(t *testing.T) {
 	}
 	out := make([]float32, 960)
 
-	usedIn, usedOut, err := resampler.ProcessPCMFrames(
-		unsafe.Pointer(&in[0]), uint64(len(in)),
-		unsafe.Pointer(&out[0]), uint64(len(out)),
-	)
+	usedIn, usedOut, err := resampler.Process(in, out)
 	if err != nil {
-		t.Fatalf("ProcessPCMFrames: %v", err)
+		t.Fatalf("Process: %v", err)
 	}
 	if usedIn == 0 || usedOut == 0 {
 		t.Fatalf("expected frames in and out, got %d and %d", usedIn, usedOut)
@@ -48,12 +69,9 @@ func TestLinearResamplerPreservesToneEnergy(t *testing.T) {
 	}
 	out := make([]float32, 480)
 
-	_, usedOut, err := resampler.ProcessPCMFrames(
-		unsafe.Pointer(&in[0]), uint64(len(in)),
-		unsafe.Pointer(&out[0]), uint64(len(out)),
-	)
+	_, usedOut, err := resampler.Process(in, out)
 	if err != nil {
-		t.Fatalf("ProcessPCMFrames: %v", err)
+		t.Fatalf("Process: %v", err)
 	}
 
 	var peak float32
@@ -84,12 +102,9 @@ func TestDataConverterChangesFormatChannelsAndRate(t *testing.T) {
 	}
 	out := make([]int16, 240)
 
-	_, usedOut, err := converter.ProcessPCMFrames(
-		unsafe.Pointer(&in[0]), uint64(len(in)/2),
-		unsafe.Pointer(&out[0]), uint64(len(out)),
-	)
+	_, usedOut, err := converter.ProcessF32ToS16(in, out)
 	if err != nil {
-		t.Fatalf("ProcessPCMFrames: %v", err)
+		t.Fatalf("ProcessF32ToS16: %v", err)
 	}
 	if usedOut == 0 {
 		t.Fatal("expected output frames")

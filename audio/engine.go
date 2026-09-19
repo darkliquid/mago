@@ -5,7 +5,6 @@ import (
 	"io"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 )
@@ -273,14 +272,13 @@ func (e *Engine) Crossfade(from *Stream, to *Clip, duration time.Duration, optio
 	return toStream, nil
 }
 
-func (e *Engine) onDeviceData(device *mago.Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
+func (e *Engine) onDeviceData(device *mago.Device, io mago.DeviceIO) {
 	_ = device
-	_ = input
-	if output == nil {
+	out := io.OutputF32()
+	if len(out) == 0 {
 		return
 	}
 
-	out := unsafe.Slice((*float32)(output), int(frameCount*e.channels))
 	for i := range out {
 		out[i] = 0
 	}
@@ -289,7 +287,7 @@ func (e *Engine) onDeviceData(device *mago.Device, output unsafe.Pointer, input 
 	defer e.mu.Unlock()
 
 	for stream := range e.streams {
-		if !stream.mixInto(out, int(frameCount), int(e.channels), int(e.sampleRate)) {
+		if !stream.mixInto(out, int(io.FrameCount()), int(e.channels), int(e.sampleRate)) {
 			delete(e.streams, stream)
 		}
 	}

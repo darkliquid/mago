@@ -7,35 +7,34 @@ import (
 	"unsafe"
 )
 
-// AudioBufferConfig describes an in-memory PCM buffer. When Data is nil,
-// miniaudio allocates the storage itself; otherwise it references the memory
-// Data points at.
+// AudioBufferConfig describes an in-memory PCM buffer. When Data and DataF32
+// are nil/empty, miniaudio allocates the storage itself; otherwise it references
+// the memory backing the slice.
 type AudioBufferConfig struct {
 	Format       Format
 	Channels     uint32
 	SampleRate   uint32
 	SizeInFrames uint64
-	Data         unsafe.Pointer
-
-	// DataRef, when set, is retained by the AudioBuffer so that the memory Data
-	// points at cannot be garbage collected while miniaudio references it.
-	DataRef any
+	Data         []byte
+	DataF32      []float32
 }
 
 // AudioBuffer is an in-memory PCM buffer that behaves as a data source.
 type AudioBuffer struct {
-	lib     *Library
-	handle  *audioBufferHandle
-	dataRef any
+	lib      *Library
+	handle   *audioBufferHandle
+	format   Format
+	channels uint32
+	dataRef  any
 }
 
-// NewAudioBuffer creates a buffer referencing config.Data (or allocating its own
-// storage when Data is nil).
+// NewAudioBuffer creates a buffer referencing config.Data or config.DataF32
+// (or allocating its own storage when both are empty).
 func (lib *Library) NewAudioBuffer(config AudioBufferConfig) (*AudioBuffer, error) {
 	return lib.newAudioBuffer("ma_audio_buffer_init", config, false)
 }
 
-// NewAudioBufferCopy creates a buffer that copies config.Data.
+// NewAudioBufferCopy creates a buffer that copies config.Data or config.DataF32.
 func (lib *Library) NewAudioBufferCopy(config AudioBufferConfig) (*AudioBuffer, error) {
 	return lib.newAudioBuffer("ma_audio_buffer_init_copy", config, true)
 }
@@ -45,12 +44,37 @@ func (lib *Library) newAudioBuffer(op string, config AudioBufferConfig, copyData
 		return nil, err
 	}
 
+	var dataPtr unsafe.Pointer
+	var dataRef any
+	sizeInFrames := config.SizeInFrames
+
+	if len(config.DataF32) > 0 {
+		if config.Channels == 0 || len(config.DataF32)%int(config.Channels) != 0 {
+			return nil, ErrInvalidSliceLength
+		}
+		dataPtr = unsafe.Pointer(&config.DataF32[0])
+		dataRef = config.DataF32
+		if sizeInFrames == 0 {
+			sizeInFrames = uint64(len(config.DataF32) / int(config.Channels))
+		}
+	} else if len(config.Data) > 0 {
+		bytesPerFrame := uint64(config.Channels) * uint64(BytesPerSample(config.Format))
+		if bytesPerFrame > 0 && uint64(len(config.Data))%bytesPerFrame != 0 {
+			return nil, ErrInvalidSliceLength
+		}
+		dataPtr = unsafe.Pointer(&config.Data[0])
+		dataRef = config.Data
+		if sizeInFrames == 0 && bytesPerFrame > 0 {
+			sizeInFrames = uint64(len(config.Data)) / bytesPerFrame
+		}
+	}
+
 	native := audioBufferConfigNative{
 		Format:       config.Format,
 		Channels:     config.Channels,
 		SampleRate:   config.SampleRate,
-		SizeInFrames: config.SizeInFrames,
-		Data:         config.Data,
+		SizeInFrames: sizeInFrames,
+		Data:         dataPtr,
 	}
 
 	handle := (*audioBufferHandle)(lib.bindings.magoAlloc(magoObjectAudioBuffer))
@@ -69,19 +93,53 @@ func (lib *Library) newAudioBuffer(op string, config AudioBufferConfig, copyData
 		return nil, lib.resultError(op, result)
 	}
 
-	return &AudioBuffer{lib: lib, handle: handle, dataRef: config.DataRef}, nil
+	return &AudioBuffer{
+		lib:      lib,
+		handle:   handle,
+		format:   config.Format,
+		channels: config.Channels,
+		dataRef:  dataRef,
+	}, nil
 }
 
-// ReadPCMFrames writes up to frameCount frames into out, returning how many were
-// written. Set loop to restart from the beginning at the end of the buffer.
-func (b *AudioBuffer) ReadPCMFrames(out unsafe.Pointer, frameCount uint64, loop bool) (uint64, error) {
+// Read fills out with audio frames, returning the number of frames read.
+// out must contain an exact multiple of the configured channel count.
+func (b *AudioBuffer) Read(out []float32, loop bool) (uint64, error) {
 	if b == nil || b.handle == nil {
 		return 0, fmt.Errorf("mago: nil audio buffer")
 	}
 	if err := b.lib.ensureOpen(); err != nil {
 		return 0, err
 	}
-	return b.lib.bindings.maAudioBufferReadPCMFrames(b.handle, out, frameCount, boolToBool32(loop)), nil
+	if len(out) == 0 {
+		return 0, nil
+	}
+	if b.channels == 0 || len(out)%int(b.channels) != 0 {
+		return 0, ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(out) / int(b.channels))
+	read := b.lib.bindings.maAudioBufferReadPCMFrames(b.handle, unsafe.Pointer(&out[0]), frameCount, boolToBool32(loop))
+	return read, nil
+}
+
+// ReadS16 fills out with int16 audio frames, returning the number of frames read.
+// out must contain an exact multiple of the configured channel count.
+func (b *AudioBuffer) ReadS16(out []int16, loop bool) (uint64, error) {
+	if b == nil || b.handle == nil {
+		return 0, fmt.Errorf("mago: nil audio buffer")
+	}
+	if err := b.lib.ensureOpen(); err != nil {
+		return 0, err
+	}
+	if len(out) == 0 {
+		return 0, nil
+	}
+	if b.channels == 0 || len(out)%int(b.channels) != 0 {
+		return 0, ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(out) / int(b.channels))
+	read := b.lib.bindings.maAudioBufferReadPCMFrames(b.handle, unsafe.Pointer(&out[0]), frameCount, boolToBool32(loop))
+	return read, nil
 }
 
 // SeekToPCMFrame moves the read cursor.
@@ -95,21 +153,59 @@ func (b *AudioBuffer) SeekToPCMFrame(frameIndex uint64) error {
 	return b.lib.resultError("ma_audio_buffer_seek_to_pcm_frame", b.lib.bindings.maAudioBufferSeekToPCMFrame(b.handle, frameIndex))
 }
 
-// Map returns a pointer to the remaining frames and the number available.
-func (b *AudioBuffer) Map() (unsafe.Pointer, uint64, error) {
+// MapF32 returns a direct slice over the remaining float32 frames in the buffer.
+func (b *AudioBuffer) MapF32() ([]float32, error) {
 	if b == nil || b.handle == nil {
-		return nil, 0, fmt.Errorf("mago: nil audio buffer")
+		return nil, fmt.Errorf("mago: nil audio buffer")
 	}
 	if err := b.lib.ensureOpen(); err != nil {
-		return nil, 0, err
+		return nil, err
+	}
+
+	frameCount, err := b.AvailableFrames()
+	if err != nil {
+		return nil, err
+	}
+	if frameCount == 0 || b.channels == 0 {
+		return nil, nil
 	}
 
 	var frames unsafe.Pointer
-	var frameCount uint64
 	if result := b.lib.bindings.maAudioBufferMap(b.handle, &frames, &frameCount); result != Success {
-		return nil, 0, b.lib.resultError("ma_audio_buffer_map", result)
+		return nil, b.lib.resultError("ma_audio_buffer_map", result)
 	}
-	return frames, frameCount, nil
+	if frames == nil || frameCount == 0 {
+		return nil, nil
+	}
+	return unsafe.Slice((*float32)(frames), int(frameCount*uint64(b.channels))), nil
+}
+
+// MapBytes returns a direct slice over the remaining bytes in the buffer.
+func (b *AudioBuffer) MapBytes() ([]byte, error) {
+	if b == nil || b.handle == nil {
+		return nil, fmt.Errorf("mago: nil audio buffer")
+	}
+	if err := b.lib.ensureOpen(); err != nil {
+		return nil, err
+	}
+
+	frameCount, err := b.AvailableFrames()
+	if err != nil {
+		return nil, err
+	}
+	bytesPerFrame := uint64(b.channels) * uint64(BytesPerSample(b.format))
+	if frameCount == 0 || bytesPerFrame == 0 {
+		return nil, nil
+	}
+
+	var frames unsafe.Pointer
+	if result := b.lib.bindings.maAudioBufferMap(b.handle, &frames, &frameCount); result != Success {
+		return nil, b.lib.resultError("ma_audio_buffer_map", result)
+	}
+	if frames == nil || frameCount == 0 {
+		return nil, nil
+	}
+	return unsafe.Slice((*byte)(frames), int(frameCount*bytesPerFrame)), nil
 }
 
 // Unmap releases a region returned by Map after frameCount frames were consumed.
@@ -177,88 +273,218 @@ func (b *AudioBuffer) Close() error {
 
 // AudioBufferRef is a non-owning view over PCM memory supplied by the caller.
 type AudioBufferRef struct {
-	lib     *Library
-	handle  *audioBufferRefHandle
-	dataRef any
+	lib      *Library
+	handle   *audioBufferRefHandle
+	format   Format
+	channels uint32
+	dataRef  any
 }
 
-// NewAudioBufferRef creates a reference over data, which must stay alive for the
-// lifetime of the reference.
-func (lib *Library) NewAudioBufferRef(format Format, channels uint32, data unsafe.Pointer, sizeInFrames uint64, dataRef ...any) (*AudioBufferRef, error) {
+// NewAudioBufferRefF32 creates a non-owning reference over a float32 sample slice.
+func (lib *Library) NewAudioBufferRefF32(channels uint32, data []float32) (*AudioBufferRef, error) {
 	if err := lib.ensureOpen(); err != nil {
 		return nil, err
 	}
+	if channels == 0 || len(data)%int(channels) != 0 {
+		return nil, ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(data) / int(channels))
 
 	handle := (*audioBufferRefHandle)(lib.bindings.magoAlloc(magoObjectAudioBufferRef))
 	if handle == nil {
 		return nil, fmt.Errorf("mago: allocate audio buffer ref: out of memory")
 	}
-	if result := lib.bindings.maAudioBufferRefInit(format, channels, data, sizeInFrames, handle); result != Success {
+
+	var dataPtr unsafe.Pointer
+	if len(data) > 0 {
+		dataPtr = unsafe.Pointer(&data[0])
+	}
+	if result := lib.bindings.maAudioBufferRefInit(FormatF32, channels, dataPtr, frameCount, handle); result != Success {
 		lib.bindings.magoFree(unsafe.Pointer(handle))
 		return nil, lib.resultError("ma_audio_buffer_ref_init", result)
 	}
 
-	ref := &AudioBufferRef{lib: lib, handle: handle}
-	if len(dataRef) > 0 {
-		ref.dataRef = dataRef[0]
-	}
-	return ref, nil
+	return &AudioBufferRef{
+		lib:      lib,
+		handle:   handle,
+		format:   FormatF32,
+		channels: channels,
+		dataRef:  data,
+	}, nil
 }
 
-// SetData points the reference at a new region.
-func (r *AudioBufferRef) SetData(data unsafe.Pointer, sizeInFrames uint64, dataRef ...any) error {
+// NewAudioBufferRef creates a non-owning reference over a byte slice formatted as specified.
+func (lib *Library) NewAudioBufferRef(format Format, channels uint32, data []byte) (*AudioBufferRef, error) {
+	if err := lib.ensureOpen(); err != nil {
+		return nil, err
+	}
+	bytesPerFrame := uint64(channels) * uint64(BytesPerSample(format))
+	if bytesPerFrame == 0 || uint64(len(data))%bytesPerFrame != 0 {
+		return nil, ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(data)) / bytesPerFrame
+
+	handle := (*audioBufferRefHandle)(lib.bindings.magoAlloc(magoObjectAudioBufferRef))
+	if handle == nil {
+		return nil, fmt.Errorf("mago: allocate audio buffer ref: out of memory")
+	}
+
+	var dataPtr unsafe.Pointer
+	if len(data) > 0 {
+		dataPtr = unsafe.Pointer(&data[0])
+	}
+	if result := lib.bindings.maAudioBufferRefInit(format, channels, dataPtr, frameCount, handle); result != Success {
+		lib.bindings.magoFree(unsafe.Pointer(handle))
+		return nil, lib.resultError("ma_audio_buffer_ref_init", result)
+	}
+
+	return &AudioBufferRef{
+		lib:      lib,
+		handle:   handle,
+		format:   format,
+		channels: channels,
+		dataRef:  data,
+	}, nil
+}
+
+// SetDataF32 points the reference at a new float32 slice.
+func (r *AudioBufferRef) SetDataF32(data []float32) error {
 	if r == nil || r.handle == nil {
 		return fmt.Errorf("mago: nil audio buffer ref")
 	}
 	if err := r.lib.ensureOpen(); err != nil {
 		return err
 	}
-	if result := r.lib.bindings.maAudioBufferRefSetData(r.handle, data, sizeInFrames); result != Success {
+	if r.channels == 0 || len(data)%int(r.channels) != 0 {
+		return ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(data) / int(r.channels))
+	var dataPtr unsafe.Pointer
+	if len(data) > 0 {
+		dataPtr = unsafe.Pointer(&data[0])
+	}
+	if result := r.lib.bindings.maAudioBufferRefSetData(r.handle, dataPtr, frameCount); result != Success {
 		return r.lib.resultError("ma_audio_buffer_ref_set_data", result)
 	}
-	if len(dataRef) > 0 {
-		r.dataRef = dataRef[0]
-	}
+	r.dataRef = data
 	return nil
 }
 
-// ReadPCMFrames writes up to frameCount frames into out.
-func (r *AudioBufferRef) ReadPCMFrames(out unsafe.Pointer, frameCount uint64, loop bool) (uint64, error) {
+// SetData points the reference at a new byte slice.
+func (r *AudioBufferRef) SetData(data []byte) error {
+	if r == nil || r.handle == nil {
+		return fmt.Errorf("mago: nil audio buffer ref")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+	bytesPerFrame := uint64(r.channels) * uint64(BytesPerSample(r.format))
+	if bytesPerFrame == 0 || uint64(len(data))%bytesPerFrame != 0 {
+		return ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(data)) / bytesPerFrame
+	var dataPtr unsafe.Pointer
+	if len(data) > 0 {
+		dataPtr = unsafe.Pointer(&data[0])
+	}
+	if result := r.lib.bindings.maAudioBufferRefSetData(r.handle, dataPtr, frameCount); result != Success {
+		return r.lib.resultError("ma_audio_buffer_ref_set_data", result)
+	}
+	r.dataRef = data
+	return nil
+}
+
+// Read writes up to len(out)/channels frames into out, returning the number of frames read.
+func (r *AudioBufferRef) Read(out []float32, loop bool) (uint64, error) {
 	if r == nil || r.handle == nil {
 		return 0, fmt.Errorf("mago: nil audio buffer ref")
 	}
 	if err := r.lib.ensureOpen(); err != nil {
 		return 0, err
 	}
-	return r.lib.bindings.maAudioBufferRefReadPCMFrames(r.handle, out, frameCount, boolToBool32(loop)), nil
+	if len(out) == 0 {
+		return 0, nil
+	}
+	if r.channels == 0 || len(out)%int(r.channels) != 0 {
+		return 0, ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(out) / int(r.channels))
+	read := r.lib.bindings.maAudioBufferRefReadPCMFrames(r.handle, unsafe.Pointer(&out[0]), frameCount, boolToBool32(loop))
+	return read, nil
 }
 
-// SeekToPCMFrame moves the read cursor.
-func (r *AudioBufferRef) SeekToPCMFrame(frameIndex uint64) error {
+// ReadS16 writes up to len(out)/channels frames into out, returning the number of frames read.
+func (r *AudioBufferRef) ReadS16(out []int16, loop bool) (uint64, error) {
 	if r == nil || r.handle == nil {
-		return fmt.Errorf("mago: nil audio buffer ref")
+		return 0, fmt.Errorf("mago: nil audio buffer ref")
 	}
 	if err := r.lib.ensureOpen(); err != nil {
-		return err
+		return 0, err
 	}
-	return r.lib.resultError("ma_audio_buffer_ref_seek_to_pcm_frame", r.lib.bindings.maAudioBufferRefSeekToPCMFrame(r.handle, frameIndex))
+	if len(out) == 0 {
+		return 0, nil
+	}
+	if r.channels == 0 || len(out)%int(r.channels) != 0 {
+		return 0, ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(out) / int(r.channels))
+	read := r.lib.bindings.maAudioBufferRefReadPCMFrames(r.handle, unsafe.Pointer(&out[0]), frameCount, boolToBool32(loop))
+	return read, nil
 }
 
-// Map returns a pointer to the remaining frames and the number available.
-func (r *AudioBufferRef) Map() (unsafe.Pointer, uint64, error) {
+// MapF32 returns a direct slice over the remaining float32 frames in the referenced buffer.
+func (r *AudioBufferRef) MapF32() ([]float32, error) {
 	if r == nil || r.handle == nil {
-		return nil, 0, fmt.Errorf("mago: nil audio buffer ref")
+		return nil, fmt.Errorf("mago: nil audio buffer ref")
 	}
 	if err := r.lib.ensureOpen(); err != nil {
-		return nil, 0, err
+		return nil, err
+	}
+
+	frameCount, err := r.AvailableFrames()
+	if err != nil {
+		return nil, err
+	}
+	if frameCount == 0 || r.channels == 0 {
+		return nil, nil
 	}
 
 	var frames unsafe.Pointer
-	var frameCount uint64
 	if result := r.lib.bindings.maAudioBufferRefMap(r.handle, &frames, &frameCount); result != Success {
-		return nil, 0, r.lib.resultError("ma_audio_buffer_ref_map", result)
+		return nil, r.lib.resultError("ma_audio_buffer_ref_map", result)
 	}
-	return frames, frameCount, nil
+	if frames == nil || frameCount == 0 {
+		return nil, nil
+	}
+	return unsafe.Slice((*float32)(frames), int(frameCount*uint64(r.channels))), nil
+}
+
+// MapBytes returns a direct slice over the remaining bytes in the referenced buffer.
+func (r *AudioBufferRef) MapBytes() ([]byte, error) {
+	if r == nil || r.handle == nil {
+		return nil, fmt.Errorf("mago: nil audio buffer ref")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return nil, err
+	}
+
+	frameCount, err := r.AvailableFrames()
+	if err != nil {
+		return nil, err
+	}
+	bytesPerFrame := uint64(r.channels) * uint64(BytesPerSample(r.format))
+	if frameCount == 0 || bytesPerFrame == 0 {
+		return nil, nil
+	}
+
+	var frames unsafe.Pointer
+	if result := r.lib.bindings.maAudioBufferRefMap(r.handle, &frames, &frameCount); result != Success {
+		return nil, r.lib.resultError("ma_audio_buffer_ref_map", result)
+	}
+	if frames == nil || frameCount == 0 {
+		return nil, nil
+	}
+	return unsafe.Slice((*byte)(frames), int(frameCount*bytesPerFrame)), nil
 }
 
 // Unmap releases a region returned by Map. Reaching the end is not an error.
@@ -367,16 +593,30 @@ func (lib *Library) newRingBuffer(op string, init func(*ringBufferHandle) Result
 	return &RingBuffer{lib: lib, handle: handle}, nil
 }
 
-// AcquireRead returns the next readable region, requesting up to sizeInBytes.
-// The returned size may be smaller because the region is always contiguous.
-func (r *RingBuffer) AcquireRead(sizeInBytes uint) (unsafe.Pointer, uint, error) {
-	return r.acquire("ma_rb_acquire_read", sizeInBytes, r.lib.bindings.maRBAcquireRead)
+// AcquireRead returns the next readable region as a byte slice, requesting up to sizeInBytes.
+// The returned slice length may be smaller because the region is always contiguous.
+func (r *RingBuffer) AcquireRead(sizeInBytes uint) ([]byte, error) {
+	ptr, sz, err := r.acquire("ma_rb_acquire_read", sizeInBytes, r.lib.bindings.maRBAcquireRead)
+	if err != nil {
+		return nil, err
+	}
+	if ptr == nil || sz == 0 {
+		return nil, nil
+	}
+	return unsafe.Slice((*byte)(ptr), int(sz)), nil
 }
 
-// AcquireWrite returns the next writable region, requesting up to sizeInBytes.
-// The returned size may be smaller because the region is always contiguous.
-func (r *RingBuffer) AcquireWrite(sizeInBytes uint) (unsafe.Pointer, uint, error) {
-	return r.acquire("ma_rb_acquire_write", sizeInBytes, r.lib.bindings.maRBAcquireWrite)
+// AcquireWrite returns the next writable region as a byte slice, requesting up to sizeInBytes.
+// The returned slice length may be smaller because the region is always contiguous.
+func (r *RingBuffer) AcquireWrite(sizeInBytes uint) ([]byte, error) {
+	ptr, sz, err := r.acquire("ma_rb_acquire_write", sizeInBytes, r.lib.bindings.maRBAcquireWrite)
+	if err != nil {
+		return nil, err
+	}
+	if ptr == nil || sz == 0 {
+		return nil, nil
+	}
+	return unsafe.Slice((*byte)(ptr), int(sz)), nil
 }
 
 func (r *RingBuffer) acquire(op string, sizeInBytes uint, fn func(*ringBufferHandle, *uintptr, *unsafe.Pointer) Result) (unsafe.Pointer, uint, error) {
@@ -519,14 +759,30 @@ func (lib *Library) newPCMRingBuffer(op string, init func(*pcmRingBufferHandle) 
 	return &PCMRingBuffer{lib: lib, handle: handle}, nil
 }
 
-// AcquireRead returns the next readable region, requesting up to sizeInFrames.
-func (r *PCMRingBuffer) AcquireRead(sizeInFrames uint32) (unsafe.Pointer, uint32, error) {
-	return r.acquire("ma_pcm_rb_acquire_read", sizeInFrames, r.lib.bindings.maPCMRBAcquireRead)
+// AcquireRead returns the next readable region as an interleaved float32 slice, requesting up to sizeInFrames.
+func (r *PCMRingBuffer) AcquireRead(sizeInFrames uint32) ([]float32, error) {
+	ptr, frames, err := r.acquire("ma_pcm_rb_acquire_read", sizeInFrames, r.lib.bindings.maPCMRBAcquireRead)
+	if err != nil {
+		return nil, err
+	}
+	channels := r.Channels()
+	if ptr == nil || frames == 0 || channels == 0 {
+		return nil, nil
+	}
+	return unsafe.Slice((*float32)(ptr), int(frames*channels)), nil
 }
 
-// AcquireWrite returns the next writable region, requesting up to sizeInFrames.
-func (r *PCMRingBuffer) AcquireWrite(sizeInFrames uint32) (unsafe.Pointer, uint32, error) {
-	return r.acquire("ma_pcm_rb_acquire_write", sizeInFrames, r.lib.bindings.maPCMRBAcquireWrite)
+// AcquireWrite returns the next writable region as an interleaved float32 slice, requesting up to sizeInFrames.
+func (r *PCMRingBuffer) AcquireWrite(sizeInFrames uint32) ([]float32, error) {
+	ptr, frames, err := r.acquire("ma_pcm_rb_acquire_write", sizeInFrames, r.lib.bindings.maPCMRBAcquireWrite)
+	if err != nil {
+		return nil, err
+	}
+	channels := r.Channels()
+	if ptr == nil || frames == 0 || channels == 0 {
+		return nil, nil
+	}
+	return unsafe.Slice((*float32)(ptr), int(frames*channels)), nil
 }
 
 func (r *PCMRingBuffer) acquire(op string, sizeInFrames uint32, fn func(*pcmRingBufferHandle, *uint32, *unsafe.Pointer) Result) (unsafe.Pointer, uint32, error) {

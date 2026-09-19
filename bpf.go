@@ -38,6 +38,7 @@ type (
 type BandPassFilter2 struct {
 	handle *bpf2Handle
 	lib    *Library
+	config BandPassFilter2Config
 }
 
 // NewBandPassFilter2 creates and initializes a second-order band-pass filter.
@@ -66,6 +67,7 @@ func (lib *Library) NewBandPassFilter2(config BandPassFilter2Config) (*BandPassF
 	return &BandPassFilter2{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -84,19 +86,45 @@ func (f *BandPassFilter2) Reinit(config BandPassFilter2Config) error {
 	}
 
 	nativeConfig := bpf2ConfigNative(config)
-	return f.lib.resultError("ma_bpf2_reinit", f.lib.bindings.maBPF2Reinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_bpf2_reinit", f.lib.bindings.maBPF2Reinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-// pFramesOut and pFramesIn can point to the same buffer for in-place processing.
-func (f *BandPassFilter2) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *BandPassFilter2) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil bpf2")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_bpf2_process_pcm_frames", f.lib.bindings.maBPF2ProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_bpf2_process_pcm_frames",
+		f.lib.bindings.maBPF2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *BandPassFilter2) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil bpf2")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_bpf2_process_pcm_frames",
+		f.lib.bindings.maBPF2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.
@@ -128,6 +156,7 @@ func (f *BandPassFilter2) Close() error {
 type BandPassFilter struct {
 	handle *bpfHandle
 	lib    *Library
+	config BandPassFilterConfig
 }
 
 // NewBandPassFilter creates and initializes an Nth-order band-pass filter.
@@ -157,6 +186,7 @@ func (lib *Library) NewBandPassFilter(config BandPassFilterConfig) (*BandPassFil
 	return &BandPassFilter{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -175,18 +205,45 @@ func (f *BandPassFilter) Reinit(config BandPassFilterConfig) error {
 	}
 
 	nativeConfig := bpfConfigNative(config)
-	return f.lib.resultError("ma_bpf_reinit", f.lib.bindings.maBPFReinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_bpf_reinit", f.lib.bindings.maBPFReinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-func (f *BandPassFilter) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *BandPassFilter) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil bpf")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_bpf_process_pcm_frames", f.lib.bindings.maBPFProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_bpf_process_pcm_frames",
+		f.lib.bindings.maBPFProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *BandPassFilter) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil bpf")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_bpf_process_pcm_frames",
+		f.lib.bindings.maBPFProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.

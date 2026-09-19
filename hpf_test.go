@@ -2,7 +2,6 @@ package mago
 
 import (
 	"testing"
-	"unsafe"
 )
 
 func TestHPF1FrequencyAttenuation(t *testing.T) {
@@ -30,11 +29,11 @@ func TestHPF1FrequencyAttenuation(t *testing.T) {
 	outLow := make([]float32, frames)
 	outHigh := make([]float32, frames)
 
-	if err := hpf.ProcessPCMFrames(unsafe.Pointer(&outLow[0]), unsafe.Pointer(&lowFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames low: %v", err)
+	if err := hpf.Process(outLow, lowFreq); err != nil {
+		t.Fatalf("Process low: %v", err)
 	}
-	if err := hpf.ProcessPCMFrames(unsafe.Pointer(&outHigh[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames high: %v", err)
+	if err := hpf.Process(outHigh, highFreq); err != nil {
+		t.Fatalf("Process high: %v", err)
 	}
 
 	lowRMS := rms(outLow)
@@ -74,11 +73,11 @@ func TestHPF2FrequencyAttenuation(t *testing.T) {
 	outLow := make([]float32, frames)
 	outHigh := make([]float32, frames)
 
-	if err := hpf.ProcessPCMFrames(unsafe.Pointer(&outLow[0]), unsafe.Pointer(&lowFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames low: %v", err)
+	if err := hpf.Process(outLow, lowFreq); err != nil {
+		t.Fatalf("Process low: %v", err)
 	}
-	if err := hpf.ProcessPCMFrames(unsafe.Pointer(&outHigh[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames high: %v", err)
+	if err := hpf.Process(outHigh, highFreq); err != nil {
+		t.Fatalf("Process high: %v", err)
 	}
 
 	lowRMS := rms(outLow)
@@ -118,11 +117,11 @@ func TestHPFNthOrderFrequencyAttenuation(t *testing.T) {
 	outLow := make([]float32, frames)
 	outHigh := make([]float32, frames)
 
-	if err := hpf.ProcessPCMFrames(unsafe.Pointer(&outLow[0]), unsafe.Pointer(&lowFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames low: %v", err)
+	if err := hpf.Process(outLow, lowFreq); err != nil {
+		t.Fatalf("Process low: %v", err)
 	}
-	if err := hpf.ProcessPCMFrames(unsafe.Pointer(&outHigh[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames high: %v", err)
+	if err := hpf.Process(outHigh, highFreq); err != nil {
+		t.Fatalf("Process high: %v", err)
 	}
 
 	lowRMS := rms(outLow)
@@ -170,7 +169,7 @@ func TestHPFLifecycleAndControls(t *testing.T) {
 	}
 
 	var dummy [4]float32
-	if err := hpf.ProcessPCMFrames(unsafe.Pointer(&dummy[0]), unsafe.Pointer(&dummy[0]), 4); err == nil {
+	if err := hpf.Process(dummy[:], dummy[:]); err == nil {
 		t.Fatal("process on closed HPF should fail")
 	}
 
@@ -178,7 +177,7 @@ func TestHPFLifecycleAndControls(t *testing.T) {
 	if err := nilHPF.Close(); err != nil {
 		t.Errorf("nil Close: %v", err)
 	}
-	if err := nilHPF.ProcessPCMFrames(nil, nil, 0); err == nil {
-		t.Error("nil ProcessPCMFrames should return error")
+	if err := nilHPF.Process(nil, nil); err == nil {
+		t.Error("nil Process should return error")
 	}
 }

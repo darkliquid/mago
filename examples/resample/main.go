@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"math"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 	"github.com/darkliquid/mago/examples/internal/example"
@@ -33,10 +32,7 @@ func main() {
 	defer func() { example.Must(resampler.Close()) }()
 
 	upsampled := make([]float32, toneFrames*2)
-	usedIn, usedOut, err := resampler.ProcessPCMFrames(
-		unsafe.Pointer(&tone[0]), uint64(len(tone)),
-		unsafe.Pointer(&upsampled[0]), uint64(len(upsampled)),
-	)
+	usedIn, usedOut, err := resampler.Process(tone, upsampled)
 	example.Must(err)
 	fmt.Printf("Resampler:       consumed %d frames, produced %d frames (24kHz -> 48kHz)\n", usedIn, usedOut)
 
@@ -50,10 +46,7 @@ func main() {
 	defer func() { example.Must(linear.Close()) }()
 
 	downsampled := make([]float32, len(upsampled))
-	_, linearOut, err := linear.ProcessPCMFrames(
-		unsafe.Pointer(&upsampled[0]), uint64(len(upsampled)),
-		unsafe.Pointer(&downsampled[0]), uint64(len(downsampled)),
-	)
+	_, linearOut, err := linear.Process(upsampled, downsampled)
 	example.Must(err)
 	fmt.Printf("LinearResampler: produced %d frames (48kHz -> 24kHz), peak %.3f\n", linearOut, peak(downsampled[:linearOut]))
 
@@ -71,10 +64,7 @@ func main() {
 	}
 	mono := make([]int16, len(upsampled))
 
-	convIn, convOut, err := converter.ProcessPCMFrames(
-		unsafe.Pointer(&stereo[0]), uint64(len(upsampled)),
-		unsafe.Pointer(&mono[0]), uint64(len(mono)),
-	)
+	convIn, convOut, err := converter.ProcessF32ToS16(stereo, mono)
 	example.Must(err)
 	fmt.Printf("DataConverter:   consumed %d stereo frames, produced %d mono s16 frames\n", convIn, convOut)
 

@@ -3,7 +3,6 @@ package mago
 import (
 	"math"
 	"testing"
-	"unsafe"
 )
 
 func TestDelayImpulseResponse(t *testing.T) {
@@ -32,8 +31,8 @@ func TestDelayImpulseResponse(t *testing.T) {
 	in[0] = 1.0 // Impulse at t = 0
 
 	out := make([]float32, totalFrames)
-	if err := delay.ProcessPCMFrames(unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), totalFrames); err != nil {
-		t.Fatalf("ProcessPCMFrames: %v", err)
+	if err := delay.Process(out, in); err != nil {
+		t.Fatalf("Process: %v", err)
 	}
 
 	// Frames 0..3 should be 0
@@ -117,8 +116,8 @@ func TestDelayLifecycleAndSafety(t *testing.T) {
 	}
 
 	var dummy [4]float32
-	if err := delay.ProcessPCMFrames(unsafe.Pointer(&dummy[0]), unsafe.Pointer(&dummy[0]), 4); err == nil {
-		t.Error("ProcessPCMFrames on closed delay should fail")
+	if err := delay.Process(dummy[:], dummy[:]); err == nil {
+		t.Error("Process on closed delay should fail")
 	}
 	if err := delay.SetWet(0.5); err == nil {
 		t.Error("SetWet on closed delay should fail")
@@ -134,8 +133,8 @@ func TestDelayLifecycleAndSafety(t *testing.T) {
 	if err := nilDelay.Close(); err != nil {
 		t.Errorf("nil Close: %v", err)
 	}
-	if err := nilDelay.ProcessPCMFrames(nil, nil, 0); err == nil {
-		t.Error("nil ProcessPCMFrames should return error")
+	if err := nilDelay.Process(nil, nil); err == nil {
+		t.Error("nil Process should return error")
 	}
 	if err := nilDelay.SetWet(0.5); err == nil {
 		t.Error("nil SetWet should return error")
