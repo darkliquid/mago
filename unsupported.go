@@ -2,7 +2,10 @@
 
 package mago
 
-import "errors"
+import (
+	"errors"
+	"unsafe"
+)
 
 var errUnsupportedPlatform = errors.New("mago: this package is currently supported on darwin, freebsd, linux, netbsd, and windows")
 
@@ -11,7 +14,7 @@ type Context struct{}
 type Device struct{}
 
 type LibraryOption func(*struct{})
-type DataCallback func(*Device, any, any, uint32)
+type DataCallback func(*Device, unsafe.Pointer, unsafe.Pointer, uint32)
 type NotificationCallback func(*Device, NotificationType)
 type PlaybackDeviceConfig struct{}
 type StreamConfig struct{}
@@ -35,7 +38,7 @@ func (*Context) NewDevice(DeviceConfig) (*Device, error) { return nil, errUnsupp
 func (*Library) NewContextWithLog(*Log, ...Backend) (*Context, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*Context) DeviceInfo(DeviceType, any) (DeviceInfo, error) {
+func (*Context) DeviceInfo(DeviceType, unsafe.Pointer) (DeviceInfo, error) {
 	return DeviceInfo{}, errUnsupportedPlatform
 }
 func (*Library) NewPlaybackDevice(*Context, PlaybackDeviceConfig) (*Device, error) {
