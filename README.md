@@ -265,6 +265,33 @@ Use the higher-level `audio` package demo:
 go run ./examples/audio-wav
 ```
 
+Inspect a device's state, name, info and master volume:
+
+```bash
+go run ./examples/device-report
+```
+
+Capture from an input device and report peak/RMS (falls back to the null backend):
+
+```bash
+go run ./examples/capture --duration 2s
+```
+
+Echo captured input back to the output through a duplex device:
+
+```bash
+go run ./examples/duplex-echo --duration 3s
+```
+
+Route miniaudio's own diagnostics into Go logging:
+
+```bash
+go run ./examples/logging
+```
+
+All of the examples accept `--backend` and fall back to the null backend when no
+real device backend is available, so they run on a headless machine.
+
 You can override the backend/device selection. The accepted backend values are platform-dependent:
 
 ```bash
