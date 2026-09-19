@@ -164,3 +164,157 @@ func (r *Resampler) Close() error {
 	r.handle = nil
 	return nil
 }
+
+// LinearResamplerConfig configures a linear resampler.
+type LinearResamplerConfig struct {
+	Format           Format
+	Channels         uint32
+	SampleRateIn     uint32
+	SampleRateOut    uint32
+	LPFOrder         uint32
+	LPFNyquistFactor float64
+}
+
+// DefaultLinearResamplerConfig returns miniaudio's defaults: a low-pass filter
+// order of 4 and a Nyquist factor of 1.
+func DefaultLinearResamplerConfig(format Format, channels, sampleRateIn, sampleRateOut uint32) LinearResamplerConfig {
+	return LinearResamplerConfig{
+		Format:           format,
+		Channels:         channels,
+		SampleRateIn:     sampleRateIn,
+		SampleRateOut:    sampleRateOut,
+		LPFOrder:         4,
+		LPFNyquistFactor: 1,
+	}
+}
+
+// LinearResampler is a fixed-rate linear resampler.
+type LinearResampler struct {
+	lib    *Library
+	handle *linearResamplerHandle
+}
+
+// NewLinearResampler creates a linear resampler.
+func (lib *Library) NewLinearResampler(config LinearResamplerConfig) (*LinearResampler, error) {
+	if err := lib.ensureOpen(); err != nil {
+		return nil, err
+	}
+
+	native := linearResamplerConfigNative{
+		Format:           config.Format,
+		Channels:         config.Channels,
+		SampleRateIn:     config.SampleRateIn,
+		SampleRateOut:    config.SampleRateOut,
+		LPFOrder:         config.LPFOrder,
+		LPFNyquistFactor: config.LPFNyquistFactor,
+	}
+
+	handle := (*linearResamplerHandle)(lib.bindings.magoAlloc(magoObjectLinearResampler))
+	if handle == nil {
+		return nil, fmt.Errorf("mago: allocate linear resampler: out of memory")
+	}
+	if result := lib.bindings.maLinearResamplerInit(&native, nil, handle); result != Success {
+		lib.bindings.magoFree(unsafe.Pointer(handle))
+		return nil, lib.resultError("ma_linear_resampler_init", result)
+	}
+
+	return &LinearResampler{lib: lib, handle: handle}, nil
+}
+
+// ProcessPCMFrames resamples up to framesIn input frames into the output buffer,
+// returning how many frames were consumed and produced.
+func (r *LinearResampler) ProcessPCMFrames(in unsafe.Pointer, framesIn uint64, out unsafe.Pointer, framesOut uint64) (uint64, uint64, error) {
+	if r == nil || r.handle == nil {
+		return 0, 0, fmt.Errorf("mago: nil linear resampler")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return 0, 0, err
+	}
+
+	inCount, outCount := framesIn, framesOut
+	result := r.lib.bindings.maLinearResamplerProcessPCMFrames(r.handle, in, &inCount, out, &outCount)
+	if result != Success {
+		return inCount, outCount, r.lib.resultError("ma_linear_resampler_process_pcm_frames", result)
+	}
+	return inCount, outCount, nil
+}
+
+// SetRate changes the input and output sample rates.
+func (r *LinearResampler) SetRate(sampleRateIn, sampleRateOut uint32) error {
+	if r == nil || r.handle == nil {
+		return fmt.Errorf("mago: nil linear resampler")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return r.lib.resultError("ma_linear_resampler_set_rate", r.lib.bindings.maLinearResamplerSetRate(r.handle, sampleRateIn, sampleRateOut))
+}
+
+// SetRateRatio changes the output-to-input rate ratio.
+func (r *LinearResampler) SetRateRatio(ratio float64) error {
+	if r == nil || r.handle == nil {
+		return fmt.Errorf("mago: nil linear resampler")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return r.lib.resultError("ma_linear_resampler_set_rate_ratio", r.lib.bindings.maLinearResamplerSetRateRatio(r.handle, float32(ratio)))
+}
+
+// Reset clears the resampler's internal state.
+func (r *LinearResampler) Reset() error {
+	if r == nil || r.handle == nil {
+		return fmt.Errorf("mago: nil linear resampler")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return r.lib.resultError("ma_linear_resampler_reset", r.lib.bindings.maLinearResamplerReset(r.handle))
+}
+
+// RequiredInputFrameCount reports the input frames needed to produce
+// outputFrameCount output frames.
+func (r *LinearResampler) RequiredInputFrameCount(outputFrameCount uint64) (uint64, error) {
+	if r == nil || r.handle == nil {
+		return 0, fmt.Errorf("mago: nil linear resampler")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return 0, err
+	}
+	var count uint64
+	if result := r.lib.bindings.maLinearResamplerGetRequiredInputFrameCount(r.handle, outputFrameCount, &count); result != Success {
+		return 0, r.lib.resultError("ma_linear_resampler_get_required_input_frame_count", result)
+	}
+	return count, nil
+}
+
+// ExpectedOutputFrameCount reports the output frames produced from
+// inputFrameCount input frames.
+func (r *LinearResampler) ExpectedOutputFrameCount(inputFrameCount uint64) (uint64, error) {
+	if r == nil || r.handle == nil {
+		return 0, fmt.Errorf("mago: nil linear resampler")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return 0, err
+	}
+	var count uint64
+	if result := r.lib.bindings.maLinearResamplerGetExpectedOutputFrameCount(r.handle, inputFrameCount, &count); result != Success {
+		return 0, r.lib.resultError("ma_linear_resampler_get_expected_output_frame_count", result)
+	}
+	return count, nil
+}
+
+// Close uninitializes the resampler and frees it.
+func (r *LinearResampler) Close() error {
+	if r == nil || r.handle == nil {
+		return nil
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+
+	r.lib.bindings.maLinearResamplerUninit(r.handle, nil)
+	r.lib.bindings.magoFree(unsafe.Pointer(r.handle))
+	r.handle = nil
+	return nil
+}
