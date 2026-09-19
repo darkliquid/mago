@@ -15,6 +15,7 @@ const (
 	Success                          Result             = 0
 	Error                            Result             = -1
 	InvalidArgs                      Result             = -2
+	InvalidOperation                 Result             = -3
 	OutOfMemory                      Result             = -4
 	NoBackend                        Result             = -203
 	NoDevice                         Result             = -204

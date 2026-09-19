@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef NDEBUG
+#define NDEBUG
+#endif
+
 #define MA_DLL
 #define MA_IMPLEMENTATION
 #include "miniaudio.h"

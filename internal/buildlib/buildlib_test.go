@@ -73,6 +73,9 @@ func TestCompilerArgsHardening(t *testing.T) {
 	if !strings.Contains(joined, "-fno-ident") {
 		t.Errorf("expected -fno-ident, got %s", joined)
 	}
+	if !strings.Contains(joined, "-DNDEBUG") {
+		t.Errorf("expected -DNDEBUG, got %s", joined)
+	}
 }
 
 func TestFindTarget(t *testing.T) {
@@ -176,6 +179,9 @@ func TestDarwinCompilerArgs(t *testing.T) {
 	}
 	if !strings.Contains(amd64Args, "-ffile-prefix-map=/repo=.") {
 		t.Errorf("expected -ffile-prefix-map=/repo=., got %s", amd64Args)
+	}
+	if !strings.Contains(amd64Args, "-DNDEBUG") {
+		t.Errorf("expected -DNDEBUG, got %s", amd64Args)
 	}
 
 	// darwin arm64 -> -arch arm64

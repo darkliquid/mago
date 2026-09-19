@@ -91,15 +91,17 @@ func (n *Noise) SetSeed(seed int32) error {
 }
 
 // SetType attempts to change the noise type dynamically.
-// Note: miniaudio 0.11.25 does not support dynamic noise type changes and will return ResultInvalidOperation.
-func (n *Noise) SetType(noiseType NoiseType) error {
+// Note: miniaudio does not support dynamic noise type changes and returns InvalidOperation.
+// This function directly returns InvalidOperation rather than calling the underlying
+// ma_noise_set_type symbol, which contains an unconditional MA_ASSERT(MA_FALSE) in miniaudio.
+func (n *Noise) SetType(_ NoiseType) error {
 	if n == nil || n.handle == nil {
 		return fmt.Errorf("mago: nil noise")
 	}
 	if err := n.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return n.lib.resultError("ma_noise_set_type", n.lib.bindings.maNoiseSetType(n.handle, noiseType))
+	return n.lib.resultError("ma_noise_set_type", InvalidOperation)
 }
 
 // Close uninitializes the noise generator and frees its native memory.

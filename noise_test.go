@@ -2,6 +2,7 @@ package mago
 
 import (
 	"bytes"
+	"errors"
 	"math"
 	"testing"
 	"unsafe"
@@ -137,8 +138,11 @@ func TestNoiseControls(t *testing.T) {
 	}
 
 	// miniaudio rejects dynamic SetType with MA_INVALID_OPERATION
+	var opErr *OpError
 	if err := n.SetType(NoiseTypePink); err == nil {
 		t.Error("SetType expected error (unsupported by miniaudio), got nil")
+	} else if errors.As(err, &opErr) && opErr.Code != InvalidOperation {
+		t.Errorf("SetType expected InvalidOperation (%d), got %d", InvalidOperation, opErr.Code)
 	}
 }
 

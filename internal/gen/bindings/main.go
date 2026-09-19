@@ -173,6 +173,7 @@ var baseConstants = []constSpec{
 	{Name: "Success", Type: "Result", Value: "0"},
 	{Name: "Error", Type: "Result", Value: "-1"},
 	{Name: "InvalidArgs", Type: "Result", Value: "-2"},
+	{Name: "InvalidOperation", Type: "Result", Value: "-3"},
 	{Name: "OutOfMemory", Type: "Result", Value: "-4"},
 	{Name: "NoBackend", Type: "Result", Value: "-203"},
 	{Name: "NoDevice", Type: "Result", Value: "-204"},
