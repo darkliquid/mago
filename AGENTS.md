@@ -139,6 +139,8 @@ into a temp dir. **This means the ordinary test suite requires `zig` on `PATH`
 (or `clang` on macOS) to compile the C bridge**, even though the package itself
 needs no CGO. The root test passes `.`; `audio` tests pass `..`.
 
+- `lifecycle_test.go` provides `newNullLibrary(t)` / `newNullContext(t, lib)`
+  and covers double-close and use-after-close; add new object lifecycles there.
 - Prefer the `BackendNull` backend so tests are deterministic and need no real
   audio hardware.
 - Callback delivery is asserted with buffered channels and `time.After`
