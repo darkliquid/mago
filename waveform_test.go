@@ -3,7 +3,6 @@ package mago
 import (
 	"math"
 	"testing"
-	"unsafe"
 )
 
 func TestWaveformSineKnownSamples(t *testing.T) {
@@ -25,9 +24,9 @@ func TestWaveformSineKnownSamples(t *testing.T) {
 	defer func() { _ = waveform.Close() }()
 
 	samples := make([]float32, 48)
-	read, err := waveform.ReadPCMFrames(unsafe.Pointer(&samples[0]), uint64(len(samples)))
+	read, err := waveform.Read(samples)
 	if err != nil {
-		t.Fatalf("ReadPCMFrames: %v", err)
+		t.Fatalf("Read: %v", err)
 	}
 	if read != uint64(len(samples)) {
 		t.Fatalf("read %d frames, want %d", read, len(samples))
@@ -75,10 +74,10 @@ func TestWaveformShapes(t *testing.T) {
 		}
 
 		buf := make([]float32, 100)
-		read, err := wf.ReadPCMFrames(unsafe.Pointer(&buf[0]), uint64(len(buf)))
+		read, err := wf.Read(buf)
 		if err != nil {
 			_ = wf.Close()
-			t.Fatalf("ReadPCMFrames(%v): %v", shape, err)
+			t.Fatalf("Read(%v): %v", shape, err)
 		}
 		if read != uint64(len(buf)) {
 			_ = wf.Close()
@@ -131,7 +130,7 @@ func TestWaveformControls(t *testing.T) {
 	}
 
 	buf := make([]float32, 10)
-	read, err := wf.ReadPCMFrames(unsafe.Pointer(&buf[0]), 10)
+	read, err := wf.Read(buf)
 	if err != nil || read != 10 {
 		t.Fatalf("read %d frames (%v), want 10", read, err)
 	}
@@ -159,8 +158,40 @@ func TestWaveformLifecycle(t *testing.T) {
 		t.Fatalf("double Close should succeed: %v", err)
 	}
 
-	var buf [4]float32
-	if _, err := wf.ReadPCMFrames(unsafe.Pointer(&buf[0]), 4); err == nil {
+	buf := make([]float32, 4)
+	if _, err := wf.Read(buf); err == nil {
 		t.Fatal("read on closed waveform should return error")
 	}
 }
+
+func TestWaveformReadSlice(t *testing.T) {
+	lib := newNullLibrary(t)
+	wf, err := lib.NewWaveform(WaveformConfig{
+		Format:     FormatF32,
+		Channels:   2,
+		SampleRate: 48000,
+		Type:       WaveformTypeSine,
+		Amplitude:  0.5,
+		Frequency:  440,
+	})
+	if err != nil {
+		t.Fatalf("NewWaveform: %v", err)
+	}
+	defer func() { _ = wf.Close() }()
+
+	buf := make([]float32, 256) // 128 frames for stereo
+	read, err := wf.Read(buf)
+	if err != nil {
+		t.Fatalf("wf.Read: %v", err)
+	}
+	if read != 128 {
+		t.Errorf("read: got %d frames, want 128", read)
+	}
+
+	// Misaligned buffer should fail
+	oddBuf := make([]float32, 255)
+	if _, err := wf.Read(oddBuf); err != ErrInvalidSliceLength {
+		t.Errorf("expected ErrInvalidSliceLength, got %v", err)
+	}
+}
+

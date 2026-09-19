@@ -1,11 +1,10 @@
 package mago
 
 import (
-	"bytes"
 	"errors"
 	"math"
+	"slices"
 	"testing"
-	"unsafe"
 )
 
 func TestNoiseSeededReproducibility(t *testing.T) {
@@ -37,25 +36,21 @@ func TestNoiseSeededReproducibility(t *testing.T) {
 	buf2 := make([]float32, frameCount)
 	buf3 := make([]float32, frameCount)
 
-	read1, err1 := n1.ReadPCMFrames(unsafe.Pointer(&buf1[0]), frameCount)
-	read2, err2 := n2.ReadPCMFrames(unsafe.Pointer(&buf2[0]), frameCount)
-	read3, err3 := n3.ReadPCMFrames(unsafe.Pointer(&buf3[0]), frameCount)
+	read1, err1 := n1.Read(buf1)
+	read2, err2 := n2.Read(buf2)
+	read3, err3 := n3.Read(buf3)
 
 	if err1 != nil || err2 != nil || err3 != nil {
-		t.Fatalf("ReadPCMFrames failed: %v, %v, %v", err1, err2, err3)
+		t.Fatalf("Read failed: %v, %v, %v", err1, err2, err3)
 	}
 	if read1 != frameCount || read2 != frameCount || read3 != frameCount {
 		t.Fatalf("read counts mismatch: %d, %d, %d", read1, read2, read3)
 	}
 
-	b1 := unsafe.Slice((*byte)(unsafe.Pointer(&buf1[0])), frameCount*4)
-	b2 := unsafe.Slice((*byte)(unsafe.Pointer(&buf2[0])), frameCount*4)
-	b3 := unsafe.Slice((*byte)(unsafe.Pointer(&buf3[0])), frameCount*4)
-
-	if !bytes.Equal(b1, b2) {
+	if !slices.Equal(buf1, buf2) {
 		t.Fatal("identical seeds produced different noise output")
 	}
-	if bytes.Equal(b1, b3) {
+	if slices.Equal(buf1, buf3) {
 		t.Fatal("different seeds produced identical noise output")
 	}
 }
@@ -82,10 +77,10 @@ func TestNoiseTypes(t *testing.T) {
 		}
 
 		buf := make([]float32, 200) // 100 frames * 2 channels
-		read, err := n.ReadPCMFrames(unsafe.Pointer(&buf[0]), 100)
+		read, err := n.Read(buf)
 		if err != nil {
 			_ = n.Close()
-			t.Fatalf("ReadPCMFrames(%v): %v", ntype, err)
+			t.Fatalf("Read(%v): %v", ntype, err)
 		}
 		if read != 100 {
 			_ = n.Close()
@@ -167,8 +162,61 @@ func TestNoiseLifecycle(t *testing.T) {
 		t.Fatalf("double Close should succeed: %v", err)
 	}
 
-	var buf [4]float32
-	if _, err := n.ReadPCMFrames(unsafe.Pointer(&buf[0]), 4); err == nil {
+	buf := make([]float32, 4)
+	if _, err := n.Read(buf); err == nil {
 		t.Fatal("read on closed noise should return error")
 	}
 }
+
+func TestNoiseReadSlice(t *testing.T) {
+	lib := newNullLibrary(t)
+	n, err := lib.NewNoise(NoiseConfig{
+		Format:    FormatF32,
+		Channels:  2,
+		Type:      NoiseTypeWhite,
+		Seed:      1,
+		Amplitude: 0.5,
+	})
+	if err != nil {
+		t.Fatalf("NewNoise: %v", err)
+	}
+	defer func() { _ = n.Close() }()
+
+	buf := make([]float32, 256) // 128 frames for stereo
+	read, err := n.Read(buf)
+	if err != nil {
+		t.Fatalf("n.Read: %v", err)
+	}
+	if read != 128 {
+		t.Errorf("read: got %d frames, want 128", read)
+	}
+
+	// Misaligned buffer should fail
+	oddBuf := make([]float32, 255)
+	if _, err := n.Read(oddBuf); err != ErrInvalidSliceLength {
+		t.Errorf("expected ErrInvalidSliceLength, got %v", err)
+	}
+
+	// S16 read
+	nS16, err := lib.NewNoise(NoiseConfig{
+		Format:    FormatS16,
+		Channels:  1,
+		Type:      NoiseTypeWhite,
+		Seed:      2,
+		Amplitude: 0.5,
+	})
+	if err != nil {
+		t.Fatalf("NewNoise(s16): %v", err)
+	}
+	defer func() { _ = nS16.Close() }()
+
+	bufS16 := make([]int16, 64)
+	readS16, err := nS16.ReadS16(bufS16)
+	if err != nil {
+		t.Fatalf("nS16.ReadS16: %v", err)
+	}
+	if readS16 != 64 {
+		t.Errorf("readS16: got %d frames, want 64", readS16)
+	}
+}
+

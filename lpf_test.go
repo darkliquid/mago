@@ -30,9 +30,9 @@ func generateSine(t *testing.T, lib *Library, sampleRate uint32, freq float64, f
 	defer func() { _ = wf.Close() }()
 
 	buf := make([]float32, frameCount)
-	read, err := wf.ReadPCMFrames(unsafe.Pointer(&buf[0]), frameCount)
+	read, err := wf.Read(buf)
 	if err != nil {
-		t.Fatalf("ReadPCMFrames: %v", err)
+		t.Fatalf("Read: %v", err)
 	}
 	if read != frameCount {
 		t.Fatalf("read %d frames, want %d", read, frameCount)

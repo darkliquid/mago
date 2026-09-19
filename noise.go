@@ -19,8 +19,9 @@ type NoiseConfig struct {
 
 // Noise generates white, pink, or brownian noise.
 type Noise struct {
-	lib    *Library
-	handle *noiseHandle
+	lib      *Library
+	handle   *noiseHandle
+	channels uint32
 }
 
 // NewNoise creates and initializes a new Noise generator.
@@ -49,19 +50,51 @@ func (lib *Library) NewNoise(config NoiseConfig) (*Noise, error) {
 		return nil, lib.resultError("ma_noise_init", result)
 	}
 
-	return &Noise{lib: lib, handle: handle}, nil
+	return &Noise{lib: lib, handle: handle, channels: config.Channels}, nil
 }
 
-// ReadPCMFrames writes up to frameCount frames into out, returning how many were written.
-func (n *Noise) ReadPCMFrames(out unsafe.Pointer, frameCount uint64) (uint64, error) {
+// Read writes up to len(out)/channels frames into out, returning how many frames were written.
+// out must contain an exact multiple of the configured channel count.
+func (n *Noise) Read(out []float32) (uint64, error) {
 	if n == nil || n.handle == nil {
 		return 0, fmt.Errorf("mago: nil noise")
 	}
 	if err := n.lib.ensureOpen(); err != nil {
 		return 0, err
 	}
+	if len(out) == 0 {
+		return 0, nil
+	}
+	if n.channels == 0 || len(out)%int(n.channels) != 0 {
+		return 0, ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(out) / int(n.channels))
 	var framesRead uint64
-	result := n.lib.bindings.maNoiseReadPCMFrames(n.handle, out, frameCount, &framesRead)
+	result := n.lib.bindings.maNoiseReadPCMFrames(n.handle, unsafe.Pointer(&out[0]), frameCount, &framesRead)
+	if result != Success {
+		return framesRead, n.lib.resultError("ma_noise_read_pcm_frames", result)
+	}
+	return framesRead, nil
+}
+
+// ReadS16 writes up to len(out)/channels frames into out, returning how many frames were written.
+// out must contain an exact multiple of the configured channel count.
+func (n *Noise) ReadS16(out []int16) (uint64, error) {
+	if n == nil || n.handle == nil {
+		return 0, fmt.Errorf("mago: nil noise")
+	}
+	if err := n.lib.ensureOpen(); err != nil {
+		return 0, err
+	}
+	if len(out) == 0 {
+		return 0, nil
+	}
+	if n.channels == 0 || len(out)%int(n.channels) != 0 {
+		return 0, ErrInvalidSliceLength
+	}
+	frameCount := uint64(len(out) / int(n.channels))
+	var framesRead uint64
+	result := n.lib.bindings.maNoiseReadPCMFrames(n.handle, unsafe.Pointer(&out[0]), frameCount, &framesRead)
 	if result != Success {
 		return framesRead, n.lib.resultError("ma_noise_read_pcm_frames", result)
 	}
