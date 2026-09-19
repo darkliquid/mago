@@ -1,0 +1,8 @@
+package fixture
+
+/*
+#include <stdlib.h>
+*/
+import "C"
+
+func F() {}

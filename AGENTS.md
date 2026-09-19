@@ -83,12 +83,15 @@ code is excluded from linting via `generated: strict`.
 ## The ABI boundary
 
 **Hard rules:** there is **absolutely no CGO** anywhere (no `import "C"`, no
-cgo files, no `//export`; `CGO_ENABLED=0` always), and `native/miniaudio_bridge.c`
-is the **absolute minimum** C required to drive miniaudio through purego. C exists
-only to allocate objects Go cannot size (and for which no `ma_*_sizeof` exists)
-and to bridge ABIs purego cannot express (e.g. struct-by-value). No config
-construction, field access, copying loops or business logic in C. Prefer binding
-exported `ma_*` symbols directly; every `mago_*` shim must be justified.
+cgo files, no `//export`; `CGO_ENABLED=0` always). cgo usage is rejected by
+`internal/cgoguard` (`mise run check-cgo`, run as part of `mise run lint`).
+
+`native/miniaudio_bridge.c` is the **absolute minimum** C required to drive
+miniaudio through purego. C may only: (1) allocate raw memory Go cannot size
+(`mago_alloc`/`mago_free`); (2) build a by-value, large config Go must not
+mirror (the `ma_device_config` setter); (3) provide callback trampolines for C
+signatures that carry no `pUserData` (device data/notification). No other
+wrappers: bind `ma_*` symbols directly; every `mago_*` shim must be justified.
 
 `native/miniaudio_bridge.c` defines `mago_*` wrapper structs and functions for
 everything the Go side needs, and forwards device data/notification callbacks
