@@ -81,4 +81,26 @@ func TestMirroredStructLayouts(t *testing.T) {
 			t.Errorf("offsetof %s: mirror %d, header %d", name, got, want)
 		}
 	}
+
+	if got, want := uint64(unsafe.Sizeof(allocationCallbacksNative{})), probe["sizeof:ma_allocation_callbacks"]; got != want {
+		t.Errorf("sizeof allocationCallbacksNative: mirror %d, header %d", got, want)
+	}
+	if got, want := uint64(unsafe.Sizeof(audioBufferConfigNative{})), probe["sizeof:ma_audio_buffer_config"]; got != want {
+		t.Errorf("sizeof audioBufferConfigNative: mirror %d, header %d", got, want)
+	}
+
+	audioBuffer := audioBufferConfigNative{}
+	bufferOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"sizeInFrames":        {unsafe.Offsetof(audioBuffer.SizeInFrames), "offsetof:ma_audio_buffer_config.sizeInFrames"},
+		"pData":               {unsafe.Offsetof(audioBuffer.Data), "offsetof:ma_audio_buffer_config.pData"},
+		"allocationCallbacks": {unsafe.Offsetof(audioBuffer.AllocationCallbacks), "offsetof:ma_audio_buffer_config.allocationCallbacks"},
+	}
+	for name, check := range bufferOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_audio_buffer_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
 }

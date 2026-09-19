@@ -178,3 +178,89 @@ func (*DataConverter) OutputChannelMap() (ChannelMap, error) {
 	return ChannelMap{}, errUnsupportedPlatform
 }
 func (*DataConverter) Close() error { return errUnsupportedPlatform }
+
+type AudioBufferConfig struct{}
+type AudioBuffer struct{}
+type AudioBufferRef struct{}
+type RingBuffer struct{}
+type PCMRingBuffer struct{}
+
+func (*Library) NewAudioBuffer(AudioBufferConfig) (*AudioBuffer, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewAudioBufferCopy(AudioBufferConfig) (*AudioBuffer, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*AudioBuffer) ReadPCMFrames(unsafe.Pointer, uint64, bool) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*AudioBuffer) SeekToPCMFrame(uint64) error          { return errUnsupportedPlatform }
+func (*AudioBuffer) Map() (unsafe.Pointer, uint64, error) { return nil, 0, errUnsupportedPlatform }
+func (*AudioBuffer) Unmap(uint64) error                   { return errUnsupportedPlatform }
+func (*AudioBuffer) CursorInPCMFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
+func (*AudioBuffer) LengthInPCMFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
+func (*AudioBuffer) AvailableFrames() (uint64, error)     { return 0, errUnsupportedPlatform }
+func (*AudioBuffer) Close() error                         { return errUnsupportedPlatform }
+
+func (*Library) NewAudioBufferRef(Format, uint32, unsafe.Pointer, uint64, ...any) (*AudioBufferRef, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*AudioBufferRef) SetData(unsafe.Pointer, uint64, ...any) error { return errUnsupportedPlatform }
+func (*AudioBufferRef) ReadPCMFrames(unsafe.Pointer, uint64, bool) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*AudioBufferRef) SeekToPCMFrame(uint64) error { return errUnsupportedPlatform }
+func (*AudioBufferRef) Map() (unsafe.Pointer, uint64, error) {
+	return nil, 0, errUnsupportedPlatform
+}
+func (*AudioBufferRef) Unmap(uint64) error                 { return errUnsupportedPlatform }
+func (*AudioBufferRef) AtEnd() bool                        { return true }
+func (*AudioBufferRef) CursorInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*AudioBufferRef) LengthInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*AudioBufferRef) AvailableFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
+func (*AudioBufferRef) Close() error                       { return errUnsupportedPlatform }
+
+func (*Library) NewRingBuffer(uint) (*RingBuffer, error) { return nil, errUnsupportedPlatform }
+func (*Library) NewRingBufferEx(uint, uint, uint) (*RingBuffer, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*RingBuffer) AcquireRead(uint) (unsafe.Pointer, uint, error) {
+	return nil, 0, errUnsupportedPlatform
+}
+func (*RingBuffer) AcquireWrite(uint) (unsafe.Pointer, uint, error) {
+	return nil, 0, errUnsupportedPlatform
+}
+func (*RingBuffer) CommitRead(uint) error  { return errUnsupportedPlatform }
+func (*RingBuffer) CommitWrite(uint) error { return errUnsupportedPlatform }
+func (*RingBuffer) SeekRead(uint) error    { return errUnsupportedPlatform }
+func (*RingBuffer) SeekWrite(uint) error   { return errUnsupportedPlatform }
+func (*RingBuffer) Reset()                 {}
+func (*RingBuffer) PointerDistance() int32 { return 0 }
+func (*RingBuffer) AvailableRead() uint32  { return 0 }
+func (*RingBuffer) AvailableWrite() uint32 { return 0 }
+func (*RingBuffer) Close() error           { return errUnsupportedPlatform }
+
+func (*Library) NewPCMRingBuffer(Format, uint32, uint32) (*PCMRingBuffer, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewPCMRingBufferEx(Format, uint32, uint32, uint32, uint32) (*PCMRingBuffer, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*PCMRingBuffer) AcquireRead(uint32) (unsafe.Pointer, uint32, error) {
+	return nil, 0, errUnsupportedPlatform
+}
+func (*PCMRingBuffer) AcquireWrite(uint32) (unsafe.Pointer, uint32, error) {
+	return nil, 0, errUnsupportedPlatform
+}
+func (*PCMRingBuffer) CommitRead(uint32) error  { return errUnsupportedPlatform }
+func (*PCMRingBuffer) CommitWrite(uint32) error { return errUnsupportedPlatform }
+func (*PCMRingBuffer) SeekRead(uint32) error    { return errUnsupportedPlatform }
+func (*PCMRingBuffer) SeekWrite(uint32) error   { return errUnsupportedPlatform }
+func (*PCMRingBuffer) Reset()                   {}
+func (*PCMRingBuffer) PointerDistance() int32   { return 0 }
+func (*PCMRingBuffer) AvailableRead() uint32    { return 0 }
+func (*PCMRingBuffer) AvailableWrite() uint32   { return 0 }
+func (*PCMRingBuffer) Format() Format           { return FormatUnknown }
+func (*PCMRingBuffer) Channels() uint32         { return 0 }
+func (*PCMRingBuffer) SampleRate() uint32       { return 0 }
+func (*PCMRingBuffer) Close() error             { return errUnsupportedPlatform }

@@ -23,6 +23,7 @@ const (
 	DeviceAlreadyInitialized         Result             = -301
 	DeviceNotStarted                 Result             = -302
 	DeviceNotStopped                 Result             = -303
+	AtEnd                            Result             = -17
 	BackendWASAPI                    Backend            = 0
 	BackendDSound                    Backend            = 1
 	BackendWinMM                     Backend            = 2
@@ -132,6 +133,64 @@ type bindingSet struct {
 	maDataConverterGetExpectedOutputFrameCount   func(*dataConverterHandle, uint64, *uint64) Result
 	maDataConverterGetInputChannelMap            func(*dataConverterHandle, *uint8, uintptr) Result
 	maDataConverterGetOutputChannelMap           func(*dataConverterHandle, *uint8, uintptr) Result
+	maAudioBufferInit                            func(*audioBufferConfigNative, *audioBufferHandle) Result
+	maAudioBufferInitCopy                        func(*audioBufferConfigNative, *audioBufferHandle) Result
+	maAudioBufferUninit                          func(*audioBufferHandle)
+	maAudioBufferReadPCMFrames                   func(*audioBufferHandle, unsafe.Pointer, uint64, uint32) uint64
+	maAudioBufferSeekToPCMFrame                  func(*audioBufferHandle, uint64) Result
+	maAudioBufferMap                             func(*audioBufferHandle, *unsafe.Pointer, *uint64) Result
+	maAudioBufferUnmap                           func(*audioBufferHandle, uint64) Result
+	maAudioBufferGetCursorInPCMFrames            func(*audioBufferHandle, *uint64) Result
+	maAudioBufferGetLengthInPCMFrames            func(*audioBufferHandle, *uint64) Result
+	maAudioBufferGetAvailableFrames              func(*audioBufferHandle, *uint64) Result
+	maAudioBufferRefInit                         func(Format, uint32, unsafe.Pointer, uint64, *audioBufferRefHandle) Result
+	maAudioBufferRefUninit                       func(*audioBufferRefHandle)
+	maAudioBufferRefSetData                      func(*audioBufferRefHandle, unsafe.Pointer, uint64) Result
+	maAudioBufferRefReadPCMFrames                func(*audioBufferRefHandle, unsafe.Pointer, uint64, uint32) uint64
+	maAudioBufferRefSeekToPCMFrame               func(*audioBufferRefHandle, uint64) Result
+	maAudioBufferRefMap                          func(*audioBufferRefHandle, *unsafe.Pointer, *uint64) Result
+	maAudioBufferRefUnmap                        func(*audioBufferRefHandle, uint64) Result
+	maAudioBufferRefAtEnd                        func(*audioBufferRefHandle) uint32
+	maAudioBufferRefGetCursorInPCMFrames         func(*audioBufferRefHandle, *uint64) Result
+	maAudioBufferRefGetLengthInPCMFrames         func(*audioBufferRefHandle, *uint64) Result
+	maAudioBufferRefGetAvailableFrames           func(*audioBufferRefHandle, *uint64) Result
+	maRBInit                                     func(uintptr, unsafe.Pointer, unsafe.Pointer, *ringBufferHandle) Result
+	maRBInitEx                                   func(uintptr, uintptr, uintptr, unsafe.Pointer, unsafe.Pointer, *ringBufferHandle) Result
+	maRBUninit                                   func(*ringBufferHandle)
+	maRBReset                                    func(*ringBufferHandle)
+	maRBAcquireRead                              func(*ringBufferHandle, *uintptr, *unsafe.Pointer) Result
+	maRBCommitRead                               func(*ringBufferHandle, uintptr) Result
+	maRBAcquireWrite                             func(*ringBufferHandle, *uintptr, *unsafe.Pointer) Result
+	maRBCommitWrite                              func(*ringBufferHandle, uintptr) Result
+	maRBSeekRead                                 func(*ringBufferHandle, uintptr) Result
+	maRBSeekWrite                                func(*ringBufferHandle, uintptr) Result
+	maRBPointerDistance                          func(*ringBufferHandle) int32
+	maRBAvailableRead                            func(*ringBufferHandle) uint32
+	maRBAvailableWrite                           func(*ringBufferHandle) uint32
+	maRBGetSubbufferSize                         func(*ringBufferHandle) uintptr
+	maRBGetSubbufferStride                       func(*ringBufferHandle) uintptr
+	maRBGetSubbufferOffset                       func(*ringBufferHandle, uintptr) uintptr
+	maRBGetSubbufferPtr                          func(*ringBufferHandle, uintptr, unsafe.Pointer) unsafe.Pointer
+	maPCMRBInit                                  func(Format, uint32, uint32, unsafe.Pointer, unsafe.Pointer, *pcmRingBufferHandle) Result
+	maPCMRBInitEx                                func(Format, uint32, uint32, uint32, uint32, unsafe.Pointer, unsafe.Pointer, *pcmRingBufferHandle) Result
+	maPCMRBUninit                                func(*pcmRingBufferHandle)
+	maPCMRBReset                                 func(*pcmRingBufferHandle)
+	maPCMRBAcquireRead                           func(*pcmRingBufferHandle, *uint32, *unsafe.Pointer) Result
+	maPCMRBCommitRead                            func(*pcmRingBufferHandle, uint32) Result
+	maPCMRBAcquireWrite                          func(*pcmRingBufferHandle, *uint32, *unsafe.Pointer) Result
+	maPCMRBCommitWrite                           func(*pcmRingBufferHandle, uint32) Result
+	maPCMRBSeekRead                              func(*pcmRingBufferHandle, uint32) Result
+	maPCMRBSeekWrite                             func(*pcmRingBufferHandle, uint32) Result
+	maPCMRBPointerDistance                       func(*pcmRingBufferHandle) int32
+	maPCMRBAvailableRead                         func(*pcmRingBufferHandle) uint32
+	maPCMRBAvailableWrite                        func(*pcmRingBufferHandle) uint32
+	maPCMRBGetFormat                             func(*pcmRingBufferHandle) Format
+	maPCMRBGetChannels                           func(*pcmRingBufferHandle) uint32
+	maPCMRBGetSampleRate                         func(*pcmRingBufferHandle) uint32
+	maPCMRBGetSubbufferSize                      func(*pcmRingBufferHandle) uint32
+	maPCMRBGetSubbufferStride                    func(*pcmRingBufferHandle) uint32
+	maPCMRBGetSubbufferOffset                    func(*pcmRingBufferHandle, uint32) uint32
+	maPCMRBGetSubbufferPtr                       func(*pcmRingBufferHandle, uint32, unsafe.Pointer) unsafe.Pointer
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -206,6 +265,64 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maDataConverterGetExpectedOutputFrameCount, handle, "ma_data_converter_get_expected_output_frame_count")
 	purego.RegisterLibFunc(&b.maDataConverterGetInputChannelMap, handle, "ma_data_converter_get_input_channel_map")
 	purego.RegisterLibFunc(&b.maDataConverterGetOutputChannelMap, handle, "ma_data_converter_get_output_channel_map")
+	purego.RegisterLibFunc(&b.maAudioBufferInit, handle, "ma_audio_buffer_init")
+	purego.RegisterLibFunc(&b.maAudioBufferInitCopy, handle, "ma_audio_buffer_init_copy")
+	purego.RegisterLibFunc(&b.maAudioBufferUninit, handle, "ma_audio_buffer_uninit")
+	purego.RegisterLibFunc(&b.maAudioBufferReadPCMFrames, handle, "ma_audio_buffer_read_pcm_frames")
+	purego.RegisterLibFunc(&b.maAudioBufferSeekToPCMFrame, handle, "ma_audio_buffer_seek_to_pcm_frame")
+	purego.RegisterLibFunc(&b.maAudioBufferMap, handle, "ma_audio_buffer_map")
+	purego.RegisterLibFunc(&b.maAudioBufferUnmap, handle, "ma_audio_buffer_unmap")
+	purego.RegisterLibFunc(&b.maAudioBufferGetCursorInPCMFrames, handle, "ma_audio_buffer_get_cursor_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maAudioBufferGetLengthInPCMFrames, handle, "ma_audio_buffer_get_length_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maAudioBufferGetAvailableFrames, handle, "ma_audio_buffer_get_available_frames")
+	purego.RegisterLibFunc(&b.maAudioBufferRefInit, handle, "ma_audio_buffer_ref_init")
+	purego.RegisterLibFunc(&b.maAudioBufferRefUninit, handle, "ma_audio_buffer_ref_uninit")
+	purego.RegisterLibFunc(&b.maAudioBufferRefSetData, handle, "ma_audio_buffer_ref_set_data")
+	purego.RegisterLibFunc(&b.maAudioBufferRefReadPCMFrames, handle, "ma_audio_buffer_ref_read_pcm_frames")
+	purego.RegisterLibFunc(&b.maAudioBufferRefSeekToPCMFrame, handle, "ma_audio_buffer_ref_seek_to_pcm_frame")
+	purego.RegisterLibFunc(&b.maAudioBufferRefMap, handle, "ma_audio_buffer_ref_map")
+	purego.RegisterLibFunc(&b.maAudioBufferRefUnmap, handle, "ma_audio_buffer_ref_unmap")
+	purego.RegisterLibFunc(&b.maAudioBufferRefAtEnd, handle, "ma_audio_buffer_ref_at_end")
+	purego.RegisterLibFunc(&b.maAudioBufferRefGetCursorInPCMFrames, handle, "ma_audio_buffer_ref_get_cursor_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maAudioBufferRefGetLengthInPCMFrames, handle, "ma_audio_buffer_ref_get_length_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maAudioBufferRefGetAvailableFrames, handle, "ma_audio_buffer_ref_get_available_frames")
+	purego.RegisterLibFunc(&b.maRBInit, handle, "ma_rb_init")
+	purego.RegisterLibFunc(&b.maRBInitEx, handle, "ma_rb_init_ex")
+	purego.RegisterLibFunc(&b.maRBUninit, handle, "ma_rb_uninit")
+	purego.RegisterLibFunc(&b.maRBReset, handle, "ma_rb_reset")
+	purego.RegisterLibFunc(&b.maRBAcquireRead, handle, "ma_rb_acquire_read")
+	purego.RegisterLibFunc(&b.maRBCommitRead, handle, "ma_rb_commit_read")
+	purego.RegisterLibFunc(&b.maRBAcquireWrite, handle, "ma_rb_acquire_write")
+	purego.RegisterLibFunc(&b.maRBCommitWrite, handle, "ma_rb_commit_write")
+	purego.RegisterLibFunc(&b.maRBSeekRead, handle, "ma_rb_seek_read")
+	purego.RegisterLibFunc(&b.maRBSeekWrite, handle, "ma_rb_seek_write")
+	purego.RegisterLibFunc(&b.maRBPointerDistance, handle, "ma_rb_pointer_distance")
+	purego.RegisterLibFunc(&b.maRBAvailableRead, handle, "ma_rb_available_read")
+	purego.RegisterLibFunc(&b.maRBAvailableWrite, handle, "ma_rb_available_write")
+	purego.RegisterLibFunc(&b.maRBGetSubbufferSize, handle, "ma_rb_get_subbuffer_size")
+	purego.RegisterLibFunc(&b.maRBGetSubbufferStride, handle, "ma_rb_get_subbuffer_stride")
+	purego.RegisterLibFunc(&b.maRBGetSubbufferOffset, handle, "ma_rb_get_subbuffer_offset")
+	purego.RegisterLibFunc(&b.maRBGetSubbufferPtr, handle, "ma_rb_get_subbuffer_ptr")
+	purego.RegisterLibFunc(&b.maPCMRBInit, handle, "ma_pcm_rb_init")
+	purego.RegisterLibFunc(&b.maPCMRBInitEx, handle, "ma_pcm_rb_init_ex")
+	purego.RegisterLibFunc(&b.maPCMRBUninit, handle, "ma_pcm_rb_uninit")
+	purego.RegisterLibFunc(&b.maPCMRBReset, handle, "ma_pcm_rb_reset")
+	purego.RegisterLibFunc(&b.maPCMRBAcquireRead, handle, "ma_pcm_rb_acquire_read")
+	purego.RegisterLibFunc(&b.maPCMRBCommitRead, handle, "ma_pcm_rb_commit_read")
+	purego.RegisterLibFunc(&b.maPCMRBAcquireWrite, handle, "ma_pcm_rb_acquire_write")
+	purego.RegisterLibFunc(&b.maPCMRBCommitWrite, handle, "ma_pcm_rb_commit_write")
+	purego.RegisterLibFunc(&b.maPCMRBSeekRead, handle, "ma_pcm_rb_seek_read")
+	purego.RegisterLibFunc(&b.maPCMRBSeekWrite, handle, "ma_pcm_rb_seek_write")
+	purego.RegisterLibFunc(&b.maPCMRBPointerDistance, handle, "ma_pcm_rb_pointer_distance")
+	purego.RegisterLibFunc(&b.maPCMRBAvailableRead, handle, "ma_pcm_rb_available_read")
+	purego.RegisterLibFunc(&b.maPCMRBAvailableWrite, handle, "ma_pcm_rb_available_write")
+	purego.RegisterLibFunc(&b.maPCMRBGetFormat, handle, "ma_pcm_rb_get_format")
+	purego.RegisterLibFunc(&b.maPCMRBGetChannels, handle, "ma_pcm_rb_get_channels")
+	purego.RegisterLibFunc(&b.maPCMRBGetSampleRate, handle, "ma_pcm_rb_get_sample_rate")
+	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferSize, handle, "ma_pcm_rb_get_subbuffer_size")
+	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferStride, handle, "ma_pcm_rb_get_subbuffer_stride")
+	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferOffset, handle, "ma_pcm_rb_get_subbuffer_offset")
+	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferPtr, handle, "ma_pcm_rb_get_subbuffer_ptr")
 }
 
 var _ unsafe.Pointer
