@@ -4,7 +4,6 @@ package mago
 
 import (
 	"errors"
-	"unsafe"
 )
 
 var errUnsupportedPlatform = errors.New("mago: this package is currently supported on darwin, freebsd, linux, netbsd, and windows")
@@ -97,7 +96,10 @@ func (ChannelMap) String() string                                            { r
 func (*Library) NewChannelConverter(ChannelConverterConfig) (*ChannelConverter, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*ChannelConverter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*ChannelConverter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*ChannelConverter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*ChannelConverter) InputChannelMap() (ChannelMap, error) {
@@ -108,13 +110,19 @@ func (*ChannelConverter) OutputChannelMap() (ChannelMap, error) {
 }
 func (*ChannelConverter) Close() error { return errUnsupportedPlatform }
 
-func (*Library) ConvertPCMSamples(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, DitherMode) error {
+func (*Library) ConvertPCMFrames([]byte, []byte, Format, Format, uint32, DitherMode) error {
 	return errUnsupportedPlatform
 }
-func (*Library) ConvertPCMFramesFormat(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, uint32, DitherMode) error {
+func (*Library) ConvertF32ToS16([]int16, []float32, DitherMode) error {
 	return errUnsupportedPlatform
 }
-func (*Library) ConvertFrames(unsafe.Pointer, uint64, Format, uint32, uint32, unsafe.Pointer, uint64, Format, uint32, uint32) (uint64, error) {
+func (*Library) ConvertS16ToF32([]float32, []int16) error {
+	return errUnsupportedPlatform
+}
+func (*Library) ConvertFrames([]byte, Format, uint32, uint32, []byte, Format, uint32, uint32) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*Library) ConvertFramesF32ToS16([]int16, uint32, uint32, []float32, uint32, uint32) (uint64, error) {
 	return 0, errUnsupportedPlatform
 }
 func BytesPerSample(Format) uint32 { return 0 }
@@ -139,7 +147,7 @@ func DefaultDataConverterConfig(Format, Format, uint32, uint32, uint32, uint32) 
 func (*Library) NewResampler(ResamplerConfig) (*Resampler, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*Resampler) ProcessPCMFrames(unsafe.Pointer, uint64, unsafe.Pointer, uint64) (uint64, uint64, error) {
+func (*Resampler) Process([]float32, []float32) (uint64, uint64, error) {
 	return 0, 0, errUnsupportedPlatform
 }
 func (*Resampler) SetRate(uint32, uint32) error { return errUnsupportedPlatform }
@@ -156,7 +164,7 @@ func (*Resampler) Close() error { return errUnsupportedPlatform }
 func (*Library) NewLinearResampler(LinearResamplerConfig) (*LinearResampler, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*LinearResampler) ProcessPCMFrames(unsafe.Pointer, uint64, unsafe.Pointer, uint64) (uint64, uint64, error) {
+func (*LinearResampler) Process([]float32, []float32) (uint64, uint64, error) {
 	return 0, 0, errUnsupportedPlatform
 }
 func (*LinearResampler) SetRate(uint32, uint32) error { return errUnsupportedPlatform }
@@ -173,7 +181,19 @@ func (*LinearResampler) Close() error { return errUnsupportedPlatform }
 func (*Library) NewDataConverter(DataConverterConfig) (*DataConverter, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*DataConverter) ProcessPCMFrames(unsafe.Pointer, uint64, unsafe.Pointer, uint64) (uint64, uint64, error) {
+func (*DataConverter) Process([]byte, []byte) (uint64, uint64, error) {
+	return 0, 0, errUnsupportedPlatform
+}
+func (*DataConverter) ProcessF32([]float32, []float32) (uint64, uint64, error) {
+	return 0, 0, errUnsupportedPlatform
+}
+func (*DataConverter) ProcessF32ToS16([]float32, []int16) (uint64, uint64, error) {
+	return 0, 0, errUnsupportedPlatform
+}
+func (*DataConverter) ProcessS16ToF32([]int16, []float32) (uint64, uint64, error) {
+	return 0, 0, errUnsupportedPlatform
+}
+func (*DataConverter) ProcessS16([]int16, []int16) (uint64, uint64, error) {
 	return 0, 0, errUnsupportedPlatform
 }
 func (*DataConverter) SetRate(uint32, uint32) error { return errUnsupportedPlatform }

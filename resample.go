@@ -32,8 +32,9 @@ func DefaultResamplerConfig(format Format, channels, sampleRateIn, sampleRateOut
 
 // Resampler converts between sample rates for a fixed format and channel count.
 type Resampler struct {
-	lib    *Library
-	handle *resamplerHandle
+	lib      *Library
+	handle   *resamplerHandle
+	channels uint32
 }
 
 // NewResampler creates a resampler. Custom resampling backends are rejected.
@@ -63,22 +64,28 @@ func (lib *Library) NewResampler(config ResamplerConfig) (*Resampler, error) {
 		return nil, lib.resultError("ma_resampler_init", result)
 	}
 
-	return &Resampler{lib: lib, handle: handle}, nil
+	return &Resampler{lib: lib, handle: handle, channels: config.Channels}, nil
 }
 
-// ProcessPCMFrames resamples up to framesIn input frames into the output buffer.
-// It returns how many input frames were consumed and how many output frames were
-// produced.
-func (r *Resampler) ProcessPCMFrames(in unsafe.Pointer, framesIn uint64, out unsafe.Pointer, framesOut uint64) (uint64, uint64, error) {
+// Process resamples input frames from in into out.
+// It returns the number of input frames consumed and output frames produced.
+func (r *Resampler) Process(in, out []float32) (framesInRead, framesOutWritten uint64, err error) {
 	if r == nil || r.handle == nil {
 		return 0, 0, fmt.Errorf("mago: nil resampler")
 	}
 	if err := r.lib.ensureOpen(); err != nil {
 		return 0, 0, err
 	}
-
+	if len(in) == 0 || len(out) == 0 {
+		return 0, 0, nil
+	}
+	if r.channels == 0 || len(in)%int(r.channels) != 0 || len(out)%int(r.channels) != 0 {
+		return 0, 0, ErrInvalidSliceLength
+	}
+	framesIn := uint64(len(in) / int(r.channels))
+	framesOut := uint64(len(out) / int(r.channels))
 	inCount, outCount := framesIn, framesOut
-	result := r.lib.bindings.maResamplerProcessPCMFrames(r.handle, in, &inCount, out, &outCount)
+	result := r.lib.bindings.maResamplerProcessPCMFrames(r.handle, unsafe.Pointer(&in[0]), &inCount, unsafe.Pointer(&out[0]), &outCount)
 	if result != Success {
 		return inCount, outCount, r.lib.resultError("ma_resampler_process_pcm_frames", result)
 	}
@@ -190,8 +197,9 @@ func DefaultLinearResamplerConfig(format Format, channels, sampleRateIn, sampleR
 
 // LinearResampler is a fixed-rate linear resampler.
 type LinearResampler struct {
-	lib    *Library
-	handle *linearResamplerHandle
+	lib      *Library
+	handle   *linearResamplerHandle
+	channels uint32
 }
 
 // NewLinearResampler creates a linear resampler.
@@ -211,21 +219,28 @@ func (lib *Library) NewLinearResampler(config LinearResamplerConfig) (*LinearRes
 		return nil, lib.resultError("ma_linear_resampler_init", result)
 	}
 
-	return &LinearResampler{lib: lib, handle: handle}, nil
+	return &LinearResampler{lib: lib, handle: handle, channels: config.Channels}, nil
 }
 
-// ProcessPCMFrames resamples up to framesIn input frames into the output buffer,
-// returning how many frames were consumed and produced.
-func (r *LinearResampler) ProcessPCMFrames(in unsafe.Pointer, framesIn uint64, out unsafe.Pointer, framesOut uint64) (uint64, uint64, error) {
+// Process resamples input frames from in into out.
+// It returns the number of input frames consumed and output frames produced.
+func (r *LinearResampler) Process(in, out []float32) (framesInRead, framesOutWritten uint64, err error) {
 	if r == nil || r.handle == nil {
 		return 0, 0, fmt.Errorf("mago: nil linear resampler")
 	}
 	if err := r.lib.ensureOpen(); err != nil {
 		return 0, 0, err
 	}
-
+	if len(in) == 0 || len(out) == 0 {
+		return 0, 0, nil
+	}
+	if r.channels == 0 || len(in)%int(r.channels) != 0 || len(out)%int(r.channels) != 0 {
+		return 0, 0, ErrInvalidSliceLength
+	}
+	framesIn := uint64(len(in) / int(r.channels))
+	framesOut := uint64(len(out) / int(r.channels))
 	inCount, outCount := framesIn, framesOut
-	result := r.lib.bindings.maLinearResamplerProcessPCMFrames(r.handle, in, &inCount, out, &outCount)
+	result := r.lib.bindings.maLinearResamplerProcessPCMFrames(r.handle, unsafe.Pointer(&in[0]), &inCount, unsafe.Pointer(&out[0]), &outCount)
 	if result != Success {
 		return inCount, outCount, r.lib.resultError("ma_linear_resampler_process_pcm_frames", result)
 	}
@@ -352,6 +367,8 @@ type DataConverter struct {
 	handle      *dataConverterHandle
 	channelsIn  uint32
 	channelsOut uint32
+	formatIn    Format
+	formatOut   Format
 }
 
 // NewDataConverter creates a data converter. Custom channel mixing weights are
@@ -397,21 +414,132 @@ func (lib *Library) NewDataConverter(config DataConverterConfig) (*DataConverter
 		handle:      handle,
 		channelsIn:  config.ChannelsIn,
 		channelsOut: config.ChannelsOut,
+		formatIn:    config.FormatIn,
+		formatOut:   config.FormatOut,
 	}, nil
 }
 
-// ProcessPCMFrames converts up to framesIn input frames into the output buffer,
-// returning how many frames were consumed and produced.
-func (c *DataConverter) ProcessPCMFrames(in unsafe.Pointer, framesIn uint64, out unsafe.Pointer, framesOut uint64) (uint64, uint64, error) {
+// Process converts up to the available frames from in into out.
+// It returns how many frames were consumed and produced.
+func (c *DataConverter) Process(in, out []byte) (framesInRead, framesOutWritten uint64, err error) {
 	if c == nil || c.handle == nil {
 		return 0, 0, fmt.Errorf("mago: nil data converter")
 	}
 	if err := c.lib.ensureOpen(); err != nil {
 		return 0, 0, err
 	}
-
+	if len(in) == 0 || len(out) == 0 {
+		return 0, 0, nil
+	}
+	bpfIn := BytesPerSample(c.formatIn) * c.channelsIn
+	bpfOut := BytesPerSample(c.formatOut) * c.channelsOut
+	if bpfIn == 0 || len(in)%int(bpfIn) != 0 || bpfOut == 0 || len(out)%int(bpfOut) != 0 {
+		return 0, 0, ErrInvalidSliceLength
+	}
+	framesIn := uint64(len(in) / int(bpfIn))
+	framesOut := uint64(len(out) / int(bpfOut))
 	inCount, outCount := framesIn, framesOut
-	result := c.lib.bindings.maDataConverterProcessPCMFrames(c.handle, in, &inCount, out, &outCount)
+	result := c.lib.bindings.maDataConverterProcessPCMFrames(c.handle, unsafe.Pointer(&in[0]), &inCount, unsafe.Pointer(&out[0]), &outCount)
+	if result != Success {
+		return inCount, outCount, c.lib.resultError("ma_data_converter_process_pcm_frames", result)
+	}
+	return inCount, outCount, nil
+}
+
+// ProcessF32 converts up to the available float32 frames from in into out.
+// It returns how many frames were consumed and produced.
+func (c *DataConverter) ProcessF32(in, out []float32) (framesInRead, framesOutWritten uint64, err error) {
+	if c == nil || c.handle == nil {
+		return 0, 0, fmt.Errorf("mago: nil data converter")
+	}
+	if err := c.lib.ensureOpen(); err != nil {
+		return 0, 0, err
+	}
+	if len(in) == 0 || len(out) == 0 {
+		return 0, 0, nil
+	}
+	if c.channelsIn == 0 || len(in)%int(c.channelsIn) != 0 || c.channelsOut == 0 || len(out)%int(c.channelsOut) != 0 {
+		return 0, 0, ErrInvalidSliceLength
+	}
+	framesIn := uint64(len(in) / int(c.channelsIn))
+	framesOut := uint64(len(out) / int(c.channelsOut))
+	inCount, outCount := framesIn, framesOut
+	result := c.lib.bindings.maDataConverterProcessPCMFrames(c.handle, unsafe.Pointer(&in[0]), &inCount, unsafe.Pointer(&out[0]), &outCount)
+	if result != Success {
+		return inCount, outCount, c.lib.resultError("ma_data_converter_process_pcm_frames", result)
+	}
+	return inCount, outCount, nil
+}
+
+// ProcessF32ToS16 converts up to the available frames from float32 in into int16 out.
+// It returns how many frames were consumed and produced.
+func (c *DataConverter) ProcessF32ToS16(in []float32, out []int16) (framesInRead, framesOutWritten uint64, err error) {
+	if c == nil || c.handle == nil {
+		return 0, 0, fmt.Errorf("mago: nil data converter")
+	}
+	if err := c.lib.ensureOpen(); err != nil {
+		return 0, 0, err
+	}
+	if len(in) == 0 || len(out) == 0 {
+		return 0, 0, nil
+	}
+	if c.channelsIn == 0 || len(in)%int(c.channelsIn) != 0 || c.channelsOut == 0 || len(out)%int(c.channelsOut) != 0 {
+		return 0, 0, ErrInvalidSliceLength
+	}
+	framesIn := uint64(len(in) / int(c.channelsIn))
+	framesOut := uint64(len(out) / int(c.channelsOut))
+	inCount, outCount := framesIn, framesOut
+	result := c.lib.bindings.maDataConverterProcessPCMFrames(c.handle, unsafe.Pointer(&in[0]), &inCount, unsafe.Pointer(&out[0]), &outCount)
+	if result != Success {
+		return inCount, outCount, c.lib.resultError("ma_data_converter_process_pcm_frames", result)
+	}
+	return inCount, outCount, nil
+}
+
+// ProcessS16ToF32 converts up to the available frames from int16 in into float32 out.
+// It returns how many frames were consumed and produced.
+func (c *DataConverter) ProcessS16ToF32(in []int16, out []float32) (framesInRead, framesOutWritten uint64, err error) {
+	if c == nil || c.handle == nil {
+		return 0, 0, fmt.Errorf("mago: nil data converter")
+	}
+	if err := c.lib.ensureOpen(); err != nil {
+		return 0, 0, err
+	}
+	if len(in) == 0 || len(out) == 0 {
+		return 0, 0, nil
+	}
+	if c.channelsIn == 0 || len(in)%int(c.channelsIn) != 0 || c.channelsOut == 0 || len(out)%int(c.channelsOut) != 0 {
+		return 0, 0, ErrInvalidSliceLength
+	}
+	framesIn := uint64(len(in) / int(c.channelsIn))
+	framesOut := uint64(len(out) / int(c.channelsOut))
+	inCount, outCount := framesIn, framesOut
+	result := c.lib.bindings.maDataConverterProcessPCMFrames(c.handle, unsafe.Pointer(&in[0]), &inCount, unsafe.Pointer(&out[0]), &outCount)
+	if result != Success {
+		return inCount, outCount, c.lib.resultError("ma_data_converter_process_pcm_frames", result)
+	}
+	return inCount, outCount, nil
+}
+
+// ProcessS16 converts up to the available int16 frames from in into out.
+// It returns how many frames were consumed and produced.
+func (c *DataConverter) ProcessS16(in, out []int16) (framesInRead, framesOutWritten uint64, err error) {
+	if c == nil || c.handle == nil {
+		return 0, 0, fmt.Errorf("mago: nil data converter")
+	}
+	if err := c.lib.ensureOpen(); err != nil {
+		return 0, 0, err
+	}
+	if len(in) == 0 || len(out) == 0 {
+		return 0, 0, nil
+	}
+	if c.channelsIn == 0 || len(in)%int(c.channelsIn) != 0 || c.channelsOut == 0 || len(out)%int(c.channelsOut) != 0 {
+		return 0, 0, ErrInvalidSliceLength
+	}
+	framesIn := uint64(len(in) / int(c.channelsIn))
+	framesOut := uint64(len(out) / int(c.channelsOut))
+	inCount, outCount := framesIn, framesOut
+	result := c.lib.bindings.maDataConverterProcessPCMFrames(c.handle, unsafe.Pointer(&in[0]), &inCount, unsafe.Pointer(&out[0]), &outCount)
 	if result != Success {
 		return inCount, outCount, c.lib.resultError("ma_data_converter_process_pcm_frames", result)
 	}
