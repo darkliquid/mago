@@ -24,3 +24,10 @@ internal/lib/
 
 # CI embed verification cache marker
 .buildlib-cache-marker
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*
