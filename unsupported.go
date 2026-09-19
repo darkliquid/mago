@@ -25,3 +25,23 @@ func (e *OpError) Error() string                        { return errUnsupportedP
 func WithLibraryPath(string) LibraryOption              { return func(*struct{}) {} }
 func Open(...LibraryOption) (*Library, error)           { return nil, errUnsupportedPlatform }
 func DefaultPlaybackDeviceConfig() PlaybackDeviceConfig { return PlaybackDeviceConfig{} }
+
+type LogLevel uint32
+
+const (
+	LogLevelDebug   LogLevel = 0
+	LogLevelInfo    LogLevel = 1
+	LogLevelWarning LogLevel = 2
+	LogLevelError   LogLevel = 3
+)
+
+type LogCallback func(level LogLevel, message string)
+
+type Log struct{}
+
+func (lib *Library) NewLog() (*Log, error)           { return nil, errUnsupportedPlatform }
+func (l *Log) Close() error                          { return errUnsupportedPlatform }
+func (l *Log) Register(LogCallback) (uintptr, error) { return 0, errUnsupportedPlatform }
+func (l *Log) Unregister(uintptr) error              { return errUnsupportedPlatform }
+func (l *Log) Post(LogLevel, string) error           { return errUnsupportedPlatform }
+func (l *Log) LevelString(LogLevel) string           { return "" }

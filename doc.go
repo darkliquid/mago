@@ -17,4 +17,7 @@
 // library performs a strict version check and rejects any loaded `miniaudio` build
 // whose reported version does not exactly match the vendored header version used by
 // this package.
+//
+// miniaudio's own logging can be surfaced to Go with Library.NewLog and
+// Log.Register.
 package mago
