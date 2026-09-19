@@ -32,6 +32,12 @@ func (*Library) NewDevice(*Context, DeviceConfig) (*Device, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*Context) NewDevice(DeviceConfig) (*Device, error) { return nil, errUnsupportedPlatform }
+func (*Library) NewContextWithLog(*Log, ...Backend) (*Context, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Context) DeviceInfo(DeviceType, any) (DeviceInfo, error) {
+	return DeviceInfo{}, errUnsupportedPlatform
+}
 func (*Library) NewPlaybackDevice(*Context, PlaybackDeviceConfig) (*Device, error) {
 	return nil, errUnsupportedPlatform
 }
