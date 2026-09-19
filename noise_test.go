@@ -219,4 +219,3 @@ func TestNoiseReadSlice(t *testing.T) {
 		t.Errorf("readS16: got %d frames, want 64", readS16)
 	}
 }
-

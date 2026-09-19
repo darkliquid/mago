@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"sync/atomic"
 	"time"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 	"github.com/darkliquid/mago/examples/internal/example"
@@ -67,22 +66,22 @@ func main() {
 			SampleRate:         sampleRate,
 			PeriodSizeInFrames: 256,
 		},
-		DataCallback: func(_ *mago.Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
-			if output == nil {
+		DataCallback: func(_ *mago.Device, io mago.DeviceIO) {
+			out := io.OutputF32()
+			if len(out) == 0 {
 				return
 			}
-			out := unsafe.Slice((*float32)(output), int(frameCount)*channels)
-			if input == nil {
+			in := io.InputF32()
+			if len(in) == 0 {
 				for i := range out {
 					out[i] = 0
 				}
 				return
 			}
-			in := unsafe.Slice((*float32)(input), int(frameCount)*channels)
 			for i := range out {
 				out[i] = in[i] * gain
 			}
-			frames.Add(uint64(frameCount))
+			frames.Add(uint64(io.FrameCount()))
 		},
 	})
 	example.Must(err)

@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 	"github.com/darkliquid/mago/examples/internal/example"
@@ -43,9 +42,7 @@ func main() {
 	input := []float32{0.25, 0.25, -0.5, -0.5, 1, 1, 0, 0}
 	output := make([]float32, len(input)/2)
 
-	example.Must(converter.ProcessPCMFrames(
-		unsafe.Pointer(&output[0]), unsafe.Pointer(&input[0]), uint64(len(output)),
-	))
+	example.Must(converter.Process(output, input))
 
 	inMap, err := converter.InputChannelMap()
 	example.Must(err)

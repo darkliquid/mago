@@ -194,4 +194,3 @@ func TestWaveformReadSlice(t *testing.T) {
 		t.Errorf("expected ErrInvalidSliceLength, got %v", err)
 	}
 }
-

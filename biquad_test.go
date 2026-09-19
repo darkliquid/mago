@@ -152,4 +152,3 @@ func TestBiquadProcessSlice(t *testing.T) {
 		t.Errorf("expected ErrOutputTooSmall, got %v", err)
 	}
 }
-

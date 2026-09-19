@@ -261,11 +261,11 @@ func (*AudioBufferRef) Read([]float32, bool) (uint64, error) {
 func (*AudioBufferRef) ReadS16([]int16, bool) (uint64, error) {
 	return 0, errUnsupportedPlatform
 }
-func (*AudioBufferRef) SeekToPCMFrame(uint64) error { return errUnsupportedPlatform }
-func (*AudioBufferRef) MapF32() ([]float32, error)  { return nil, errUnsupportedPlatform }
-func (*AudioBufferRef) MapBytes() ([]byte, error)   { return nil, errUnsupportedPlatform }
-func (*AudioBufferRef) Unmap(uint64) error          { return errUnsupportedPlatform }
-func (*AudioBufferRef) AtEnd() bool                 { return true }
+func (*AudioBufferRef) SeekToPCMFrame(uint64) error        { return errUnsupportedPlatform }
+func (*AudioBufferRef) MapF32() ([]float32, error)         { return nil, errUnsupportedPlatform }
+func (*AudioBufferRef) MapBytes() ([]byte, error)          { return nil, errUnsupportedPlatform }
+func (*AudioBufferRef) Unmap(uint64) error                 { return errUnsupportedPlatform }
+func (*AudioBufferRef) AtEnd() bool                        { return true }
 func (*AudioBufferRef) CursorInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
 func (*AudioBufferRef) LengthInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
 func (*AudioBufferRef) AvailableFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
@@ -347,13 +347,13 @@ type NoiseConfig struct {
 }
 type Noise struct{}
 
-func (*Library) NewNoise(NoiseConfig) (*Noise, error)          { return nil, errUnsupportedPlatform }
-func (*Noise) Read([]float32) (uint64, error)                  { return 0, errUnsupportedPlatform }
-func (*Noise) ReadS16([]int16) (uint64, error)                 { return 0, errUnsupportedPlatform }
-func (*Noise) SetAmplitude(float64) error                      { return errUnsupportedPlatform }
-func (*Noise) SetSeed(int32) error                             { return errUnsupportedPlatform }
-func (*Noise) SetType(NoiseType) error                         { return errUnsupportedPlatform }
-func (*Noise) Close() error                                    { return errUnsupportedPlatform }
+func (*Library) NewNoise(NoiseConfig) (*Noise, error) { return nil, errUnsupportedPlatform }
+func (*Noise) Read([]float32) (uint64, error)         { return 0, errUnsupportedPlatform }
+func (*Noise) ReadS16([]int16) (uint64, error)        { return 0, errUnsupportedPlatform }
+func (*Noise) SetAmplitude(float64) error             { return errUnsupportedPlatform }
+func (*Noise) SetSeed(int32) error                    { return errUnsupportedPlatform }
+func (*Noise) SetType(NoiseType) error                { return errUnsupportedPlatform }
+func (*Noise) Close() error                           { return errUnsupportedPlatform }
 
 type BiquadConfig struct {
 	Format   Format
@@ -371,7 +371,7 @@ func (*Library) NewBiquad(BiquadConfig) (*Biquad, error) { return nil, errUnsupp
 func (*Biquad) Reinit(BiquadConfig) error                { return errUnsupportedPlatform }
 func (*Biquad) ClearCache() error                        { return errUnsupportedPlatform }
 func (*Biquad) Process([]float32, []float32) error       { return errUnsupportedPlatform }
-func (*Biquad) ProcessS16([]int16, []int16) error       { return errUnsupportedPlatform }
+func (*Biquad) ProcessS16([]int16, []int16) error        { return errUnsupportedPlatform }
 func (*Biquad) Latency() uint32                          { return 0 }
 func (*Biquad) Close() error                             { return errUnsupportedPlatform }
 

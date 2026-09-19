@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 	"github.com/darkliquid/mago/examples/internal/example"
@@ -57,11 +56,8 @@ func main() {
 	device, err := ctx.NewDevice(mago.DeviceConfig{
 		Type:     mago.DeviceTypePlayback,
 		Playback: &mago.StreamConfig{DeviceIndex: -1, Channels: 1, SampleRate: 48_000, PeriodSizeInFrames: 128},
-		DataCallback: func(_ *mago.Device, output unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
-			if output == nil {
-				return
-			}
-			samples := unsafe.Slice((*float32)(output), int(frameCount))
+		DataCallback: func(_ *mago.Device, io mago.DeviceIO) {
+			samples := io.OutputF32()
 			for i := range samples {
 				samples[i] = 0
 			}

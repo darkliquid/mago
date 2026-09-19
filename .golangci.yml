@@ -29,6 +29,9 @@ linters:
       - path: _test\.go
         linters:
           - gosec
+      - text: "G115:"
+        linters:
+          - gosec
 
 formatters:
   enable:

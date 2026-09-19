@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"time"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 	"github.com/darkliquid/mago/examples/internal/example"
@@ -63,11 +62,8 @@ func main() {
 			SampleRate:         48_000,
 			PeriodSizeInFrames: 256,
 		},
-		DataCallback: func(_ *mago.Device, output unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
-			if output == nil {
-				return
-			}
-			samples := unsafe.Slice((*float32)(output), int(frameCount)*2)
+		DataCallback: func(_ *mago.Device, io mago.DeviceIO) {
+			samples := io.OutputF32()
 			for i := range samples {
 				samples[i] = 0
 			}
