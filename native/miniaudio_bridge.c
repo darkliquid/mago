@@ -46,23 +46,25 @@
 
 enum mago_object_type
 {
-    MAGO_OBJECT_CONTEXT        = 1,
-    MAGO_OBJECT_DEVICE         = 2,
-    MAGO_OBJECT_LOG            = 3,
-    MAGO_OBJECT_DEVICE_INFO    = 4,
-    MAGO_OBJECT_CONTEXT_CONFIG = 5
+    MAGO_OBJECT_CONTEXT           = 1,
+    MAGO_OBJECT_DEVICE            = 2,
+    MAGO_OBJECT_LOG               = 3,
+    MAGO_OBJECT_DEVICE_INFO       = 4,
+    MAGO_OBJECT_CONTEXT_CONFIG    = 5,
+    MAGO_OBJECT_CHANNEL_CONVERTER = 6
 };
 
 MAGO_API void* mago_alloc(int type)
 {
     switch (type)
     {
-        case MAGO_OBJECT_CONTEXT:        return calloc(1, sizeof(ma_context));
-        case MAGO_OBJECT_DEVICE:         return calloc(1, sizeof(ma_device));
-        case MAGO_OBJECT_LOG:            return calloc(1, sizeof(ma_log));
-        case MAGO_OBJECT_DEVICE_INFO:    return calloc(1, sizeof(ma_device_info));
-        case MAGO_OBJECT_CONTEXT_CONFIG: return calloc(1, sizeof(ma_context_config));
-        default:                         return NULL;
+        case MAGO_OBJECT_CONTEXT:           return calloc(1, sizeof(ma_context));
+        case MAGO_OBJECT_DEVICE:            return calloc(1, sizeof(ma_device));
+        case MAGO_OBJECT_LOG:               return calloc(1, sizeof(ma_log));
+        case MAGO_OBJECT_DEVICE_INFO:       return calloc(1, sizeof(ma_device_info));
+        case MAGO_OBJECT_CONTEXT_CONFIG:    return calloc(1, sizeof(ma_context_config));
+        case MAGO_OBJECT_CHANNEL_CONVERTER: return calloc(1, sizeof(ma_channel_converter));
+        default:                            return NULL;
     }
 }
 

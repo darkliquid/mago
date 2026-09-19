@@ -67,3 +67,40 @@ func (l *Log) Register(LogCallback) (uintptr, error) { return 0, errUnsupportedP
 func (l *Log) Unregister(uintptr) error              { return errUnsupportedPlatform }
 func (l *Log) Post(LogLevel, string) error           { return errUnsupportedPlatform }
 func (l *Log) LevelString(LogLevel) string           { return "" }
+
+type ChannelMap struct{}
+type ChannelConverterConfig struct{}
+type ChannelConverter struct{}
+
+func (*Library) NewStandardChannelMap(StandardChannelMap, uint32) ChannelMap { return ChannelMap{} }
+func (*Library) NewBlankChannelMap(uint32) ChannelMap                        { return ChannelMap{} }
+func (ChannelMap) Len() int                                                  { return 0 }
+func (ChannelMap) Channels() []Channel                                       { return nil }
+func (ChannelMap) Get(int) Channel                                           { return ChannelNone }
+func (ChannelMap) Clone() ChannelMap                                         { return ChannelMap{} }
+func (ChannelMap) String() string                                            { return "" }
+
+func (*Library) NewChannelConverter(ChannelConverterConfig) (*ChannelConverter, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*ChannelConverter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+	return errUnsupportedPlatform
+}
+func (*ChannelConverter) InputChannelMap() (ChannelMap, error) {
+	return ChannelMap{}, errUnsupportedPlatform
+}
+func (*ChannelConverter) OutputChannelMap() (ChannelMap, error) {
+	return ChannelMap{}, errUnsupportedPlatform
+}
+func (*ChannelConverter) Close() error { return errUnsupportedPlatform }
+
+func (*Library) ConvertPCMSamples(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, DitherMode) error {
+	return errUnsupportedPlatform
+}
+func (*Library) ConvertPCMFramesFormat(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, uint32, DitherMode) error {
+	return errUnsupportedPlatform
+}
+func (*Library) ConvertFrames(unsafe.Pointer, uint64, Format, uint32, uint32, unsafe.Pointer, uint64, Format, uint32, uint32) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func BytesPerSample(Format) uint32 { return 0 }

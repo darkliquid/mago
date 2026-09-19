@@ -49,6 +49,8 @@ const (
 	FormatUnknown                    Format             = 0
 	FormatU8                         Format             = 1
 	FormatS16                        Format             = 2
+	FormatS24                        Format             = 3
+	FormatS32                        Format             = 4
 	FormatF32                        Format             = 5
 	NotificationStarted              NotificationType   = 0
 	NotificationStopped              NotificationType   = 1
@@ -59,37 +61,51 @@ const (
 )
 
 type bindingSet struct {
-	maVersion                 func(*uint32, *uint32, *uint32)
-	maVersionString           func() string
-	maResultDescription       func(Result) string
-	maContextInit             func(*Backend, uint32, unsafe.Pointer, *contextHandle) Result
-	maContextUninit           func(*contextHandle)
-	maContextEnumerateDevices func(*contextHandle, uintptr, uintptr) Result
-	magoDeviceInit            func(*contextHandle, *deviceConfigNative, **deviceHandle) Result
-	magoDeviceUninitFree      func(*deviceHandle)
-	maDeviceStart             func(*deviceHandle) Result
-	maDeviceStop              func(*deviceHandle) Result
-	maDeviceGetState          func(*deviceHandle) DeviceState
-	maDeviceGetName           func(*deviceHandle, DeviceType, *byte, uintptr, *uintptr) Result
-	maDeviceGetInfo           func(*deviceHandle, DeviceType, *deviceInfoNative) Result
-	maDeviceGetLog            func(*deviceHandle) *logHandle
-	maDeviceGetContext        func(*deviceHandle) *contextHandle
-	maDeviceSetMasterVolume   func(*deviceHandle, float32) Result
-	maDeviceGetMasterVolume   func(*deviceHandle, *float32) Result
-	maDeviceSetMasterVolumeDB func(*deviceHandle, float32) Result
-	maDeviceGetMasterVolumeDB func(*deviceHandle, *float32) Result
-	maContextGetLog           func(*contextHandle) *logHandle
-	maContextGetDeviceInfo    func(*contextHandle, DeviceType, unsafe.Pointer, *deviceInfoNative) Result
-	magoAlloc                 func(int32) unsafe.Pointer
-	magoFree                  func(unsafe.Pointer)
-	maLogInit                 func(unsafe.Pointer, *logHandle) Result
-	maLogUninit               func(*logHandle)
-	maLogPost                 func(*logHandle, uint32, string) Result
-	maLogLevelToString        func(uint32) string
-	magoLogRegisterCallback   func(*logHandle, uintptr, uintptr) Result
-	magoLogUnregisterCallback func(*logHandle, uintptr, uintptr) Result
-	magoContextConfigInit     func(unsafe.Pointer)
-	magoContextConfigSetLog   func(unsafe.Pointer, *logHandle)
+	maVersion                             func(*uint32, *uint32, *uint32)
+	maVersionString                       func() string
+	maResultDescription                   func(Result) string
+	maContextInit                         func(*Backend, uint32, unsafe.Pointer, *contextHandle) Result
+	maContextUninit                       func(*contextHandle)
+	maContextEnumerateDevices             func(*contextHandle, uintptr, uintptr) Result
+	magoDeviceInit                        func(*contextHandle, *deviceConfigNative, **deviceHandle) Result
+	magoDeviceUninitFree                  func(*deviceHandle)
+	maDeviceStart                         func(*deviceHandle) Result
+	maDeviceStop                          func(*deviceHandle) Result
+	maDeviceGetState                      func(*deviceHandle) DeviceState
+	maDeviceGetName                       func(*deviceHandle, DeviceType, *byte, uintptr, *uintptr) Result
+	maDeviceGetInfo                       func(*deviceHandle, DeviceType, *deviceInfoNative) Result
+	maDeviceGetLog                        func(*deviceHandle) *logHandle
+	maDeviceGetContext                    func(*deviceHandle) *contextHandle
+	maDeviceSetMasterVolume               func(*deviceHandle, float32) Result
+	maDeviceGetMasterVolume               func(*deviceHandle, *float32) Result
+	maDeviceSetMasterVolumeDB             func(*deviceHandle, float32) Result
+	maDeviceGetMasterVolumeDB             func(*deviceHandle, *float32) Result
+	maContextGetLog                       func(*contextHandle) *logHandle
+	maContextGetDeviceInfo                func(*contextHandle, DeviceType, unsafe.Pointer, *deviceInfoNative) Result
+	magoAlloc                             func(int32) unsafe.Pointer
+	magoFree                              func(unsafe.Pointer)
+	maLogInit                             func(unsafe.Pointer, *logHandle) Result
+	maLogUninit                           func(*logHandle)
+	maLogPost                             func(*logHandle, uint32, string) Result
+	maLogLevelToString                    func(uint32) string
+	magoLogRegisterCallback               func(*logHandle, uintptr, uintptr) Result
+	magoLogUnregisterCallback             func(*logHandle, uintptr, uintptr) Result
+	magoContextConfigInit                 func(unsafe.Pointer)
+	magoContextConfigSetLog               func(unsafe.Pointer, *logHandle)
+	maPCMConvert                          func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, DitherMode)
+	maConvertPCMFramesFormat              func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, uint32, DitherMode)
+	maConvertFrames                       func(unsafe.Pointer, uint64, Format, uint32, uint32, unsafe.Pointer, uint64, Format, uint32, uint32) uint64
+	maChannelMapInitStandard              func(StandardChannelMap, *uint8, uintptr, uint32)
+	maChannelMapInitBlank                 func(*uint8, uint32)
+	maChannelMapCopy                      func(*uint8, *uint8, uint32)
+	maChannelMapCopyOrDefault             func(*uint8, uintptr, *uint8, uint32)
+	maChannelMapGetChannel                func(*uint8, uint32, uint32) Channel
+	maChannelMapToString                  func(*uint8, uint32, *byte, uintptr) uintptr
+	maChannelConverterInit                func(*channelConverterConfigNative, unsafe.Pointer, *channelConverterHandle) Result
+	maChannelConverterUninit              func(*channelConverterHandle, unsafe.Pointer)
+	maChannelConverterProcessPCMFrames    func(*channelConverterHandle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maChannelConverterGetInputChannelMap  func(*channelConverterHandle, *uint8, uintptr) Result
+	maChannelConverterGetOutputChannelMap func(*channelConverterHandle, *uint8, uintptr) Result
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -124,6 +140,20 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.magoLogUnregisterCallback, handle, "mago_log_unregister_callback")
 	purego.RegisterLibFunc(&b.magoContextConfigInit, handle, "mago_context_config_init")
 	purego.RegisterLibFunc(&b.magoContextConfigSetLog, handle, "mago_context_config_set_log")
+	purego.RegisterLibFunc(&b.maPCMConvert, handle, "ma_pcm_convert")
+	purego.RegisterLibFunc(&b.maConvertPCMFramesFormat, handle, "ma_convert_pcm_frames_format")
+	purego.RegisterLibFunc(&b.maConvertFrames, handle, "ma_convert_frames")
+	purego.RegisterLibFunc(&b.maChannelMapInitStandard, handle, "ma_channel_map_init_standard")
+	purego.RegisterLibFunc(&b.maChannelMapInitBlank, handle, "ma_channel_map_init_blank")
+	purego.RegisterLibFunc(&b.maChannelMapCopy, handle, "ma_channel_map_copy")
+	purego.RegisterLibFunc(&b.maChannelMapCopyOrDefault, handle, "ma_channel_map_copy_or_default")
+	purego.RegisterLibFunc(&b.maChannelMapGetChannel, handle, "ma_channel_map_get_channel")
+	purego.RegisterLibFunc(&b.maChannelMapToString, handle, "ma_channel_map_to_string")
+	purego.RegisterLibFunc(&b.maChannelConverterInit, handle, "ma_channel_converter_init")
+	purego.RegisterLibFunc(&b.maChannelConverterUninit, handle, "ma_channel_converter_uninit")
+	purego.RegisterLibFunc(&b.maChannelConverterProcessPCMFrames, handle, "ma_channel_converter_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maChannelConverterGetInputChannelMap, handle, "ma_channel_converter_get_input_channel_map")
+	purego.RegisterLibFunc(&b.maChannelConverterGetOutputChannelMap, handle, "ma_channel_converter_get_output_channel_map")
 }
 
 var _ unsafe.Pointer
