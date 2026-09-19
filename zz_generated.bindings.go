@@ -65,10 +65,21 @@ type bindingSet struct {
 	maContextInit             func(*Backend, uint32, unsafe.Pointer, *contextHandle) Result
 	maContextUninit           func(*contextHandle)
 	maContextEnumerateDevices func(*contextHandle, uintptr, uintptr) Result
-	magoDeviceInitPlayback    func(*contextHandle, *playbackDeviceConfigNative, **deviceHandle) Result
+	magoDeviceInit            func(*contextHandle, *deviceConfigNative, **deviceHandle) Result
 	magoDeviceUninitFree      func(*deviceHandle)
 	maDeviceStart             func(*deviceHandle) Result
 	maDeviceStop              func(*deviceHandle) Result
+	maDeviceGetState          func(*deviceHandle) DeviceState
+	maDeviceGetName           func(*deviceHandle, DeviceType, *byte, uintptr, *uintptr) Result
+	maDeviceGetInfo           func(*deviceHandle, DeviceType, *deviceInfoNative) Result
+	maDeviceGetLog            func(*deviceHandle) *logHandle
+	maDeviceGetContext        func(*deviceHandle) *contextHandle
+	maDeviceSetMasterVolume   func(*deviceHandle, float32) Result
+	maDeviceGetMasterVolume   func(*deviceHandle, *float32) Result
+	maDeviceSetMasterVolumeDB func(*deviceHandle, float32) Result
+	maDeviceGetMasterVolumeDB func(*deviceHandle, *float32) Result
+	maContextGetLog           func(*contextHandle) *logHandle
+	maContextGetDeviceInfo    func(*contextHandle, DeviceType, unsafe.Pointer, *deviceInfoNative) Result
 	magoAlloc                 func(int32) unsafe.Pointer
 	magoFree                  func(unsafe.Pointer)
 	maLogInit                 func(unsafe.Pointer, *logHandle) Result
@@ -77,6 +88,8 @@ type bindingSet struct {
 	maLogLevelToString        func(uint32) string
 	magoLogRegisterCallback   func(*logHandle, uintptr, uintptr) Result
 	magoLogUnregisterCallback func(*logHandle, uintptr, uintptr) Result
+	magoContextConfigInit     func(unsafe.Pointer)
+	magoContextConfigSetLog   func(unsafe.Pointer, *logHandle)
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -86,10 +99,21 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maContextInit, handle, "ma_context_init")
 	purego.RegisterLibFunc(&b.maContextUninit, handle, "ma_context_uninit")
 	purego.RegisterLibFunc(&b.maContextEnumerateDevices, handle, "ma_context_enumerate_devices")
-	purego.RegisterLibFunc(&b.magoDeviceInitPlayback, handle, "mago_device_init_playback")
+	purego.RegisterLibFunc(&b.magoDeviceInit, handle, "mago_device_init")
 	purego.RegisterLibFunc(&b.magoDeviceUninitFree, handle, "mago_device_uninit_free")
 	purego.RegisterLibFunc(&b.maDeviceStart, handle, "ma_device_start")
 	purego.RegisterLibFunc(&b.maDeviceStop, handle, "ma_device_stop")
+	purego.RegisterLibFunc(&b.maDeviceGetState, handle, "ma_device_get_state")
+	purego.RegisterLibFunc(&b.maDeviceGetName, handle, "ma_device_get_name")
+	purego.RegisterLibFunc(&b.maDeviceGetInfo, handle, "ma_device_get_info")
+	purego.RegisterLibFunc(&b.maDeviceGetLog, handle, "ma_device_get_log")
+	purego.RegisterLibFunc(&b.maDeviceGetContext, handle, "ma_device_get_context")
+	purego.RegisterLibFunc(&b.maDeviceSetMasterVolume, handle, "ma_device_set_master_volume")
+	purego.RegisterLibFunc(&b.maDeviceGetMasterVolume, handle, "ma_device_get_master_volume")
+	purego.RegisterLibFunc(&b.maDeviceSetMasterVolumeDB, handle, "ma_device_set_master_volume_db")
+	purego.RegisterLibFunc(&b.maDeviceGetMasterVolumeDB, handle, "ma_device_get_master_volume_db")
+	purego.RegisterLibFunc(&b.maContextGetLog, handle, "ma_context_get_log")
+	purego.RegisterLibFunc(&b.maContextGetDeviceInfo, handle, "ma_context_get_device_info")
 	purego.RegisterLibFunc(&b.magoAlloc, handle, "mago_alloc")
 	purego.RegisterLibFunc(&b.magoFree, handle, "mago_free")
 	purego.RegisterLibFunc(&b.maLogInit, handle, "ma_log_init")
@@ -98,6 +122,8 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maLogLevelToString, handle, "ma_log_level_to_string")
 	purego.RegisterLibFunc(&b.magoLogRegisterCallback, handle, "mago_log_register_callback")
 	purego.RegisterLibFunc(&b.magoLogUnregisterCallback, handle, "mago_log_unregister_callback")
+	purego.RegisterLibFunc(&b.magoContextConfigInit, handle, "mago_context_config_init")
+	purego.RegisterLibFunc(&b.magoContextConfigSetLog, handle, "mago_context_config_set_log")
 }
 
 var _ unsafe.Pointer

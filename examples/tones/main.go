@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -13,7 +12,6 @@ import (
 	"unsafe"
 
 	"github.com/darkliquid/mago"
-	"github.com/darkliquid/mago/internal/buildlib"
 )
 
 func main() {
@@ -23,13 +21,7 @@ func main() {
 	durationFlag := flag.Duration("duration", getenvDuration("MAGO_TONE_DURATION", 3*time.Second), "how long to play the tones")
 	flag.Parse()
 
-	repoRoot, err := findRepoRoot()
-	must(err)
-
-	libPath := buildlib.DefaultOutputPath(repoRoot)
-	must(ensureSharedLibrary(repoRoot, libPath))
-
-	lib, err := mago.Open(mago.WithLibraryPath(libPath))
+	lib, err := mago.Open()
 	must(err)
 	defer func() {
 		must(lib.Close())
@@ -150,6 +142,8 @@ func parseBackend(value string) (string, mago.Backend, bool) {
 		return "ALSA", mago.BackendALSA, true
 	case "jack":
 		return "JACK", mago.BackendJACK, true
+	case "null":
+		return "Null", mago.BackendNull, true
 	default:
 		return "", 0, false
 	}
@@ -180,18 +174,6 @@ func selectDevice(devices []mago.DeviceInfo, requestedIndex int, requestedName s
 	}
 
 	return 0, devices[0].Name, nil
-}
-
-func findRepoRoot() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("resolve caller path")
-	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..")), nil
-}
-
-func ensureSharedLibrary(repoRoot, libPath string) error {
-	return buildlib.Build(repoRoot, libPath, "")
 }
 
 func backendCandidates() []struct {

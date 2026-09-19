@@ -33,10 +33,39 @@ type PlaybackDeviceConfig struct {
 	NotificationCallback      NotificationCallback
 }
 
+// StreamConfig configures one side of a device (playback or capture).
+type StreamConfig struct {
+	DeviceIndex               int
+	Format                    Format
+	Channels                  uint32
+	SampleRate                uint32
+	PeriodSizeInFrames        uint32
+	PeriodSizeInMilliseconds  uint32
+	Periods                   uint32
+	PerformanceProfile        PerformanceProfile
+	ShareMode                 ShareMode
+	NoPreSilencedOutputBuffer bool
+	NoClip                    bool
+	NoDisableDenormals        bool
+	NoFixedSizedCallback      bool
+}
+
+// DeviceConfig describes a device of any type. Playback is required for
+// playback and duplex devices; Capture is required for capture, duplex and
+// loopback devices. The callbacks apply to the device as a whole.
+type DeviceConfig struct {
+	Type                 DeviceType
+	Playback             *StreamConfig
+	Capture              *StreamConfig
+	DataCallback         DataCallback
+	NotificationCallback NotificationCallback
+}
+
 type Device struct {
-	lib    *Library
-	handle *deviceHandle
-	token  uintptr
+	lib         *Library
+	handle      *deviceHandle
+	token       uintptr
+	primaryType DeviceType
 }
 
 type callbackState struct {
@@ -108,28 +137,59 @@ func DefaultPlaybackDeviceConfig() PlaybackDeviceConfig {
 	}
 }
 
-func (lib *Library) NewPlaybackDevice(ctx *Context, config PlaybackDeviceConfig) (*Device, error) {
+// NewDevice creates a device of the configured type. Playback must be set for
+// playback and duplex devices; Capture must be set for capture, duplex and
+// loopback devices.
+func (lib *Library) NewDevice(ctx *Context, config DeviceConfig) (*Device, error) {
 	if err := lib.ensureOpen(); err != nil {
 		return nil, err
 	}
 	if ctx != nil && ctx.lib != lib {
 		return nil, fmt.Errorf("mago: context belongs to a different library")
 	}
-	if config.DeviceIndex < -1 {
-		return nil, fmt.Errorf("mago: device index must be -1 or greater")
+
+	switch config.Type {
+	case DeviceTypePlayback:
+		if config.Playback == nil {
+			return nil, fmt.Errorf("mago: playback config is required for a playback device")
+		}
+		if config.Capture != nil {
+			return nil, fmt.Errorf("mago: capture config is not valid for a playback device")
+		}
+	case DeviceTypeCapture, DeviceTypeLoopback:
+		if config.Capture == nil {
+			return nil, fmt.Errorf("mago: capture config is required for a %s device", deviceTypeName(config.Type))
+		}
+		if config.Playback != nil {
+			return nil, fmt.Errorf("mago: playback config is not valid for a %s device", deviceTypeName(config.Type))
+		}
+	case DeviceTypeDuplex:
+		if config.Playback == nil || config.Capture == nil {
+			return nil, fmt.Errorf("mago: duplex devices require both playback and capture configs")
+		}
+	default:
+		return nil, fmt.Errorf("mago: unsupported device type %d", config.Type)
 	}
-	if config.DeviceIndex > math.MaxInt32 {
-		return nil, fmt.Errorf("mago: device index must be %d or less", math.MaxInt32)
-	}
-	if ctx == nil && config.DeviceIndex >= 0 {
-		return nil, fmt.Errorf("mago: selecting a device by index requires a context")
+
+	for _, stream := range []*StreamConfig{config.Playback, config.Capture} {
+		if stream == nil {
+			continue
+		}
+		if stream.DeviceIndex < -1 {
+			return nil, fmt.Errorf("mago: device index must be -1 or greater")
+		}
+		if stream.DeviceIndex > math.MaxInt32 {
+			return nil, fmt.Errorf("mago: device index must be %d or less", math.MaxInt32)
+		}
+		if ctx == nil && stream.DeviceIndex >= 0 {
+			return nil, fmt.Errorf("mago: selecting a device by index requires a context")
+		}
 	}
 
 	token := uintptr(callbackSeq.Add(1))
-	device := &Device{lib: lib, token: token}
+	device := &Device{lib: lib, token: token, primaryType: config.Type}
 	callbacks.Store(token, &callbackState{device: device, onData: config.DataCallback, onNotify: config.NotificationCallback})
 
-	var handle *deviceHandle
 	var ctxHandle *contextHandle
 	if ctx != nil {
 		ctxHandle = ctx.handle
@@ -144,8 +204,66 @@ func (lib *Library) NewPlaybackDevice(ctx *Context, config PlaybackDeviceConfig)
 		notifyPtr = notificationCallbackPtr
 	}
 
-	nativeConfig := playbackDeviceConfigNative{
-		DeviceIndex:               int32(config.DeviceIndex),
+	nativeConfig := deviceConfigNative{
+		DeviceType:           uint32(config.Type), //nolint:gosec // validated to one of the four DeviceType values above
+		Playback:             streamToNative(config.Playback),
+		Capture:              streamToNative(config.Capture),
+		DataCallback:         dataPtr,
+		NotificationCallback: notifyPtr,
+		UserData:             token,
+	}
+
+	var handle *deviceHandle
+	result := lib.bindings.magoDeviceInit(ctxHandle, &nativeConfig, &handle)
+	if result != Success {
+		callbacks.Delete(token)
+		return nil, lib.resultError("ma_device_init", result)
+	}
+
+	device.handle = handle
+	return device, nil
+}
+
+func streamToNative(stream *StreamConfig) *streamConfigNative {
+	if stream == nil {
+		return nil
+	}
+	return &streamConfigNative{
+		DeviceIndex:               int32(stream.DeviceIndex), //nolint:gosec // bounded by the MaxInt32 check in NewDevice
+		Format:                    stream.Format,
+		Channels:                  stream.Channels,
+		SampleRate:                stream.SampleRate,
+		PeriodSizeInFrames:        stream.PeriodSizeInFrames,
+		PeriodSizeInMilliseconds:  stream.PeriodSizeInMilliseconds,
+		Periods:                   stream.Periods,
+		PerformanceProfile:        stream.PerformanceProfile,
+		ShareMode:                 stream.ShareMode,
+		NoPreSilencedOutputBuffer: boolToBool32(stream.NoPreSilencedOutputBuffer),
+		NoClip:                    boolToBool32(stream.NoClip),
+		NoDisableDenormals:        boolToBool32(stream.NoDisableDenormals),
+		NoFixedSizedCallback:      boolToBool32(stream.NoFixedSizedCallback),
+	}
+}
+
+func deviceTypeName(t DeviceType) string {
+	switch t {
+	case DeviceTypePlayback:
+		return "playback"
+	case DeviceTypeCapture:
+		return "capture"
+	case DeviceTypeDuplex:
+		return "duplex"
+	case DeviceTypeLoopback:
+		return "loopback"
+	default:
+		return fmt.Sprintf("unknown(%d)", t)
+	}
+}
+
+// NewPlaybackDevice is the playback-only convenience form of NewDevice.
+func (lib *Library) NewPlaybackDevice(ctx *Context, config PlaybackDeviceConfig) (*Device, error) {
+	stream := StreamConfig{
+		DeviceIndex:               config.DeviceIndex,
 		Format:                    config.Format,
 		Channels:                  config.Channels,
 		SampleRate:                config.SampleRate,
@@ -154,23 +272,24 @@ func (lib *Library) NewPlaybackDevice(ctx *Context, config PlaybackDeviceConfig)
 		Periods:                   config.Periods,
 		PerformanceProfile:        config.PerformanceProfile,
 		ShareMode:                 config.ShareMode,
-		NoPreSilencedOutputBuffer: boolToBool32(config.NoPreSilencedOutputBuffer),
-		NoClip:                    boolToBool32(config.NoClip),
-		NoDisableDenormals:        boolToBool32(config.NoDisableDenormals),
-		NoFixedSizedCallback:      boolToBool32(config.NoFixedSizedCallback),
-		DataCallback:              dataPtr,
-		NotificationCallback:      notifyPtr,
-		UserData:                  token,
+		NoPreSilencedOutputBuffer: config.NoPreSilencedOutputBuffer,
+		NoClip:                    config.NoClip,
+		NoDisableDenormals:        config.NoDisableDenormals,
+		NoFixedSizedCallback:      config.NoFixedSizedCallback,
 	}
+	return lib.NewDevice(ctx, DeviceConfig{
+		Type:                 DeviceTypePlayback,
+		Playback:             &stream,
+		DataCallback:         config.DataCallback,
+		NotificationCallback: config.NotificationCallback,
+	})
+}
 
-	result := lib.bindings.magoDeviceInitPlayback(ctxHandle, &nativeConfig, &handle)
-	if result != Success {
-		callbacks.Delete(token)
-		return nil, lib.resultError("ma_device_init", result)
+func (ctx *Context) NewDevice(config DeviceConfig) (*Device, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("mago: nil context")
 	}
-
-	device.handle = handle
-	return device, nil
+	return ctx.lib.NewDevice(ctx, config)
 }
 
 func (ctx *Context) NewPlaybackDevice(config PlaybackDeviceConfig) (*Device, error) {
@@ -212,6 +331,144 @@ func (device *Device) Close() error {
 	callbacks.Delete(device.token)
 	device.handle = nil
 	return nil
+}
+
+// State reports the device's current state.
+func (device *Device) State() DeviceState {
+	if device == nil || device.handle == nil {
+		return DeviceStateUninitialized
+	}
+	return device.lib.bindings.maDeviceGetState(device.handle)
+}
+
+// Name reports the device name for its primary type.
+func (device *Device) Name() (string, error) {
+	return device.NameFor(device.primaryType)
+}
+
+// NameFor reports the device name for a specific stream type.
+func (device *Device) NameFor(t DeviceType) (string, error) {
+	if device == nil || device.handle == nil {
+		return "", fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return "", err
+	}
+
+	var buffer [256]byte
+	var length uintptr
+	result := device.lib.bindings.maDeviceGetName(device.handle, t, &buffer[0], uintptr(len(buffer)), &length)
+	if result != Success {
+		return "", device.lib.resultError("ma_device_get_name", result)
+	}
+	if length > uintptr(len(buffer)) {
+		length = uintptr(len(buffer))
+	}
+	return string(buffer[:length]), nil
+}
+
+// Info reports basic information about the device for its primary type.
+func (device *Device) Info() (DeviceInfo, error) {
+	return device.InfoFor(device.primaryType)
+}
+
+// InfoFor reports basic information about the device for a specific stream type.
+func (device *Device) InfoFor(t DeviceType) (DeviceInfo, error) {
+	if device == nil || device.handle == nil {
+		return DeviceInfo{}, fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return DeviceInfo{}, err
+	}
+
+	native := (*deviceInfoNative)(device.lib.bindings.magoAlloc(magoObjectDeviceInfo))
+	if native == nil {
+		return DeviceInfo{}, fmt.Errorf("mago: allocate device info: out of memory")
+	}
+	defer device.lib.bindings.magoFree(unsafe.Pointer(native))
+
+	if result := device.lib.bindings.maDeviceGetInfo(device.handle, t, native); result != Success {
+		return DeviceInfo{}, device.lib.resultError("ma_device_get_info", result)
+	}
+	return copyDeviceInfo(native), nil
+}
+
+// Log returns the device's log, or nil when none is attached. The result is
+// borrowed: closing it only detaches the handle.
+func (device *Device) Log() *Log {
+	if device == nil || device.handle == nil {
+		return nil
+	}
+	return borrowedLog(device.lib, device.lib.bindings.maDeviceGetLog(device.handle))
+}
+
+// Context returns the context that owns this device. The result is borrowed:
+// closing it only detaches the handle.
+func (device *Device) Context() *Context {
+	if device == nil || device.handle == nil {
+		return nil
+	}
+	handle := device.lib.bindings.maDeviceGetContext(device.handle)
+	if handle == nil {
+		return nil
+	}
+	return &Context{lib: device.lib, handle: handle, owned: false}
+}
+
+// SetMasterVolume sets the linear master volume for the device.
+func (device *Device) SetMasterVolume(volume float64) error {
+	if device == nil || device.handle == nil {
+		return fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return device.lib.resultError("ma_device_set_master_volume",
+		device.lib.bindings.maDeviceSetMasterVolume(device.handle, float32(volume)))
+}
+
+// MasterVolume reports the linear master volume for the device.
+func (device *Device) MasterVolume() (float64, error) {
+	if device == nil || device.handle == nil {
+		return 0, fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return 0, err
+	}
+
+	var volume float32
+	if result := device.lib.bindings.maDeviceGetMasterVolume(device.handle, &volume); result != Success {
+		return 0, device.lib.resultError("ma_device_get_master_volume", result)
+	}
+	return float64(volume), nil
+}
+
+// SetMasterVolumeDB sets the master volume in decibels.
+func (device *Device) SetMasterVolumeDB(gainDB float64) error {
+	if device == nil || device.handle == nil {
+		return fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return device.lib.resultError("ma_device_set_master_volume_db",
+		device.lib.bindings.maDeviceSetMasterVolumeDB(device.handle, float32(gainDB)))
+}
+
+// MasterVolumeDB reports the master volume in decibels.
+func (device *Device) MasterVolumeDB() (float64, error) {
+	if device == nil || device.handle == nil {
+		return 0, fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return 0, err
+	}
+
+	var gainDB float32
+	if result := device.lib.bindings.maDeviceGetMasterVolumeDB(device.handle, &gainDB); result != Success {
+		return 0, device.lib.resultError("ma_device_get_master_volume_db", result)
+	}
+	return float64(gainDB), nil
 }
 
 func boolToBool32(v bool) uint32 {

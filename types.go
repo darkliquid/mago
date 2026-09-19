@@ -13,6 +13,16 @@ type PerformanceProfile int32
 type Format int32
 type NotificationType uint32
 
+type DeviceState int32
+
+const (
+	DeviceStateUninitialized DeviceState = 0
+	DeviceStateStopped       DeviceState = 1
+	DeviceStateStarted       DeviceState = 2
+	DeviceStateStarting      DeviceState = 3
+	DeviceStateStopping      DeviceState = 4
+)
+
 type Version struct {
 	Major    uint32
 	Minor    uint32
@@ -23,7 +33,10 @@ func (v Version) String() string {
 	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Revision)
 }
 
-type playbackDeviceConfigNative struct {
+// streamConfigNative mirrors mago_stream_config, the bridge's own per-stream
+// struct (not a miniaudio struct). Field order and widths must match
+// native/miniaudio_bridge.c.
+type streamConfigNative struct {
 	DeviceID                  unsafe.Pointer
 	DeviceIndex               int32
 	Format                    Format
@@ -38,9 +51,16 @@ type playbackDeviceConfigNative struct {
 	NoClip                    uint32
 	NoDisableDenormals        uint32
 	NoFixedSizedCallback      uint32
-	DataCallback              uintptr
-	NotificationCallback      uintptr
-	UserData                  uintptr
+}
+
+// deviceConfigNative mirrors mago_device_config.
+type deviceConfigNative struct {
+	DeviceType           uint32
+	Playback             *streamConfigNative
+	Capture              *streamConfigNative
+	DataCallback         uintptr
+	NotificationCallback uintptr
+	UserData             uintptr
 }
 
 // deviceIDNative mirrors the ma_device_id union, whose largest member is a
@@ -70,7 +90,9 @@ type logHandle struct{}
 // Private ABI shared with the mago_object_type enum in native/miniaudio_bridge.c.
 // Keep the two in sync when adding a new object type.
 const (
-	magoObjectContext int32 = 1
-	magoObjectDevice  int32 = 2
-	magoObjectLog     int32 = 3
+	magoObjectContext       int32 = 1
+	magoObjectDevice        int32 = 2
+	magoObjectLog           int32 = 3
+	magoObjectDeviceInfo    int32 = 4
+	magoObjectContextConfig int32 = 5
 )

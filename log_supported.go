@@ -58,6 +58,16 @@ func goCString(ptr uintptr) string {
 type Log struct {
 	lib    *Library
 	handle *logHandle
+	owned  bool
+}
+
+// borrowedLog wraps a log owned by something else (a context or device). Closing
+// a borrowed log detaches the handle without uninitializing the owner's log.
+func borrowedLog(lib *Library, handle *logHandle) *Log {
+	if handle == nil {
+		return nil
+	}
+	return &Log{lib: lib, handle: handle, owned: false}
 }
 
 // NewLog allocates and initializes a log bound to this library.
@@ -76,7 +86,7 @@ func (lib *Library) NewLog() (*Log, error) {
 		return nil, lib.resultError("ma_log_init", result)
 	}
 
-	return &Log{lib: lib, handle: handle}, nil
+	return &Log{lib: lib, handle: handle, owned: true}, nil
 }
 
 // Register adds a callback and returns a token needed to Unregister it.
@@ -121,9 +131,13 @@ func (l *Log) LevelString(level LogLevel) string {
 	return l.lib.bindings.maLogLevelToString(uint32(level))
 }
 
-// Close uninitializes and frees the log.
+// Close uninitializes and frees the log. A borrowed log is only detached.
 func (l *Log) Close() error {
 	if l == nil || l.handle == nil {
+		return nil
+	}
+	if !l.owned {
+		l.handle = nil
 		return nil
 	}
 	if err := l.lib.ensureOpen(); err != nil {

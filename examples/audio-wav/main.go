@@ -6,25 +6,14 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"time"
 
 	"github.com/darkliquid/mago/audio"
-	"github.com/darkliquid/mago/internal/buildlib"
 )
 
 func main() {
-	repoRoot, err := findRepoRoot()
-	must(err)
-
-	libPath := buildlib.DefaultOutputPath(repoRoot)
-	must(buildlib.Build(repoRoot, libPath, ""))
-
-	engine, err := audio.Open(audio.Config{
-		LibraryPath: libPath,
-	})
+	engine, err := audio.Open(audio.Config{})
 	must(err)
 	defer func() { must(engine.Close()) }()
 
@@ -92,14 +81,6 @@ func makeTestWAV() []byte {
 	must(binary.Write(&wav, binary.LittleEndian, dataSize32))
 	wav.Write(pcm.Bytes())
 	return wav.Bytes()
-}
-
-func findRepoRoot() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("resolve caller path")
-	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..")), nil
 }
 
 func must(err error) {
