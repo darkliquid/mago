@@ -23,6 +23,7 @@ const (
 	DeviceAlreadyInitialized         Result             = -301
 	DeviceNotStarted                 Result             = -302
 	DeviceNotStopped                 Result             = -303
+	AtEnd                            Result             = -17
 	BackendWASAPI                    Backend            = 0
 	BackendDSound                    Backend            = 1
 	BackendWinMM                     Backend            = 2
