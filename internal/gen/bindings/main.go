@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"go/format"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 type functionSpec struct {
@@ -35,10 +38,7 @@ var functions = []functionSpec{
 	{FieldName: "maDeviceStop", Symbol: "ma_device_stop", Type: "func(*deviceHandle) Result"},
 }
 
-var constants = []constSpec{
-	{Name: "ExpectedMiniaudioVersionMajor", Type: "uint32", Value: "0"},
-	{Name: "ExpectedMiniaudioVersionMinor", Type: "uint32", Value: "11"},
-	{Name: "ExpectedMiniaudioVersionRevision", Type: "uint32", Value: "25"},
+var baseConstants = []constSpec{
 	{Name: "Success", Type: "Result", Value: "0"},
 	{Name: "Error", Type: "Result", Value: "-1"},
 	{Name: "InvalidArgs", Type: "Result", Value: "-2"},
@@ -85,11 +85,68 @@ var constants = []constSpec{
 	{Name: "NotificationUnlocked", Type: "NotificationType", Value: "5"},
 }
 
+func resolveVersion(root, versionFlag string) (major, minor, revision string, err error) {
+	if strings.TrimSpace(versionFlag) != "" {
+		parts := strings.Split(strings.TrimSpace(versionFlag), ".")
+		if len(parts) != 3 {
+			return "", "", "", fmt.Errorf("invalid version format %q, expected x.y.z", versionFlag)
+		}
+		return parts[0], parts[1], parts[2], nil
+	}
+
+	headerPath := filepath.Join(root, "miniaudio.h")
+	if data, err := os.ReadFile(headerPath); err == nil {
+		majorRe := regexp.MustCompile(`#define\s+MA_VERSION_MAJOR\s+(\d+)`)
+		minorRe := regexp.MustCompile(`#define\s+MA_VERSION_MINOR\s+(\d+)`)
+		revRe := regexp.MustCompile(`#define\s+MA_VERSION_REVISION\s+(\d+)`)
+
+		majorMatch := majorRe.FindSubmatch(data)
+		minorMatch := minorRe.FindSubmatch(data)
+		revMatch := revRe.FindSubmatch(data)
+
+		if len(majorMatch) > 1 && len(minorMatch) > 1 && len(revMatch) > 1 {
+			return string(majorMatch[1]), string(minorMatch[1]), string(revMatch[1]), nil
+		}
+	}
+
+	bindingsPath := filepath.Join(root, "zz_generated.bindings.go")
+	if data, err := os.ReadFile(bindingsPath); err == nil {
+		pattern := regexp.MustCompile(`ExpectedMiniaudioVersion(Major|Minor|Revision)\s+uint32\s*=\s*(\d+)`)
+		parts := map[string]string{}
+		for _, match := range pattern.FindAllStringSubmatch(string(data), -1) {
+			parts[match[1]] = match[2]
+		}
+		if maj, ok1 := parts["Major"]; ok1 {
+			if minorVal, ok2 := parts["Minor"]; ok2 {
+				if rev, ok3 := parts["Revision"]; ok3 {
+					return maj, minorVal, rev, nil
+				}
+			}
+		}
+	}
+
+	return "0", "11", "25", nil
+}
+
 func main() {
 	root, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
+
+	versionFlag := flag.String("version", "", "miniaudio version (e.g. 0.11.26)")
+	flag.Parse()
+
+	major, minor, revision, err := resolveVersion(root, *versionFlag)
+	if err != nil {
+		panic(err)
+	}
+
+	constants := append([]constSpec{
+		{Name: "ExpectedMiniaudioVersionMajor", Type: "uint32", Value: major},
+		{Name: "ExpectedMiniaudioVersionMinor", Type: "uint32", Value: minor},
+		{Name: "ExpectedMiniaudioVersionRevision", Type: "uint32", Value: revision},
+	}, baseConstants...)
 
 	outPath := filepath.Join(root, "zz_generated.bindings.go")
 	var buf bytes.Buffer

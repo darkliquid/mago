@@ -14,15 +14,53 @@ import (
 	"time"
 )
 
-var (
-	httpClient = &http.Client{
-		Timeout: 30 * time.Second,
+type Target struct {
+	GOOS     string
+	GOARCH   string
+	Filename string
+	Triple   string
+}
+
+func (t Target) Key() string {
+	return t.GOOS + "-" + t.GOARCH
+}
+
+func (t Target) String() string {
+	return t.GOOS + "/" + t.GOARCH
+}
+
+func AllTargets() []Target {
+	return []Target{
+		{GOOS: "linux", GOARCH: "amd64", Filename: "libminiaudio.so", Triple: "x86_64-linux-gnu"},
+		{GOOS: "linux", GOARCH: "arm64", Filename: "libminiaudio.so", Triple: "aarch64-linux-gnu"},
+		{GOOS: "windows", GOARCH: "amd64", Filename: "miniaudio.dll", Triple: "x86_64-windows-gnu"},
+		{GOOS: "freebsd", GOARCH: "amd64", Filename: "libminiaudio.so", Triple: "x86_64-freebsd"},
+		{GOOS: "netbsd", GOARCH: "amd64", Filename: "libminiaudio.so", Triple: "x86_64-netbsd"},
+		{GOOS: "darwin", GOARCH: "amd64", Filename: "libminiaudio.dylib", Triple: "x86_64-apple-darwin"},
+		{GOOS: "darwin", GOARCH: "arm64", Filename: "libminiaudio.dylib", Triple: "arm64-apple-darwin"},
 	}
-	miniaudioHeaderURL = func(version string) string {
-		return "https://raw.githubusercontent.com/mackron/miniaudio/" + url.PathEscape(version) + "/miniaudio.h"
+}
+
+func FindTarget(goos, goarch string) (Target, error) {
+	for _, t := range AllTargets() {
+		if t.GOOS == goos && t.GOARCH == goarch {
+			return t, nil
+		}
 	}
-	versionConstPattern = regexp.MustCompile(`ExpectedMiniaudioVersion(Major|Minor|Revision)\s+uint32\s*=\s*(\d+)`)
-)
+	return Target{}, fmt.Errorf("unsupported platform %s/%s", goos, goarch)
+}
+
+func CurrentTarget() (Target, error) {
+	goos := os.Getenv("GOOS")
+	if goos == "" {
+		goos = runtime.GOOS
+	}
+	goarch := os.Getenv("GOARCH")
+	if goarch == "" {
+		goarch = runtime.GOARCH
+	}
+	return FindTarget(goos, goarch)
+}
 
 func DefaultLibraryFilename(goos string) string {
 	switch goos {
@@ -36,109 +74,47 @@ func DefaultLibraryFilename(goos string) string {
 }
 
 func DefaultOutputPath(root string) string {
-	goos := os.Getenv("GOOS")
-	if goos == "" {
-		goos = runtime.GOOS
-	}
-	goarch := os.Getenv("GOARCH")
-	if goarch == "" {
-		goarch = runtime.GOARCH
-	}
-	return filepath.Join(root, "internal", "lib", goos+"-"+goarch, DefaultLibraryFilename(goos))
-}
-
-func Build(root, outPath, version string) (err error) {
-	if strings.TrimSpace(version) == "" {
-		resolvedVersion, err := defaultMiniaudioVersion(root)
-		if err != nil {
-			return err
+	target, err := CurrentTarget()
+	if err != nil {
+		goos := os.Getenv("GOOS")
+		if goos == "" {
+			goos = runtime.GOOS
 		}
-		version = resolvedVersion
-	}
-	if outPath == "" {
-		outPath = DefaultOutputPath(root)
-	}
-
-	goos := os.Getenv("GOOS")
-	if goos == "" {
-		goos = runtime.GOOS
-	}
-
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return err
-	}
-
-	compiler := os.Getenv("CC")
-	if compiler == "" {
-		compiler = "cc"
-	}
-	switch filepath.Base(compiler) {
-	case "cc":
-	case "gcc":
-	case "clang":
-	case "clang-cl":
-	default:
-		return fmt.Errorf("unsupported C compiler %q", compiler)
-	}
-
-	includeDir, err := os.MkdirTemp("", "mago-buildlib-*")
-	if err != nil {
-		return fmt.Errorf("create temporary include directory: %w", err)
-	}
-	defer func() {
-		if cleanupErr := os.RemoveAll(includeDir); cleanupErr != nil && err == nil {
-			err = fmt.Errorf("remove temporary include directory: %w", cleanupErr)
+		goarch := os.Getenv("GOARCH")
+		if goarch == "" {
+			goarch = runtime.GOARCH
 		}
-	}()
-
-	headerPath := filepath.Join(includeDir, "miniaudio.h")
-	if err := downloadMiniaudioHeader(version, headerPath); err != nil {
-		return err
+		return filepath.Join(root, "internal", "lib", goos+"-"+goarch, DefaultLibraryFilename(goos))
 	}
-
-	source := filepath.Join(root, "native", "miniaudio_bridge.c")
-	args, err := compilerArgs(goos, outPath, source, includeDir)
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command(compiler, args...) // #nosec G204,G702 -- compiler is restricted to an allowlist above.
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return filepath.Join(root, "internal", "lib", target.Key(), target.Filename)
 }
 
-func defaultMiniaudioVersion(root string) (string, error) {
-	content, err := os.ReadFile(filepath.Join(root, "zz_generated.bindings.go"))
-	if err != nil {
-		return "", fmt.Errorf("read generated bindings version constants: %w", err)
+func ResolveMiniaudioVersion(root, version string) (string, error) {
+	if strings.TrimSpace(version) != "" {
+		return strings.TrimSpace(version), nil
 	}
-
-	parts := map[string]string{}
-	for _, match := range versionConstPattern.FindAllStringSubmatch(string(content), -1) {
-		parts[match[1]] = match[2]
-	}
-
-	major, ok := parts["Major"]
-	if !ok {
-		return "", fmt.Errorf("find ExpectedMiniaudioVersionMajor in generated bindings")
-	}
-	minor, ok := parts["Minor"]
-	if !ok {
-		return "", fmt.Errorf("find ExpectedMiniaudioVersionMinor in generated bindings")
-	}
-	revision, ok := parts["Revision"]
-	if !ok {
-		return "", fmt.Errorf("find ExpectedMiniaudioVersionRevision in generated bindings")
-	}
-
-	return major + "." + minor + "." + revision, nil
+	return defaultMiniaudioVersion(root)
 }
 
-func downloadMiniaudioHeader(version, dstPath string) (err error) {
+var (
+	httpClient = &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	miniaudioHeaderURL = func(version string) string {
+		return "https://raw.githubusercontent.com/mackron/miniaudio/" + url.PathEscape(version) + "/miniaudio.h"
+	}
+	versionConstPattern = regexp.MustCompile(`ExpectedMiniaudioVersion(Major|Minor|Revision)\s+uint32\s*=\s*(\d+)`)
+	compilerOverride    string // used in tests to mock compilation without executing zig/osxcross
+)
+
+func DownloadMiniaudioHeader(version, dstPath string) (err error) {
 	version = strings.TrimSpace(version)
 	if version == "" {
 		return fmt.Errorf("miniaudio version must not be empty")
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+		return fmt.Errorf("create destination directory for miniaudio.h: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodGet, miniaudioHeaderURL(version), nil)
@@ -187,44 +163,286 @@ func downloadMiniaudioHeader(version, dstPath string) (err error) {
 	return nil
 }
 
-func compilerArgs(goos, outPath, source, includeDir string) ([]string, error) {
-	switch goos {
+func defaultMiniaudioVersion(root string) (string, error) {
+	content, err := os.ReadFile(filepath.Join(root, "zz_generated.bindings.go"))
+	if err != nil {
+		return "", fmt.Errorf("read generated bindings version constants: %w", err)
+	}
+
+	parts := map[string]string{}
+	for _, match := range versionConstPattern.FindAllStringSubmatch(string(content), -1) {
+		parts[match[1]] = match[2]
+	}
+
+	major, ok1 := parts["Major"]
+	minor, ok2 := parts["Minor"]
+	revision, ok3 := parts["Revision"]
+	if !ok1 || !ok2 || !ok3 {
+		return "", fmt.Errorf("find ExpectedMiniaudioVersion in generated bindings")
+	}
+
+	return major + "." + minor + "." + revision, nil
+}
+
+func prepareIncludeDir(root, version string) (includeDir string, cleanup func(), err error) {
+	rootHeader := filepath.Join(root, "miniaudio.h")
+	if info, statErr := os.Stat(rootHeader); statErr == nil && !info.IsDir() {
+		// Use existing miniaudio.h from root without re-downloading
+		dir, err := os.MkdirTemp("", "mago-buildlib-*")
+		if err != nil {
+			return "", nil, fmt.Errorf("create temporary include directory: %w", err)
+		}
+		cleanup = func() { _ = os.RemoveAll(dir) }
+
+		src, err := os.Open(rootHeader)
+		if err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("open root miniaudio.h: %w", err)
+		}
+		defer func() { _ = src.Close() }()
+
+		dst, err := os.Create(filepath.Join(dir, "miniaudio.h"))
+		if err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("copy miniaudio.h to include directory: %w", err)
+		}
+		if _, err := io.Copy(dst, src); err != nil {
+			_ = dst.Close()
+			cleanup()
+			return "", nil, fmt.Errorf("copy miniaudio.h content: %w", err)
+		}
+		if err := dst.Close(); err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("close copied miniaudio.h: %w", err)
+		}
+		return dir, cleanup, nil
+	}
+
+	resolvedVersion, err := ResolveMiniaudioVersion(root, version)
+	if err != nil {
+		return "", nil, err
+	}
+
+	dir, err := os.MkdirTemp("", "mago-buildlib-*")
+	if err != nil {
+		return "", nil, fmt.Errorf("create temporary include directory: %w", err)
+	}
+	cleanup = func() { _ = os.RemoveAll(dir) }
+
+	headerPath := filepath.Join(dir, "miniaudio.h")
+	if err := DownloadMiniaudioHeader(resolvedVersion, headerPath); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+
+	return dir, cleanup, nil
+}
+
+func zigCompilerArgs(target Target, outPath, source, includeDir, root string) []string {
+	commonFlags := []string{
+		"-target", target.Triple,
+		"-std=c11", "-O2",
+		"-fvisibility=hidden",
+		"-fno-asynchronous-unwind-tables",
+		"-fno-ident",
+		"-ffile-prefix-map=" + root + "=.",
+		"-ffile-prefix-map=" + includeDir + "=.",
+		"-I", includeDir,
+		"-s",
+	}
+
+	switch target.GOOS {
 	case "linux":
-		return []string{
-			"-std=c11", "-O2", "-fPIC", "-shared",
-			"-I", includeDir,
-			"-Wl,-soname," + filepath.Base(outPath),
+		return append(commonFlags,
+			"-fPIC", "-shared",
+			"-Wl,-soname,"+filepath.Base(outPath),
 			"-o", outPath, source,
 			"-ldl", "-lm", "-lpthread",
-		}, nil
-	case "darwin":
-		return []string{
-			"-std=c11", "-O2", "-fPIC", "-dynamiclib",
-			"-I", includeDir,
-			"-o", outPath, source,
-			"-framework", "CoreAudio",
-			"-framework", "AudioToolbox",
-			"-framework", "AudioUnit",
-			"-framework", "Foundation",
-			"-framework", "CoreFoundation",
-			"-framework", "CoreServices",
-			"-lm",
-		}, nil
+		)
 	case "windows":
-		return []string{
-			"-std=c11", "-O2", "-shared",
-			"-I", includeDir,
+		return append(commonFlags,
+			"-shared",
 			"-o", outPath, source,
 			"-lwinmm", "-lole32", "-luuid",
-		}, nil
+		)
 	case "freebsd", "netbsd":
-		return []string{
-			"-std=c11", "-O2", "-fPIC", "-shared",
-			"-I", includeDir,
+		return append(commonFlags,
+			"-fPIC", "-shared",
 			"-o", outPath, source,
 			"-lm", "-lpthread",
-		}, nil
+		)
 	default:
-		return nil, fmt.Errorf("unsupported GOOS for shared library build: %s", goos)
+		return nil
 	}
+}
+
+func darwinCompilerArgs(target Target, root, outPath, source, includeDir string) []string {
+	arch := target.GOARCH
+	if arch == "amd64" {
+		arch = "x86_64"
+	}
+
+	return []string{
+		"-arch", arch,
+		"-std=c11", "-O2", "-fPIC", "-dynamiclib",
+		"-fvisibility=hidden",
+		"-ffile-prefix-map=" + root + "=.",
+		"-ffile-prefix-map=" + includeDir + "=.",
+		"-I", includeDir,
+		"-install_name", "@rpath/" + filepath.Base(outPath),
+		"-Wl,-x",
+		"-o", outPath, source,
+		"-framework", "CoreAudio",
+		"-framework", "AudioToolbox",
+		"-framework", "AudioUnit",
+		"-framework", "Foundation",
+		"-framework", "CoreFoundation",
+		"-framework", "CoreServices",
+		"-lm",
+	}
+}
+
+func BuildTarget(root string, target Target, version string) error {
+	outPath := filepath.Join(root, "internal", "lib", target.Key(), target.Filename)
+	return BuildTargetWithOutput(root, target, outPath, version)
+}
+
+func BuildTargetWithOutput(root string, target Target, outPath, version string) error {
+	if _, err := FindTarget(target.GOOS, target.GOARCH); err != nil {
+		return fmt.Errorf("unsupported target %s: %w", target, err)
+	}
+
+	includeDir, cleanup, err := prepareIncludeDir(root, version)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	return buildTargetWithInclude(root, target, outPath, includeDir)
+}
+
+func buildTargetWithInclude(root string, target Target, outPath, includeDir string) error {
+	if _, err := FindTarget(target.GOOS, target.GOARCH); err != nil {
+		return fmt.Errorf("unsupported target %s: %w", target, err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return err
+	}
+
+	source := filepath.Join(root, "native", "miniaudio_bridge.c")
+
+	if compilerOverride != "" {
+		args := []string{"-std=c11", "-O2", "-fvisibility=hidden", "-I", includeDir, "-o", outPath, source}
+		cmd := exec.Command(compilerOverride, args...) // #nosec G204
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("compile %s with %s: %w", target, cmd.Path, err)
+		}
+		return nil
+	}
+
+	if target.GOOS == "darwin" {
+		return buildDarwinTarget(target, root, outPath, source, includeDir)
+	}
+
+	zigArgs := zigCompilerArgs(target, outPath, source, includeDir, root)
+	if len(zigArgs) == 0 {
+		return fmt.Errorf("unsupported target %s for zig compilation", target)
+	}
+
+	args := append([]string{"cc"}, zigArgs...)
+	cmd := exec.Command("zig", args...) // #nosec G204
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("compile %s with %s: %w", target, cmd.Path, err)
+	}
+	return nil
+}
+
+func buildDarwinTarget(target Target, root, outPath, source, includeDir string) error {
+	if runtime.GOOS == "darwin" {
+		// Native macOS compilation
+		args := darwinCompilerArgs(target, root, outPath, source, includeDir)
+		cmd := exec.Command("clang", args...) // #nosec G204
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
+
+	// Cross-compilation on Linux via osxcross container
+	image := os.Getenv("OSXCROSS_IMAGE")
+	if image == "" {
+		image = "dockercross/osxcross"
+	}
+
+	compiler := "o64-clang"
+	if target.GOARCH == "arm64" {
+		compiler = "oa64-clang"
+	}
+
+	args := []string{
+		"run", "--rm",
+		"-e", "LD_LIBRARY_PATH=/osxcross/lib",
+		"-v", root + ":/workspace:ro",
+		"-v", includeDir + ":/include:ro",
+		"-v", filepath.Dir(outPath) + ":/out",
+		image,
+		compiler,
+		"-std=c11", "-O2", "-fPIC", "-dynamiclib",
+		"-fvisibility=hidden",
+		"-ffile-prefix-map=/workspace=.",
+		"-ffile-prefix-map=/include=.",
+		"-I", "/include",
+		"-install_name", "@rpath/" + filepath.Base(outPath),
+		"-Wl,-x",
+		"-o", "/out/" + filepath.Base(outPath),
+		"/workspace/native/miniaudio_bridge.c",
+		"-framework", "CoreAudio",
+		"-framework", "AudioToolbox",
+		"-framework", "AudioUnit",
+		"-framework", "Foundation",
+		"-framework", "CoreFoundation",
+		"-framework", "CoreServices",
+		"-lm",
+	}
+
+	cmd := exec.Command("docker", args...) // #nosec G204,G702
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("cross-compile darwin %s via docker %s: %w", target.GOARCH, image, err)
+	}
+	return nil
+}
+
+func BuildAll(root, version string) error {
+	includeDir, cleanup, err := prepareIncludeDir(root, version)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	targets := AllTargets()
+	for _, target := range targets {
+		fmt.Printf("Building %s (%s)...\n", target, target.Filename)
+		outPath := filepath.Join(root, "internal", "lib", target.Key(), target.Filename)
+		if err := buildTargetWithInclude(root, target, outPath, includeDir); err != nil {
+			return fmt.Errorf("build target %s: %w", target, err)
+		}
+	}
+	return nil
+}
+
+func Build(root, outPath, version string) error {
+	target, err := CurrentTarget()
+	if err != nil {
+		return err
+	}
+	if outPath == "" {
+		outPath = DefaultOutputPath(root)
+	}
+	return BuildTargetWithOutput(root, target, outPath, version)
 }

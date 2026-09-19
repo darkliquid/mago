@@ -1,0 +1,63 @@
+name: Update Miniaudio
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Miniaudio version to update to (e.g. 0.11.26)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-miniaudio:
+    name: Update Miniaudio & Regenerate Embeds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MINIAUDIO_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+        with:
+          cache: true
+
+      - name: Set up osxcross Docker container
+        run: |
+          docker build -t dockercross/osxcross:latest - << 'EOF'
+          FROM ubuntu:24.04
+          ENV DEBIAN_FRONTEND=noninteractive
+          RUN apt-get update && apt-get install -y clang libxml2-dev libssl-dev && rm -rf /var/lib/apt/lists/*
+          COPY --from=crazymax/osxcross /osxcross /osxcross
+          ENV PATH="/osxcross/bin:$PATH"
+          ENV LD_LIBRARY_PATH="/osxcross/lib:$LD_LIBRARY_PATH"
+          EOF
+
+      - name: Download miniaudio header
+        run: go run ./internal/cmd/buildlib -download-only miniaudio.h -version "$MINIAUDIO_VERSION"
+
+      - name: Build all native libraries
+        run: mise run build-lib-all -version "$MINIAUDIO_VERSION"
+
+      - name: Generate bindings and embeds
+        run: mise run generate
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: update miniaudio to ${{ inputs.version }}"
+          title: "chore: update miniaudio to ${{ inputs.version }}"
+          body: |
+            Automated update of miniaudio to version `${{ inputs.version }}`.
+            Rebuilt and re-embedded precompiled native libraries for all supported platforms.
+          branch: "chore/update-miniaudio-${{ inputs.version }}"
+          delete-branch: true
