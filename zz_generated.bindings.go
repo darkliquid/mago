@@ -59,6 +59,13 @@ const (
 	NotificationInterruptionBegan    NotificationType   = 3
 	NotificationInterruptionEnded    NotificationType   = 4
 	NotificationUnlocked             NotificationType   = 5
+	WaveformTypeSine                 WaveformType       = 0
+	WaveformTypeSquare               WaveformType       = 1
+	WaveformTypeTriangle             WaveformType       = 2
+	WaveformTypeSawtooth             WaveformType       = 3
+	NoiseTypeWhite                   NoiseType          = 0
+	NoiseTypePink                    NoiseType          = 1
+	NoiseTypeBrownian                NoiseType          = 2
 )
 
 type bindingSet struct {
@@ -191,6 +198,20 @@ type bindingSet struct {
 	maPCMRBGetSubbufferStride                    func(*pcmRingBufferHandle) uint32
 	maPCMRBGetSubbufferOffset                    func(*pcmRingBufferHandle, uint32) uint32
 	maPCMRBGetSubbufferPtr                       func(*pcmRingBufferHandle, uint32, unsafe.Pointer) unsafe.Pointer
+	maWaveformInit                               func(*waveformConfigNative, *waveformHandle) Result
+	maWaveformUninit                             func(*waveformHandle)
+	maWaveformReadPCMFrames                      func(*waveformHandle, unsafe.Pointer, uint64, *uint64) Result
+	maWaveformSeekToPCMFrame                     func(*waveformHandle, uint64) Result
+	maWaveformSetAmplitude                       func(*waveformHandle, float64) Result
+	maWaveformSetFrequency                       func(*waveformHandle, float64) Result
+	maWaveformSetType                            func(*waveformHandle, WaveformType) Result
+	maWaveformSetSampleRate                      func(*waveformHandle, uint32) Result
+	maNoiseInit                                  func(*noiseConfigNative, unsafe.Pointer, *noiseHandle) Result
+	maNoiseUninit                                func(*noiseHandle, unsafe.Pointer)
+	maNoiseReadPCMFrames                         func(*noiseHandle, unsafe.Pointer, uint64, *uint64) Result
+	maNoiseSetAmplitude                          func(*noiseHandle, float64) Result
+	maNoiseSetSeed                               func(*noiseHandle, int32) Result
+	maNoiseSetType                               func(*noiseHandle, NoiseType) Result
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -323,6 +344,20 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferStride, handle, "ma_pcm_rb_get_subbuffer_stride")
 	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferOffset, handle, "ma_pcm_rb_get_subbuffer_offset")
 	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferPtr, handle, "ma_pcm_rb_get_subbuffer_ptr")
+	purego.RegisterLibFunc(&b.maWaveformInit, handle, "ma_waveform_init")
+	purego.RegisterLibFunc(&b.maWaveformUninit, handle, "ma_waveform_uninit")
+	purego.RegisterLibFunc(&b.maWaveformReadPCMFrames, handle, "ma_waveform_read_pcm_frames")
+	purego.RegisterLibFunc(&b.maWaveformSeekToPCMFrame, handle, "ma_waveform_seek_to_pcm_frame")
+	purego.RegisterLibFunc(&b.maWaveformSetAmplitude, handle, "ma_waveform_set_amplitude")
+	purego.RegisterLibFunc(&b.maWaveformSetFrequency, handle, "ma_waveform_set_frequency")
+	purego.RegisterLibFunc(&b.maWaveformSetType, handle, "ma_waveform_set_type")
+	purego.RegisterLibFunc(&b.maWaveformSetSampleRate, handle, "ma_waveform_set_sample_rate")
+	purego.RegisterLibFunc(&b.maNoiseInit, handle, "ma_noise_init")
+	purego.RegisterLibFunc(&b.maNoiseUninit, handle, "ma_noise_uninit")
+	purego.RegisterLibFunc(&b.maNoiseReadPCMFrames, handle, "ma_noise_read_pcm_frames")
+	purego.RegisterLibFunc(&b.maNoiseSetAmplitude, handle, "ma_noise_set_amplitude")
+	purego.RegisterLibFunc(&b.maNoiseSetSeed, handle, "ma_noise_set_seed")
+	purego.RegisterLibFunc(&b.maNoiseSetType, handle, "ma_noise_set_type")
 }
 
 var _ unsafe.Pointer

@@ -103,6 +103,8 @@ const (
 	magoObjectAudioBufferRef   int32 = 11
 	magoObjectRingBuffer       int32 = 12
 	magoObjectPCMRingBuffer    int32 = 13
+	magoObjectWaveform         int32 = 14
+	magoObjectNoise            int32 = 15
 )
 
 type channelConverterHandle struct{}
@@ -297,3 +299,33 @@ type audioBufferConfigNative struct {
 	Data                unsafe.Pointer
 	AllocationCallbacks allocationCallbacksNative
 }
+
+// WaveformType identifies the periodic shape of a waveform.
+type WaveformType int32
+
+// NoiseType identifies the spectral distribution of generated noise.
+type NoiseType int32
+
+// waveformConfigNative mirrors ma_waveform_config. Validated by layout_test.go.
+type waveformConfigNative struct {
+	Format     Format
+	Channels   uint32
+	SampleRate uint32
+	Type       WaveformType
+	Amplitude  float64
+	Frequency  float64
+}
+
+// noiseConfigNative mirrors ma_noise_config. Validated by layout_test.go.
+type noiseConfigNative struct {
+	Format            Format
+	Channels          uint32
+	Type              NoiseType
+	Seed              int32
+	Amplitude         float64
+	DuplicateChannels uint32
+}
+
+type waveformHandle struct{}
+type noiseHandle struct{}
+

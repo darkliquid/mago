@@ -37,5 +37,21 @@ int main(void)
     printf("offsetof:ma_audio_buffer_config.pData %zu\n", offsetof(ma_audio_buffer_config, pData));
     printf("offsetof:ma_audio_buffer_config.allocationCallbacks %zu\n", offsetof(ma_audio_buffer_config, allocationCallbacks));
     printf("sizeof:ma_allocation_callbacks %zu\n", sizeof(ma_allocation_callbacks));
+    printf("sizeof:ma_waveform_config %zu\n", sizeof(ma_waveform_config));
+    printf("offsetof:ma_waveform_config.format %zu\n", offsetof(ma_waveform_config, format));
+    printf("offsetof:ma_waveform_config.channels %zu\n", offsetof(ma_waveform_config, channels));
+    printf("offsetof:ma_waveform_config.sampleRate %zu\n", offsetof(ma_waveform_config, sampleRate));
+    printf("offsetof:ma_waveform_config.type %zu\n", offsetof(ma_waveform_config, type));
+    printf("offsetof:ma_waveform_config.amplitude %zu\n", offsetof(ma_waveform_config, amplitude));
+    printf("offsetof:ma_waveform_config.frequency %zu\n", offsetof(ma_waveform_config, frequency));
+    printf("sizeof:ma_noise_config %zu\n", sizeof(ma_noise_config));
+    printf("offsetof:ma_noise_config.format %zu\n", offsetof(ma_noise_config, format));
+    printf("offsetof:ma_noise_config.channels %zu\n", offsetof(ma_noise_config, channels));
+    printf("offsetof:ma_noise_config.type %zu\n", offsetof(ma_noise_config, type));
+    printf("offsetof:ma_noise_config.seed %zu\n", offsetof(ma_noise_config, seed));
+    printf("offsetof:ma_noise_config.amplitude %zu\n", offsetof(ma_noise_config, amplitude));
+    printf("offsetof:ma_noise_config.duplicateChannels %zu\n", offsetof(ma_noise_config, duplicateChannels));
+    printf("sizeof:ma_waveform %zu\n", sizeof(ma_waveform));
+    printf("sizeof:ma_noise %zu\n", sizeof(ma_noise));
     return 0;
 }

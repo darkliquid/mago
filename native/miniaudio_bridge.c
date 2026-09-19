@@ -58,7 +58,9 @@ enum mago_object_type
     MAGO_OBJECT_AUDIO_BUFFER      = 10,
     MAGO_OBJECT_AUDIO_BUFFER_REF  = 11,
     MAGO_OBJECT_RB                = 12,
-    MAGO_OBJECT_PCM_RB            = 13
+    MAGO_OBJECT_PCM_RB            = 13,
+    MAGO_OBJECT_WAVEFORM          = 14,
+    MAGO_OBJECT_NOISE             = 15
 };
 
 MAGO_API void* mago_alloc(int type)
@@ -78,6 +80,8 @@ MAGO_API void* mago_alloc(int type)
         case MAGO_OBJECT_AUDIO_BUFFER_REF:  return calloc(1, sizeof(ma_audio_buffer_ref));
         case MAGO_OBJECT_RB:                return calloc(1, sizeof(ma_rb));
         case MAGO_OBJECT_PCM_RB:            return calloc(1, sizeof(ma_pcm_rb));
+        case MAGO_OBJECT_WAVEFORM:          return calloc(1, sizeof(ma_waveform));
+        case MAGO_OBJECT_NOISE:             return calloc(1, sizeof(ma_noise));
         default:                            return NULL;
     }
 }
