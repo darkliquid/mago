@@ -51,7 +51,10 @@ enum mago_object_type
     MAGO_OBJECT_LOG               = 3,
     MAGO_OBJECT_DEVICE_INFO       = 4,
     MAGO_OBJECT_CONTEXT_CONFIG    = 5,
-    MAGO_OBJECT_CHANNEL_CONVERTER = 6
+    MAGO_OBJECT_CHANNEL_CONVERTER = 6,
+    MAGO_OBJECT_RESAMPLER         = 7,
+    MAGO_OBJECT_LINEAR_RESAMPLER  = 8,
+    MAGO_OBJECT_DATA_CONVERTER    = 9
 };
 
 MAGO_API void* mago_alloc(int type)
@@ -64,6 +67,9 @@ MAGO_API void* mago_alloc(int type)
         case MAGO_OBJECT_DEVICE_INFO:       return calloc(1, sizeof(ma_device_info));
         case MAGO_OBJECT_CONTEXT_CONFIG:    return calloc(1, sizeof(ma_context_config));
         case MAGO_OBJECT_CHANNEL_CONVERTER: return calloc(1, sizeof(ma_channel_converter));
+        case MAGO_OBJECT_RESAMPLER:         return calloc(1, sizeof(ma_resampler));
+        case MAGO_OBJECT_LINEAR_RESAMPLER:  return calloc(1, sizeof(ma_linear_resampler));
+        case MAGO_OBJECT_DATA_CONVERTER:    return calloc(1, sizeof(ma_data_converter));
         default:                            return NULL;
     }
 }

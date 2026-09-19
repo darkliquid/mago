@@ -96,6 +96,9 @@ const (
 	magoObjectDeviceInfo       int32 = 4
 	magoObjectContextConfig    int32 = 5
 	magoObjectChannelConverter int32 = 6
+	magoObjectResampler        int32 = 7
+	magoObjectLinearResampler  int32 = 8
+	magoObjectDataConverter    int32 = 9
 )
 
 type channelConverterHandle struct{}
@@ -206,3 +209,63 @@ type channelConverterConfigNative struct {
 	CalculateLFEFromSpatialChannels uint32
 	Weights                         **float32 // ppWeights, only used by custom weights
 }
+
+// ResampleAlgorithm mirrors ma_resample_algorithm.
+type ResampleAlgorithm int32
+
+const (
+	ResampleAlgorithmLinear ResampleAlgorithm = 0
+	ResampleAlgorithmCustom ResampleAlgorithm = 1
+)
+
+// resamplerLinearConfigNative mirrors the anonymous linear sub-struct of
+// ma_resampler_config.
+type resamplerLinearConfigNative struct {
+	LPFOrder uint32
+}
+
+// resamplerConfigNative mirrors ma_resampler_config. Validated by layout_test.go.
+type resamplerConfigNative struct {
+	Format          Format
+	Channels        uint32
+	SampleRateIn    uint32
+	SampleRateOut   uint32
+	Algorithm       ResampleAlgorithm
+	BackendVTable   unsafe.Pointer
+	BackendUserData unsafe.Pointer
+	Linear          resamplerLinearConfigNative
+}
+
+// linearResamplerConfigNative mirrors ma_linear_resampler_config. Validated by
+// layout_test.go.
+type linearResamplerConfigNative struct {
+	Format           Format
+	Channels         uint32
+	SampleRateIn     uint32
+	SampleRateOut    uint32
+	LPFOrder         uint32
+	LPFNyquistFactor float64
+}
+
+// dataConverterConfigNative mirrors ma_data_converter_config. Validated by
+// layout_test.go.
+type dataConverterConfigNative struct {
+	FormatIn                        Format
+	FormatOut                       Format
+	ChannelsIn                      uint32
+	ChannelsOut                     uint32
+	SampleRateIn                    uint32
+	SampleRateOut                   uint32
+	ChannelMapIn                    *uint8 // *ma_channel
+	ChannelMapOut                   *uint8 // *ma_channel
+	DitherMode                      DitherMode
+	ChannelMixMode                  ChannelMixMode
+	CalculateLFEFromSpatialChannels uint32
+	ChannelWeights                  **float32 // ppChannelWeights, only custom weights
+	AllowDynamicSampleRate          uint32
+	Resampling                      resamplerConfigNative
+}
+
+type resamplerHandle struct{}
+type linearResamplerHandle struct{}
+type dataConverterHandle struct{}
