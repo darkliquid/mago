@@ -1,3 +1,25 @@
+/*
+ * mago native bridge.
+ *
+ * This file is deliberately tiny. mago is a zero-CGO project: the Go side loads
+ * this shared library with purego and binds exported `ma_*` symbols directly.
+ * C is only allowed for the three things purego cannot do:
+ *
+ *   1. Raw allocation (mago_alloc/mago_free). Go cannot call malloc without
+ *      cgo, and the sizes of miniaudio's objects are not available to Go.
+ *   2. Building a by-value, large config struct. ma_device_config_init returns
+ *      ma_device_config by value and that struct is large, backend-specific and
+ *      version-unstable, so Go must not mirror it.
+ *   3. Callback trampolines for C signatures that carry no user data. The device
+ *      data and notification callbacks receive no `pUserData`; user data travels
+ *      through `pDevice->pUserData`, which Go cannot read without mirroring the
+ *      enormous ma_device struct.
+ *
+ * Everything else (context init/uninit, device enumeration, logging) is bound
+ * directly from Go against the exported `ma_*` symbols. Do not add wrappers for
+ * anything that already has a public miniaudio function.
+ */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +35,39 @@
 #else
 #define MAGO_API
 #endif
+
+/* -------------------------------------------------------------------------
+ * 1. Raw allocation
+ * The enum is a private ABI shared with the Go constants in types.go. Keep the
+ * two in sync when adding a new object type.
+ * ---------------------------------------------------------------------- */
+
+enum mago_object_type
+{
+    MAGO_OBJECT_CONTEXT = 1,
+    MAGO_OBJECT_DEVICE  = 2,
+    MAGO_OBJECT_LOG     = 3
+};
+
+MAGO_API void* mago_alloc(int type)
+{
+    switch (type)
+    {
+        case MAGO_OBJECT_CONTEXT: return calloc(1, sizeof(ma_context));
+        case MAGO_OBJECT_DEVICE:  return calloc(1, sizeof(ma_device));
+        case MAGO_OBJECT_LOG:     return calloc(1, sizeof(ma_log));
+        default:                  return NULL;
+    }
+}
+
+MAGO_API void mago_free(void* p)
+{
+    free(p);
+}
+
+/* -------------------------------------------------------------------------
+ * 2. Device config construction and 3. callback trampolines
+ * ---------------------------------------------------------------------- */
 
 typedef void (*mago_data_callback)(uintptr_t userData, void* pOutput, const void* pInput, ma_uint32 frameCount);
 typedef void (*mago_notification_callback)(uintptr_t userData, ma_uint32 notificationType);
@@ -40,12 +95,6 @@ typedef struct
 
 typedef struct
 {
-    char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
-    ma_bool32 isDefault;
-} mago_device_info;
-
-typedef struct
-{
     mago_data_callback dataCallback;
     mago_notification_callback notificationCallback;
     uintptr_t userData;
@@ -55,12 +104,14 @@ static void mago_on_device_data(ma_device* pDevice, void* pOutput, const void* p
 {
     mago_device_bridge* pBridge;
 
-    if (pDevice == NULL) {
+    if (pDevice == NULL)
+    {
         return;
     }
 
     pBridge = (mago_device_bridge*)pDevice->pUserData;
-    if (pBridge == NULL || pBridge->dataCallback == NULL) {
+    if (pBridge == NULL || pBridge->dataCallback == NULL)
+    {
         return;
     }
 
@@ -71,145 +122,18 @@ static void mago_on_device_notification(const ma_device_notification* pNotificat
 {
     mago_device_bridge* pBridge;
 
-    if (pNotification == NULL || pNotification->pDevice == NULL) {
+    if (pNotification == NULL || pNotification->pDevice == NULL)
+    {
         return;
     }
 
     pBridge = (mago_device_bridge*)pNotification->pDevice->pUserData;
-    if (pBridge == NULL || pBridge->notificationCallback == NULL) {
+    if (pBridge == NULL || pBridge->notificationCallback == NULL)
+    {
         return;
     }
 
     pBridge->notificationCallback(pBridge->userData, (ma_uint32)pNotification->type);
-}
-
-MAGO_API ma_result mago_context_init_default(ma_context** ppContext)
-{
-    ma_context* pContext;
-    ma_result result;
-
-    if (ppContext == NULL) {
-        return MA_INVALID_ARGS;
-    }
-
-    *ppContext = NULL;
-
-    pContext = (ma_context*)calloc(1, sizeof(ma_context));
-    if (pContext == NULL) {
-        return MA_OUT_OF_MEMORY;
-    }
-
-    result = ma_context_init(NULL, 0, NULL, pContext);
-    if (result != MA_SUCCESS) {
-        free(pContext);
-        return result;
-    }
-
-    *ppContext = pContext;
-    return MA_SUCCESS;
-}
-
-MAGO_API ma_result mago_context_init_with_backends(const ma_backend* pBackends, ma_uint32 backendCount, ma_context** ppContext)
-{
-    ma_context* pContext;
-    ma_result result;
-
-    if (ppContext == NULL) {
-        return MA_INVALID_ARGS;
-    }
-
-    *ppContext = NULL;
-
-    pContext = (ma_context*)calloc(1, sizeof(ma_context));
-    if (pContext == NULL) {
-        return MA_OUT_OF_MEMORY;
-    }
-
-    result = ma_context_init(pBackends, backendCount, NULL, pContext);
-    if (result != MA_SUCCESS) {
-        free(pContext);
-        return result;
-    }
-
-    *ppContext = pContext;
-    return MA_SUCCESS;
-}
-
-MAGO_API void mago_context_uninit_free(ma_context* pContext)
-{
-    if (pContext == NULL) {
-        return;
-    }
-
-    ma_context_uninit(pContext);
-    free(pContext);
-}
-
-MAGO_API ma_result mago_context_get_devices(
-    ma_context* pContext,
-    mago_device_info** ppPlaybackInfos,
-    ma_uint32* pPlaybackCount,
-    mago_device_info** ppCaptureInfos,
-    ma_uint32* pCaptureCount)
-{
-    ma_device_info* pPlaybackDeviceInfos;
-    ma_device_info* pCaptureDeviceInfos;
-    mago_device_info* pPlaybackInfos = NULL;
-    mago_device_info* pCaptureInfos = NULL;
-    ma_uint32 playbackCount;
-    ma_uint32 captureCount;
-    ma_uint32 i;
-    ma_result result;
-
-    if (pContext == NULL || ppPlaybackInfos == NULL || pPlaybackCount == NULL || ppCaptureInfos == NULL || pCaptureCount == NULL) {
-        return MA_INVALID_ARGS;
-    }
-
-    *ppPlaybackInfos = NULL;
-    *pPlaybackCount = 0;
-    *ppCaptureInfos = NULL;
-    *pCaptureCount = 0;
-
-    result = ma_context_get_devices(pContext, &pPlaybackDeviceInfos, &playbackCount, &pCaptureDeviceInfos, &captureCount);
-    if (result != MA_SUCCESS) {
-        return result;
-    }
-
-    if (playbackCount > 0) {
-        pPlaybackInfos = (mago_device_info*)calloc(playbackCount, sizeof(mago_device_info));
-        if (pPlaybackInfos == NULL) {
-            return MA_OUT_OF_MEMORY;
-        }
-
-        for (i = 0; i < playbackCount; ++i) {
-            memcpy(pPlaybackInfos[i].name, pPlaybackDeviceInfos[i].name, sizeof(pPlaybackInfos[i].name));
-            pPlaybackInfos[i].isDefault = pPlaybackDeviceInfos[i].isDefault;
-        }
-    }
-
-    if (captureCount > 0) {
-        pCaptureInfos = (mago_device_info*)calloc(captureCount, sizeof(mago_device_info));
-        if (pCaptureInfos == NULL) {
-            free(pPlaybackInfos);
-            return MA_OUT_OF_MEMORY;
-        }
-
-        for (i = 0; i < captureCount; ++i) {
-            memcpy(pCaptureInfos[i].name, pCaptureDeviceInfos[i].name, sizeof(pCaptureInfos[i].name));
-            pCaptureInfos[i].isDefault = pCaptureDeviceInfos[i].isDefault;
-        }
-    }
-
-    *ppPlaybackInfos = pPlaybackInfos;
-    *pPlaybackCount = playbackCount;
-    *ppCaptureInfos = pCaptureInfos;
-    *pCaptureCount = captureCount;
-    return MA_SUCCESS;
-}
-
-MAGO_API void mago_context_free_device_infos(mago_device_info* pInfos)
-{
-    free(pInfos);
 }
 
 MAGO_API ma_result mago_device_init_playback(
@@ -223,19 +147,22 @@ MAGO_API ma_result mago_device_init_playback(
     const ma_device_id* pDeviceID;
     ma_result result;
 
-    if (pMagoConfig == NULL || ppDevice == NULL) {
+    if (pMagoConfig == NULL || ppDevice == NULL)
+    {
         return MA_INVALID_ARGS;
     }
 
     *ppDevice = NULL;
 
     pDevice = (ma_device*)calloc(1, sizeof(ma_device));
-    if (pDevice == NULL) {
+    if (pDevice == NULL)
+    {
         return MA_OUT_OF_MEMORY;
     }
 
     pBridge = (mago_device_bridge*)calloc(1, sizeof(mago_device_bridge));
-    if (pBridge == NULL) {
+    if (pBridge == NULL)
+    {
         free(pDevice);
         return MA_OUT_OF_MEMORY;
     }
@@ -304,7 +231,8 @@ MAGO_API void mago_device_uninit_free(ma_device* pDevice)
 {
     mago_device_bridge* pBridge;
 
-    if (pDevice == NULL) {
+    if (pDevice == NULL)
+    {
         return;
     }
 
@@ -312,4 +240,23 @@ MAGO_API void mago_device_uninit_free(ma_device* pDevice)
     ma_device_uninit(pDevice);
     free(pBridge);
     free(pDevice);
+}
+
+/* -------------------------------------------------------------------------
+ * Logging callback registration.
+ * ma_log_callback is returned and passed by value, so this is category 2.
+ * userData is uintptr_t so Go can pass its token without an
+ * unsafe.Pointer(uintptr) conversion.
+ * ---------------------------------------------------------------------- */
+
+MAGO_API ma_result mago_log_register_callback(ma_log* pLog, uintptr_t onLog, uintptr_t userData)
+{
+    ma_log_callback callback = ma_log_callback_init((ma_log_callback_proc)onLog, (void*)userData);
+    return ma_log_register_callback(pLog, callback);
+}
+
+MAGO_API ma_result mago_log_unregister_callback(ma_log* pLog, uintptr_t onLog, uintptr_t userData)
+{
+    ma_log_callback callback = ma_log_callback_init((ma_log_callback_proc)onLog, (void*)userData);
+    return ma_log_unregister_callback(pLog, callback);
 }

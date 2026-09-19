@@ -20,20 +20,26 @@ func (lib *Library) NewContext(backends ...Backend) (*Context, error) {
 		return nil, err
 	}
 
-	var handle *contextHandle
+	handle := (*contextHandle)(lib.bindings.magoAlloc(magoObjectContext))
+	if handle == nil {
+		return nil, fmt.Errorf("mago: allocate context: out of memory")
+	}
+
 	var result Result
 
 	if len(backends) == 0 {
-		result = lib.bindings.magoContextInitDefault(&handle)
+		result = lib.bindings.maContextInit(nil, 0, nil, handle)
 	} else {
 		backendCount, err := intToUint32(len(backends))
 		if err != nil {
+			lib.bindings.magoFree(unsafe.Pointer(handle))
 			return nil, fmt.Errorf("mago: %w", err)
 		}
-		result = lib.bindings.magoContextInitWithBackends(&backends[0], backendCount, &handle)
+		result = lib.bindings.maContextInit(&backends[0], backendCount, nil, handle)
 		runtime.KeepAlive(backends)
 	}
 	if result != Success {
+		lib.bindings.magoFree(unsafe.Pointer(handle))
 		return nil, lib.resultError("ma_context_init", result)
 	}
 
@@ -49,9 +55,15 @@ func (ctx *Context) Close() error {
 		return err
 	}
 
-	ctx.lib.bindings.magoContextUninitFree(ctx.handle)
+	ctx.lib.bindings.maContextUninit(ctx.handle)
+	ctx.lib.bindings.magoFree(unsafe.Pointer(ctx.handle))
 	ctx.handle = nil
 	return nil
+}
+
+type deviceEnumerator struct {
+	playback []DeviceInfo
+	capture  []DeviceInfo
 }
 
 func (ctx *Context) Devices() ([]DeviceInfo, []DeviceInfo, error) {
@@ -62,48 +74,28 @@ func (ctx *Context) Devices() ([]DeviceInfo, []DeviceInfo, error) {
 		return nil, nil, err
 	}
 
-	var playbackNative *deviceInfoNative
-	var playbackCount uint32
-	var captureNative *deviceInfoNative
-	var captureCount uint32
+	collector := &deviceEnumerator{}
+	token := uintptr(callbackSeq.Add(1))
+	callbacks.Store(token, collector)
+	defer callbacks.Delete(token)
 
-	result := ctx.lib.bindings.magoContextGetDevices(ctx.handle, &playbackNative, &playbackCount, &captureNative, &captureCount)
+	result := ctx.lib.bindings.maContextEnumerateDevices(ctx.handle, enumerateCallbackPtr, token)
 	if result != Success {
-		return nil, nil, ctx.lib.resultError("ma_context_get_devices", result)
+		return nil, nil, ctx.lib.resultError("ma_context_enumerate_devices", result)
 	}
-	defer func() {
-		if playbackNative != nil {
-			ctx.lib.bindings.magoContextFreeDeviceInfos(playbackNative)
-		}
-		if captureNative != nil {
-			ctx.lib.bindings.magoContextFreeDeviceInfos(captureNative)
-		}
-	}()
 
-	playback := copyDeviceInfos(playbackNative, playbackCount)
-	capture := copyDeviceInfos(captureNative, captureCount)
-	return playback, capture, nil
+	return collector.playback, collector.capture, nil
 }
 
-func copyDeviceInfos(native *deviceInfoNative, count uint32) []DeviceInfo {
-	if native == nil || count == 0 {
-		return nil
+func copyDeviceInfo(native *deviceInfoNative) DeviceInfo {
+	nameBytes := native.Name[:]
+	if idx := bytes.IndexByte(nameBytes, 0); idx >= 0 {
+		nameBytes = nameBytes[:idx]
 	}
-
-	items := unsafe.Slice(native, count)
-	out := make([]DeviceInfo, 0, count)
-	for _, item := range items {
-		nameBytes := item.Name[:]
-		if idx := bytes.IndexByte(nameBytes, 0); idx >= 0 {
-			nameBytes = nameBytes[:idx]
-		}
-		out = append(out, DeviceInfo{
-			Name:      string(nameBytes),
-			IsDefault: item.IsDefault != 0,
-		})
+	return DeviceInfo{
+		Name:      string(nameBytes),
+		IsDefault: native.IsDefault != 0,
 	}
-
-	return out
 }
 
 func intToUint32(v int) (uint32, error) {

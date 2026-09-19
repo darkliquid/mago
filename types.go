@@ -43,7 +43,17 @@ type playbackDeviceConfigNative struct {
 	UserData                  uintptr
 }
 
+// deviceIDNative mirrors the ma_device_id union, whose largest member is a
+// 256-byte buffer. Its size is validated by layout_test.go against the vendored
+// header.
+type deviceIDNative [256]byte
+
+// deviceInfoNative mirrors the prefix of ma_device_info that enumeration needs.
+// Enumeration pushes one pointer per device, so the trailing
+// nativeDataFormatCount/nativeDataFormats fields are not needed and the struct
+// stride is irrelevant. Offsets are validated by layout_test.go.
 type deviceInfoNative struct {
+	ID        deviceIDNative
 	Name      [256]byte
 	IsDefault uint32
 }
@@ -55,3 +65,12 @@ type DeviceInfo struct {
 
 type contextHandle struct{}
 type deviceHandle struct{}
+type logHandle struct{}
+
+// Private ABI shared with the mago_object_type enum in native/miniaudio_bridge.c.
+// Keep the two in sync when adding a new object type.
+const (
+	magoObjectContext int32 = 1
+	magoObjectDevice  int32 = 2
+	magoObjectLog     int32 = 3
+)
