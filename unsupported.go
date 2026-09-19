@@ -639,3 +639,41 @@ func (*HighShelfFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64)
 }
 func (*HighShelfFilter) Latency() uint32 { return 0 }
 func (*HighShelfFilter) Close() error    { return errUnsupportedPlatform }
+
+type DelayConfig struct {
+	Channels      uint32
+	SampleRate    uint32
+	DelayInFrames uint32
+	DelayStart    bool
+	Wet           float32
+	Dry           float32
+	Decay         float32
+}
+
+func DefaultDelayConfig(channels, sampleRate, delayInFrames uint32, decay float32) DelayConfig {
+	return DelayConfig{
+		Channels:      channels,
+		SampleRate:    sampleRate,
+		DelayInFrames: delayInFrames,
+		DelayStart:    decay == 0,
+		Wet:           1.0,
+		Dry:           1.0,
+		Decay:         decay,
+	}
+}
+
+type Delay struct{}
+
+func (*Library) NewDelay(DelayConfig) (*Delay, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Delay) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint32) error {
+	return errUnsupportedPlatform
+}
+func (*Delay) Wet() float32           { return 0 }
+func (*Delay) SetWet(float32) error   { return errUnsupportedPlatform }
+func (*Delay) Dry() float32           { return 0 }
+func (*Delay) SetDry(float32) error   { return errUnsupportedPlatform }
+func (*Delay) Decay() float32         { return 0 }
+func (*Delay) SetDecay(float32) error { return errUnsupportedPlatform }
+func (*Delay) Close() error           { return errUnsupportedPlatform }
