@@ -301,11 +301,17 @@ Inspect standard channel maps and down-mix with the channel converter:
 go run ./examples/channel-map
 ```
 
+Resample between sample rates with the resampler and data converter:
+
+```bash
+go run ./examples/resample
+```
+
 All of the examples accept `--backend` and fall back to the null backend when no
 real device backend is available, so they run on a headless machine. They load
 the embedded library and need no compiler; set `MAGO_MINIAUDIO_LIB` to run them
-against a locally built library instead. `convert-formats` and `channel-map`
-need no audio device at all.
+against a locally built library instead. `convert-formats`, `channel-map` and
+`resample` need no audio device at all.
 
 You can override the backend/device selection. The accepted backend values are platform-dependent:
 
