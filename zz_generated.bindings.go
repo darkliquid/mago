@@ -49,6 +49,8 @@ const (
 	FormatUnknown                    Format             = 0
 	FormatU8                         Format             = 1
 	FormatS16                        Format             = 2
+	FormatS24                        Format             = 3
+	FormatS32                        Format             = 4
 	FormatF32                        Format             = 5
 	NotificationStarted              NotificationType   = 0
 	NotificationStopped              NotificationType   = 1

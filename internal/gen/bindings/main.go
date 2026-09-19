@@ -109,6 +109,8 @@ var baseConstants = []constSpec{
 	{Name: "FormatUnknown", Type: "Format", Value: "0"},
 	{Name: "FormatU8", Type: "Format", Value: "1"},
 	{Name: "FormatS16", Type: "Format", Value: "2"},
+	{Name: "FormatS24", Type: "Format", Value: "3"},
+	{Name: "FormatS32", Type: "Format", Value: "4"},
 	{Name: "FormatF32", Type: "Format", Value: "5"},
 	{Name: "NotificationStarted", Type: "NotificationType", Value: "0"},
 	{Name: "NotificationStopped", Type: "NotificationType", Value: "1"},
