@@ -480,3 +480,177 @@ func (r *RingBuffer) Close() error {
 	r.handle = nil
 	return nil
 }
+
+// PCMRingBuffer is a frame-oriented ring buffer that also tracks the sample
+// format, channel count and sample rate of the data flowing through it.
+type PCMRingBuffer struct {
+	lib    *Library
+	handle *pcmRingBufferHandle
+}
+
+// NewPCMRingBuffer creates a PCM ring buffer of the given size in frames.
+func (lib *Library) NewPCMRingBuffer(format Format, channels, bufferSizeInFrames uint32) (*PCMRingBuffer, error) {
+	return lib.newPCMRingBuffer("ma_pcm_rb_init", func(handle *pcmRingBufferHandle) Result {
+		return lib.bindings.maPCMRBInit(format, channels, bufferSizeInFrames, nil, nil, handle)
+	})
+}
+
+// NewPCMRingBufferEx creates a PCM ring buffer with explicit sub-buffer geometry.
+func (lib *Library) NewPCMRingBufferEx(format Format, channels, subbufferSizeInFrames, subbufferCount, subbufferStrideInFrames uint32) (*PCMRingBuffer, error) {
+	return lib.newPCMRingBuffer("ma_pcm_rb_init_ex", func(handle *pcmRingBufferHandle) Result {
+		return lib.bindings.maPCMRBInitEx(format, channels, subbufferSizeInFrames, subbufferCount, subbufferStrideInFrames, nil, nil, handle)
+	})
+}
+
+func (lib *Library) newPCMRingBuffer(op string, init func(*pcmRingBufferHandle) Result) (*PCMRingBuffer, error) {
+	if err := lib.ensureOpen(); err != nil {
+		return nil, err
+	}
+
+	handle := (*pcmRingBufferHandle)(lib.bindings.magoAlloc(magoObjectPCMRingBuffer))
+	if handle == nil {
+		return nil, fmt.Errorf("mago: allocate PCM ring buffer: out of memory")
+	}
+	if result := init(handle); result != Success {
+		lib.bindings.magoFree(unsafe.Pointer(handle))
+		return nil, lib.resultError(op, result)
+	}
+
+	return &PCMRingBuffer{lib: lib, handle: handle}, nil
+}
+
+// AcquireRead returns the next readable region, requesting up to sizeInFrames.
+func (r *PCMRingBuffer) AcquireRead(sizeInFrames uint32) (unsafe.Pointer, uint32, error) {
+	return r.acquire("ma_pcm_rb_acquire_read", sizeInFrames, r.lib.bindings.maPCMRBAcquireRead)
+}
+
+// AcquireWrite returns the next writable region, requesting up to sizeInFrames.
+func (r *PCMRingBuffer) AcquireWrite(sizeInFrames uint32) (unsafe.Pointer, uint32, error) {
+	return r.acquire("ma_pcm_rb_acquire_write", sizeInFrames, r.lib.bindings.maPCMRBAcquireWrite)
+}
+
+func (r *PCMRingBuffer) acquire(op string, sizeInFrames uint32, fn func(*pcmRingBufferHandle, *uint32, *unsafe.Pointer) Result) (unsafe.Pointer, uint32, error) {
+	if r == nil || r.handle == nil {
+		return nil, 0, fmt.Errorf("mago: nil PCM ring buffer")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return nil, 0, err
+	}
+
+	size := sizeInFrames
+	var buffer unsafe.Pointer
+	if result := fn(r.handle, &size, &buffer); result != Success {
+		return nil, 0, r.lib.resultError(op, result)
+	}
+	return buffer, size, nil
+}
+
+// CommitRead marks sizeInFrames as consumed.
+func (r *PCMRingBuffer) CommitRead(sizeInFrames uint32) error {
+	return r.commit("ma_pcm_rb_commit_read", func(handle *pcmRingBufferHandle) Result {
+		return r.lib.bindings.maPCMRBCommitRead(handle, sizeInFrames)
+	})
+}
+
+// CommitWrite marks sizeInFrames as written.
+func (r *PCMRingBuffer) CommitWrite(sizeInFrames uint32) error {
+	return r.commit("ma_pcm_rb_commit_write", func(handle *pcmRingBufferHandle) Result {
+		return r.lib.bindings.maPCMRBCommitWrite(handle, sizeInFrames)
+	})
+}
+
+func (r *PCMRingBuffer) commit(op string, fn func(*pcmRingBufferHandle) Result) error {
+	if r == nil || r.handle == nil {
+		return fmt.Errorf("mago: nil PCM ring buffer")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return r.lib.resultError(op, fn(r.handle))
+}
+
+// SeekRead advances the read pointer by offsetInFrames.
+func (r *PCMRingBuffer) SeekRead(offsetInFrames uint32) error {
+	return r.commit("ma_pcm_rb_seek_read", func(handle *pcmRingBufferHandle) Result {
+		return r.lib.bindings.maPCMRBSeekRead(handle, offsetInFrames)
+	})
+}
+
+// SeekWrite advances the write pointer by offsetInFrames.
+func (r *PCMRingBuffer) SeekWrite(offsetInFrames uint32) error {
+	return r.commit("ma_pcm_rb_seek_write", func(handle *pcmRingBufferHandle) Result {
+		return r.lib.bindings.maPCMRBSeekWrite(handle, offsetInFrames)
+	})
+}
+
+// Reset empties the buffer.
+func (r *PCMRingBuffer) Reset() {
+	if r == nil || r.handle == nil {
+		return
+	}
+	r.lib.bindings.maPCMRBReset(r.handle)
+}
+
+// PointerDistance reports the frames readable before the read pointer catches
+// the write pointer.
+func (r *PCMRingBuffer) PointerDistance() int32 {
+	if r == nil || r.handle == nil {
+		return 0
+	}
+	return r.lib.bindings.maPCMRBPointerDistance(r.handle)
+}
+
+// AvailableRead reports how many frames can be read.
+func (r *PCMRingBuffer) AvailableRead() uint32 {
+	if r == nil || r.handle == nil {
+		return 0
+	}
+	return r.lib.bindings.maPCMRBAvailableRead(r.handle)
+}
+
+// AvailableWrite reports how many frames can be written.
+func (r *PCMRingBuffer) AvailableWrite() uint32 {
+	if r == nil || r.handle == nil {
+		return 0
+	}
+	return r.lib.bindings.maPCMRBAvailableWrite(r.handle)
+}
+
+// Format reports the sample format the buffer was created with.
+func (r *PCMRingBuffer) Format() Format {
+	if r == nil || r.handle == nil {
+		return FormatUnknown
+	}
+	return r.lib.bindings.maPCMRBGetFormat(r.handle)
+}
+
+// Channels reports the channel count the buffer was created with.
+func (r *PCMRingBuffer) Channels() uint32 {
+	if r == nil || r.handle == nil {
+		return 0
+	}
+	return r.lib.bindings.maPCMRBGetChannels(r.handle)
+}
+
+// SampleRate reports the sample rate associated with the buffer.
+func (r *PCMRingBuffer) SampleRate() uint32 {
+	if r == nil || r.handle == nil {
+		return 0
+	}
+	return r.lib.bindings.maPCMRBGetSampleRate(r.handle)
+}
+
+// Close uninitializes the ring buffer and frees it.
+func (r *PCMRingBuffer) Close() error {
+	if r == nil || r.handle == nil {
+		return nil
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+
+	r.lib.bindings.maPCMRBUninit(r.handle)
+	r.lib.bindings.magoFree(unsafe.Pointer(r.handle))
+	r.handle = nil
+	return nil
+}

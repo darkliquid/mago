@@ -114,3 +114,47 @@ func TestRingBufferWriteThenRead(t *testing.T) {
 		t.Fatalf("CommitRead: %v", err)
 	}
 }
+
+func TestPCMRingBufferRoundTrip(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	ring, err := lib.NewPCMRingBuffer(FormatF32, 1, 64)
+	if err != nil {
+		t.Fatalf("NewPCMRingBuffer: %v", err)
+	}
+	defer func() { _ = ring.Close() }()
+
+	if ring.Format() != FormatF32 || ring.Channels() != 1 {
+		t.Fatalf("ring reports format %v channels %d", ring.Format(), ring.Channels())
+	}
+
+	ptr, frames, err := ring.AcquireWrite(16)
+	if err != nil {
+		t.Fatalf("AcquireWrite: %v", err)
+	}
+	if frames == 0 {
+		t.Fatal("expected writable frames")
+	}
+	region := unsafe.Slice((*float32)(ptr), frames)
+	for i := range region {
+		region[i] = float32(i)
+	}
+	if err := ring.CommitWrite(frames); err != nil {
+		t.Fatalf("CommitWrite: %v", err)
+	}
+
+	readPtr, readFrames, err := ring.AcquireRead(16)
+	if err != nil {
+		t.Fatalf("AcquireRead: %v", err)
+	}
+	if readFrames == 0 {
+		t.Fatal("expected readable frames")
+	}
+	read := unsafe.Slice((*float32)(readPtr), readFrames)
+	if read[0] != 0 || read[1] != 1 {
+		t.Fatalf("read %v, want the written frames", read[:4])
+	}
+	if err := ring.CommitRead(readFrames); err != nil {
+		t.Fatalf("CommitRead: %v", err)
+	}
+}
