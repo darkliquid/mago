@@ -12,10 +12,74 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-type DataCallback func(device *Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32)
+type DataCallback func(device *Device, io DeviceIO)
 type NotificationCallback func(device *Device, notification NotificationType)
 
+// DeviceIO provides safe typed slice accessors for device callback audio buffers.
+// Slices are derived directly from native audio memory with zero heap allocation.
+type DeviceIO struct {
+	output           unsafe.Pointer
+	input            unsafe.Pointer
+	frameCount       uint32
+	playbackChannels uint32
+	captureChannels  uint32
+}
+
+// FrameCount returns the number of PCM frames requested or provided in this callback.
+func (io DeviceIO) FrameCount() uint32 { return io.frameCount }
+
+// OutputF32 returns the interleaved float32 playback buffer slice, or nil if capture-only.
+func (io DeviceIO) OutputF32() []float32 {
+	if io.output == nil || io.playbackChannels == 0 {
+		return nil
+	}
+	return unsafe.Slice((*float32)(io.output), int(io.frameCount*io.playbackChannels))
+}
+
+// OutputS16 returns the interleaved int16 playback buffer slice, or nil if capture-only.
+func (io DeviceIO) OutputS16() []int16 {
+	if io.output == nil || io.playbackChannels == 0 {
+		return nil
+	}
+	return unsafe.Slice((*int16)(io.output), int(io.frameCount*io.playbackChannels))
+}
+
+// OutputBytes returns the raw playback buffer byte slice, or nil if capture-only.
+// Defaults to 4 bytes per sample (FormatF32).
+func (io DeviceIO) OutputBytes() []byte {
+	if io.output == nil || io.playbackChannels == 0 {
+		return nil
+	}
+	return unsafe.Slice((*byte)(io.output), int(io.frameCount*io.playbackChannels*4))
+}
+
+// InputF32 returns the interleaved float32 capture buffer slice, or nil if playback-only.
+func (io DeviceIO) InputF32() []float32 {
+	if io.input == nil || io.captureChannels == 0 {
+		return nil
+	}
+	return unsafe.Slice((*float32)(io.input), int(io.frameCount*io.captureChannels))
+}
+
+// InputS16 returns the interleaved int16 capture buffer slice, or nil if playback-only.
+func (io DeviceIO) InputS16() []int16 {
+	if io.input == nil || io.captureChannels == 0 {
+		return nil
+	}
+	return unsafe.Slice((*int16)(io.input), int(io.frameCount*io.captureChannels))
+}
+
+// InputBytes returns the raw capture buffer byte slice, or nil if playback-only.
+// Defaults to 4 bytes per sample (FormatF32).
+func (io DeviceIO) InputBytes() []byte {
+	if io.input == nil || io.captureChannels == 0 {
+		return nil
+	}
+	return unsafe.Slice((*byte)(io.input), int(io.frameCount*io.captureChannels*4))
+}
+
 type PlaybackDeviceConfig struct {
+	DeviceID                  *DeviceID
 	DeviceIndex               int
 	Format                    Format
 	Channels                  uint32
@@ -35,6 +99,7 @@ type PlaybackDeviceConfig struct {
 
 // StreamConfig configures one side of a device (playback or capture).
 type StreamConfig struct {
+	DeviceID                  *DeviceID
 	DeviceIndex               int
 	Format                    Format
 	Channels                  uint32
@@ -69,9 +134,11 @@ type Device struct {
 }
 
 type callbackState struct {
-	device   *Device
-	onData   DataCallback
-	onNotify NotificationCallback
+	device           *Device
+	playbackChannels uint32
+	captureChannels  uint32
+	onData           DataCallback
+	onNotify         NotificationCallback
 }
 
 var (
@@ -87,7 +154,14 @@ var (
 		if state.onData == nil {
 			return 0
 		}
-		state.onData(state.device, unsafe.Pointer(output), unsafe.Pointer(input), frameCount)
+		io := DeviceIO{
+			output:           unsafe.Pointer(output),
+			input:            unsafe.Pointer(input),
+			frameCount:       frameCount,
+			playbackChannels: state.playbackChannels,
+			captureChannels:  state.captureChannels,
+		}
+		state.onData(state.device, io)
 		return 0
 	})
 
@@ -186,9 +260,23 @@ func (lib *Library) NewDevice(ctx *Context, config DeviceConfig) (*Device, error
 		}
 	}
 
+	var playbackChannels, captureChannels uint32
+	if config.Playback != nil {
+		playbackChannels = config.Playback.Channels
+	}
+	if config.Capture != nil {
+		captureChannels = config.Capture.Channels
+	}
+
 	token := uintptr(callbackSeq.Add(1))
 	device := &Device{lib: lib, token: token, primaryType: config.Type}
-	callbacks.Store(token, &callbackState{device: device, onData: config.DataCallback, onNotify: config.NotificationCallback})
+	callbacks.Store(token, &callbackState{
+		device:           device,
+		playbackChannels: playbackChannels,
+		captureChannels:  captureChannels,
+		onData:           config.DataCallback,
+		onNotify:         config.NotificationCallback,
+	})
 
 	var ctxHandle *contextHandle
 	if ctx != nil {
@@ -228,7 +316,12 @@ func streamToNative(stream *StreamConfig) *streamConfigNative {
 	if stream == nil {
 		return nil
 	}
+	var deviceID unsafe.Pointer
+	if stream.DeviceID != nil {
+		deviceID = unsafe.Pointer(&stream.DeviceID[0])
+	}
 	return &streamConfigNative{
+		DeviceID:                  deviceID,
 		DeviceIndex:               int32(stream.DeviceIndex), //nolint:gosec // bounded by the MaxInt32 check in NewDevice
 		Format:                    stream.Format,
 		Channels:                  stream.Channels,
@@ -263,6 +356,7 @@ func deviceTypeName(t DeviceType) string {
 // NewPlaybackDevice is the playback-only convenience form of NewDevice.
 func (lib *Library) NewPlaybackDevice(ctx *Context, config PlaybackDeviceConfig) (*Device, error) {
 	stream := StreamConfig{
+		DeviceID:                  config.DeviceID,
 		DeviceIndex:               config.DeviceIndex,
 		Format:                    config.Format,
 		Channels:                  config.Channels,

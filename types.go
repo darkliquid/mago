@@ -63,10 +63,32 @@ type deviceConfigNative struct {
 	UserData             uintptr
 }
 
-// deviceIDNative mirrors the ma_device_id union, whose largest member is a
-// 256-byte buffer. Its size is validated by layout_test.go against the vendored
-// header.
-type deviceIDNative [256]byte
+var (
+	ErrInvalidSliceLength = fmt.Errorf("mago: slice length does not align with channel count")
+	ErrOutputTooSmall     = fmt.Errorf("mago: output slice too small for input frames")
+)
+
+// DeviceID is a type-safe opaque identifier for a hardware audio endpoint.
+// It mirrors the ma_device_id union, whose largest member is a 256-byte buffer.
+// Its size is validated by layout_test.go against the vendored header.
+type DeviceID [256]byte
+
+// IsZero reports whether the device ID is uninitialized / default.
+func (id DeviceID) IsZero() bool {
+	return id == DeviceID{}
+}
+
+// String returns a readable representation of the device identifier.
+func (id DeviceID) String() string {
+	for i, b := range id {
+		if b == 0 {
+			return string(id[:i])
+		}
+	}
+	return string(id[:])
+}
+
+type deviceIDNative = DeviceID
 
 // deviceInfoNative mirrors the prefix of ma_device_info that enumeration needs.
 // Enumeration pushes one pointer per device, so the trailing
@@ -79,6 +101,7 @@ type deviceInfoNative struct {
 }
 
 type DeviceInfo struct {
+	ID        DeviceID
 	Name      string
 	IsDefault bool
 }

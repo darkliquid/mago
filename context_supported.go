@@ -100,8 +100,8 @@ func (ctx *Context) Log() *Log {
 }
 
 // DeviceInfo reports basic information for a device, or for the default device
-// when deviceID is nil.
-func (ctx *Context) DeviceInfo(t DeviceType, deviceID unsafe.Pointer) (DeviceInfo, error) {
+// when id is nil.
+func (ctx *Context) DeviceInfo(t DeviceType, id *DeviceID) (DeviceInfo, error) {
 	if ctx == nil || ctx.handle == nil {
 		return DeviceInfo{}, fmt.Errorf("mago: nil context")
 	}
@@ -115,7 +115,12 @@ func (ctx *Context) DeviceInfo(t DeviceType, deviceID unsafe.Pointer) (DeviceInf
 	}
 	defer ctx.lib.bindings.magoFree(unsafe.Pointer(native))
 
-	if result := ctx.lib.bindings.maContextGetDeviceInfo(ctx.handle, t, deviceID, native); result != Success {
+	var idPtr unsafe.Pointer
+	if id != nil {
+		idPtr = unsafe.Pointer(&id[0])
+	}
+
+	if result := ctx.lib.bindings.maContextGetDeviceInfo(ctx.handle, t, idPtr, native); result != Success {
 		return DeviceInfo{}, ctx.lib.resultError("ma_context_get_device_info", result)
 	}
 	return copyDeviceInfo(native), nil
@@ -153,6 +158,7 @@ func copyDeviceInfo(native *deviceInfoNative) DeviceInfo {
 		nameBytes = nameBytes[:idx]
 	}
 	return DeviceInfo{
+		ID:        native.ID,
 		Name:      string(nameBytes),
 		IsDefault: native.IsDefault != 0,
 	}

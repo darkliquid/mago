@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/darkliquid/mago/internal/testlib"
 )
@@ -71,15 +70,13 @@ func TestVersionAndNullBackendPlayback(t *testing.T) {
 	config.Channels = 1
 	config.SampleRate = 48000
 	config.PeriodSizeInFrames = 64
-	config.DataCallback = func(_ *Device, output unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
-		if output != nil {
-			samples := unsafe.Slice((*float32)(output), int(frameCount))
-			for i := range samples {
-				samples[i] = 0
-			}
+	config.DataCallback = func(_ *Device, io DeviceIO) {
+		samples := io.OutputF32()
+		for i := range samples {
+			samples[i] = 0
 		}
 		select {
-		case callbacks <- frameCount:
+		case callbacks <- io.FrameCount():
 		default:
 		}
 	}

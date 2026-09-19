@@ -14,10 +14,24 @@ type Context struct{}
 type Device struct{}
 
 type LibraryOption func(*struct{})
-type DataCallback func(*Device, unsafe.Pointer, unsafe.Pointer, uint32)
+type DeviceIO struct{}
+
+func (DeviceIO) FrameCount() uint32   { return 0 }
+func (DeviceIO) OutputF32() []float32 { return nil }
+func (DeviceIO) OutputS16() []int16   { return nil }
+func (DeviceIO) OutputBytes() []byte  { return nil }
+func (DeviceIO) InputF32() []float32  { return nil }
+func (DeviceIO) InputS16() []int16    { return nil }
+func (DeviceIO) InputBytes() []byte   { return nil }
+
+type DataCallback func(*Device, DeviceIO)
 type NotificationCallback func(*Device, NotificationType)
-type PlaybackDeviceConfig struct{}
-type StreamConfig struct{}
+type PlaybackDeviceConfig struct {
+	DeviceID *DeviceID
+}
+type StreamConfig struct {
+	DeviceID *DeviceID
+}
 type DeviceConfig struct{}
 
 type OpError struct {
@@ -38,7 +52,7 @@ func (*Context) NewDevice(DeviceConfig) (*Device, error) { return nil, errUnsupp
 func (*Library) NewContextWithLog(*Log, ...Backend) (*Context, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*Context) DeviceInfo(DeviceType, unsafe.Pointer) (DeviceInfo, error) {
+func (*Context) DeviceInfo(DeviceType, *DeviceID) (DeviceInfo, error) {
 	return DeviceInfo{}, errUnsupportedPlatform
 }
 func (*Library) NewPlaybackDevice(*Context, PlaybackDeviceConfig) (*Device, error) {

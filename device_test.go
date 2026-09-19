@@ -19,9 +19,9 @@ func TestNullBackendCaptureDevice(t *testing.T) {
 			SampleRate:         48000,
 			PeriodSizeInFrames: 64,
 		},
-		DataCallback: func(_ *Device, _ unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
+		DataCallback: func(_ *Device, io DeviceIO) {
 			select {
-			case got <- frameCount:
+			case got <- io.FrameCount():
 			default:
 			}
 		},
@@ -84,9 +84,9 @@ func TestNullBackendDuplexDevice(t *testing.T) {
 		Type:     DeviceTypeDuplex,
 		Playback: &StreamConfig{DeviceIndex: -1, Channels: 1, SampleRate: 48000, PeriodSizeInFrames: 64},
 		Capture:  &StreamConfig{DeviceIndex: -1, Channels: 1, SampleRate: 48000, PeriodSizeInFrames: 64},
-		DataCallback: func(_ *Device, _ unsafe.Pointer, _ unsafe.Pointer, frameCount uint32) {
+		DataCallback: func(_ *Device, io DeviceIO) {
 			select {
-			case got <- frameCount:
+			case got <- io.FrameCount():
 			default:
 			}
 		},
@@ -108,5 +108,57 @@ func TestNullBackendDuplexDevice(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for duplex callback")
+	}
+}
+
+func TestDeviceIOSlicing(t *testing.T) {
+	const frames = 128
+	const channels = 2
+	totalSamples := frames * channels
+
+	outBuf := make([]float32, totalSamples)
+	inBuf := make([]float32, totalSamples)
+
+	io := DeviceIO{
+		output:           unsafe.Pointer(&outBuf[0]),
+		input:            unsafe.Pointer(&inBuf[0]),
+		frameCount:       frames,
+		playbackChannels: channels,
+		captureChannels:  channels,
+	}
+
+	if got := io.FrameCount(); got != frames {
+		t.Fatalf("FrameCount: got %d, want %d", got, frames)
+	}
+
+	outF32 := io.OutputF32()
+	if len(outF32) != totalSamples {
+		t.Fatalf("OutputF32 length: got %d, want %d", len(outF32), totalSamples)
+	}
+
+	inF32 := io.InputF32()
+	if len(inF32) != totalSamples {
+		t.Fatalf("InputF32 length: got %d, want %d", len(inF32), totalSamples)
+	}
+
+	// Capture-only device: output is nil
+	ioCap := DeviceIO{
+		input:           unsafe.Pointer(&inBuf[0]),
+		frameCount:      frames,
+		captureChannels: channels,
+	}
+	if ioCap.OutputF32() != nil {
+		t.Errorf("expected nil OutputF32 for capture-only IO")
+	}
+}
+
+func TestDeviceIDIsZero(t *testing.T) {
+	var id DeviceID
+	if !id.IsZero() {
+		t.Errorf("expected empty DeviceID to be zero")
+	}
+	id[0] = 1
+	if id.IsZero() {
+		t.Errorf("expected non-empty DeviceID to not be zero")
 	}
 }

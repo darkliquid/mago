@@ -6,7 +6,6 @@ import (
 	"math"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/darkliquid/mago"
 	"github.com/gopxl/beep"
@@ -218,14 +217,12 @@ func (s *speakerState) close() error {
 	return firstErr
 }
 
-func (s *speakerState) onDeviceData(device *mago.Device, output unsafe.Pointer, input unsafe.Pointer, frameCount uint32) {
+func (s *speakerState) onDeviceData(device *mago.Device, io mago.DeviceIO) {
 	_ = device
-	_ = input
-	if output == nil {
+	out := io.OutputF32()
+	if len(out) == 0 {
 		return
 	}
-
-	out := unsafe.Slice((*float32)(output), int(frameCount)*channelCount)
 
 	mu.Lock()
 	defer mu.Unlock()
