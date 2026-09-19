@@ -31,7 +31,7 @@ func TestLogCallbackReceivesPostedMessages(t *testing.T) {
 
 	var mu sync.Mutex
 	var got []string
-	token, err := log.Register(func(level LogLevel, message string) {
+	token, err := log.Register(func(_ LogLevel, message string) {
 		mu.Lock()
 		defer mu.Unlock()
 		got = append(got, message)
