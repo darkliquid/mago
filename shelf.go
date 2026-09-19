@@ -66,6 +66,7 @@ type (
 type NotchFilter struct {
 	handle *notch2Handle
 	lib    *Library
+	config NotchFilterConfig
 }
 
 // NewNotchFilter creates and initializes a second-order notch filter.
@@ -94,6 +95,7 @@ func (lib *Library) NewNotchFilter(config NotchFilterConfig) (*NotchFilter, erro
 	return &NotchFilter{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -112,18 +114,45 @@ func (f *NotchFilter) Reinit(config NotchFilterConfig) error {
 	}
 
 	nativeConfig := notch2ConfigNative(config)
-	return f.lib.resultError("ma_notch2_reinit", f.lib.bindings.maNotch2Reinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_notch2_reinit", f.lib.bindings.maNotch2Reinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-func (f *NotchFilter) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *NotchFilter) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil notch2")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_notch2_process_pcm_frames", f.lib.bindings.maNotch2ProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_notch2_process_pcm_frames",
+		f.lib.bindings.maNotch2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *NotchFilter) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil notch2")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_notch2_process_pcm_frames",
+		f.lib.bindings.maNotch2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.
@@ -155,6 +184,7 @@ func (f *NotchFilter) Close() error {
 type PeakFilter struct {
 	handle *peak2Handle
 	lib    *Library
+	config PeakFilterConfig
 }
 
 // NewPeakFilter creates and initializes a second-order peaking EQ filter.
@@ -183,6 +213,7 @@ func (lib *Library) NewPeakFilter(config PeakFilterConfig) (*PeakFilter, error) 
 	return &PeakFilter{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -201,18 +232,45 @@ func (f *PeakFilter) Reinit(config PeakFilterConfig) error {
 	}
 
 	nativeConfig := peak2ConfigNative(config)
-	return f.lib.resultError("ma_peak2_reinit", f.lib.bindings.maPeak2Reinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_peak2_reinit", f.lib.bindings.maPeak2Reinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-func (f *PeakFilter) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *PeakFilter) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil peak2")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_peak2_process_pcm_frames", f.lib.bindings.maPeak2ProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_peak2_process_pcm_frames",
+		f.lib.bindings.maPeak2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *PeakFilter) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil peak2")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_peak2_process_pcm_frames",
+		f.lib.bindings.maPeak2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.
@@ -244,6 +302,7 @@ func (f *PeakFilter) Close() error {
 type LowShelfFilter struct {
 	handle *loshelf2Handle
 	lib    *Library
+	config LowShelfFilterConfig
 }
 
 // NewLowShelfFilter creates and initializes a second-order low-shelf filter.
@@ -272,6 +331,7 @@ func (lib *Library) NewLowShelfFilter(config LowShelfFilterConfig) (*LowShelfFil
 	return &LowShelfFilter{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -295,18 +355,45 @@ func (f *LowShelfFilter) Reinit(config LowShelfFilterConfig) error {
 	}
 
 	nativeConfig := loshelf2ConfigNative(config)
-	return f.lib.resultError("ma_loshelf2_reinit", f.lib.bindings.maLoShelf2Reinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_loshelf2_reinit", f.lib.bindings.maLoShelf2Reinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-func (f *LowShelfFilter) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *LowShelfFilter) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil loshelf2")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_loshelf2_process_pcm_frames", f.lib.bindings.maLoShelf2ProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_loshelf2_process_pcm_frames",
+		f.lib.bindings.maLoShelf2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *LowShelfFilter) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil loshelf2")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_loshelf2_process_pcm_frames",
+		f.lib.bindings.maLoShelf2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.
@@ -338,6 +425,7 @@ func (f *LowShelfFilter) Close() error {
 type HighShelfFilter struct {
 	handle *hishelf2Handle
 	lib    *Library
+	config HighShelfFilterConfig
 }
 
 // NewHighShelfFilter creates and initializes a second-order high-shelf filter.
@@ -366,6 +454,7 @@ func (lib *Library) NewHighShelfFilter(config HighShelfFilterConfig) (*HighShelf
 	return &HighShelfFilter{
 		handle: handle,
 		lib:    lib,
+		config: config,
 	}, nil
 }
 
@@ -389,18 +478,45 @@ func (f *HighShelfFilter) Reinit(config HighShelfFilterConfig) error {
 	}
 
 	nativeConfig := hishelf2ConfigNative(config)
-	return f.lib.resultError("ma_hishelf2_reinit", f.lib.bindings.maHiShelf2Reinit(&nativeConfig, f.handle))
+	if err := f.lib.resultError("ma_hishelf2_reinit", f.lib.bindings.maHiShelf2Reinit(&nativeConfig, f.handle)); err != nil {
+		return err
+	}
+	f.config = config
+	return nil
 }
 
-// ProcessPCMFrames processes audio frames through the filter.
-func (f *HighShelfFilter) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint64) error {
+// Process processes float32 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *HighShelfFilter) Process(out, in []float32) error {
 	if f == nil || f.handle == nil {
 		return fmt.Errorf("mago: nil hishelf2")
 	}
 	if err := f.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return f.lib.resultError("ma_hishelf2_process_pcm_frames", f.lib.bindings.maHiShelf2ProcessPCMFrames(f.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_hishelf2_process_pcm_frames",
+		f.lib.bindings.maHiShelf2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
+}
+
+// ProcessS16 processes int16 audio frames through the filter.
+// out and in can be the same slice for in-place processing.
+func (f *HighShelfFilter) ProcessS16(out, in []int16) error {
+	if f == nil || f.handle == nil {
+		return fmt.Errorf("mago: nil hishelf2")
+	}
+	if err := f.lib.ensureOpen(); err != nil {
+		return err
+	}
+	frameCount, err := validateFilterSlices(f.config.Channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return f.lib.resultError("ma_hishelf2_process_pcm_frames",
+		f.lib.bindings.maHiShelf2ProcessPCMFrames(f.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), frameCount))
 }
 
 // Latency returns the filter's latency in frames.

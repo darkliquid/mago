@@ -3,7 +3,6 @@ package mago
 import (
 	"math"
 	"testing"
-	"unsafe"
 )
 
 func rms(samples []float32) float64 {
@@ -61,7 +60,7 @@ func TestLPF1FrequencyAttenuation(t *testing.T) {
 
 	lowIn := generateSine(t, lib, sampleRate, 100.0, frames)
 	lowOut := make([]float32, frames)
-	if err := lpf.ProcessPCMFrames(unsafe.Pointer(&lowOut[0]), unsafe.Pointer(&lowIn[0]), frames); err != nil {
+	if err := lpf.Process(lowOut, lowIn); err != nil {
 		t.Fatalf("Process low: %v", err)
 	}
 
@@ -69,7 +68,7 @@ func TestLPF1FrequencyAttenuation(t *testing.T) {
 
 	highIn := generateSine(t, lib, sampleRate, 8000.0, frames)
 	highOut := make([]float32, frames)
-	if err := lpf.ProcessPCMFrames(unsafe.Pointer(&highOut[0]), unsafe.Pointer(&highIn[0]), frames); err != nil {
+	if err := lpf.Process(highOut, highIn); err != nil {
 		t.Fatalf("Process high: %v", err)
 	}
 
@@ -106,7 +105,7 @@ func TestLPF2FrequencyAttenuation(t *testing.T) {
 
 	lowIn := generateSine(t, lib, sampleRate, 100.0, frames)
 	lowOut := make([]float32, frames)
-	if err := lpf.ProcessPCMFrames(unsafe.Pointer(&lowOut[0]), unsafe.Pointer(&lowIn[0]), frames); err != nil {
+	if err := lpf.Process(lowOut, lowIn); err != nil {
 		t.Fatalf("Process low: %v", err)
 	}
 
@@ -114,7 +113,7 @@ func TestLPF2FrequencyAttenuation(t *testing.T) {
 
 	highIn := generateSine(t, lib, sampleRate, 8000.0, frames)
 	highOut := make([]float32, frames)
-	if err := lpf.ProcessPCMFrames(unsafe.Pointer(&highOut[0]), unsafe.Pointer(&highIn[0]), frames); err != nil {
+	if err := lpf.Process(highOut, highIn); err != nil {
 		t.Fatalf("Process high: %v", err)
 	}
 
@@ -151,7 +150,7 @@ func TestLPFNthOrderFrequencyAttenuation(t *testing.T) {
 
 	lowIn := generateSine(t, lib, sampleRate, 100.0, frames)
 	lowOut := make([]float32, frames)
-	if err := lpf.ProcessPCMFrames(unsafe.Pointer(&lowOut[0]), unsafe.Pointer(&lowIn[0]), frames); err != nil {
+	if err := lpf.Process(lowOut, lowIn); err != nil {
 		t.Fatalf("Process low: %v", err)
 	}
 
@@ -159,7 +158,7 @@ func TestLPFNthOrderFrequencyAttenuation(t *testing.T) {
 
 	highIn := generateSine(t, lib, sampleRate, 8000.0, frames)
 	highOut := make([]float32, frames)
-	if err := lpf.ProcessPCMFrames(unsafe.Pointer(&highOut[0]), unsafe.Pointer(&highIn[0]), frames); err != nil {
+	if err := lpf.Process(highOut, highIn); err != nil {
 		t.Fatalf("Process high: %v", err)
 	}
 
@@ -212,7 +211,7 @@ func TestLPFLifecycleAndControls(t *testing.T) {
 	}
 
 	var dummy [4]float32
-	if err := lpf.ProcessPCMFrames(unsafe.Pointer(&dummy[0]), unsafe.Pointer(&dummy[0]), 4); err == nil {
+	if err := lpf.Process(dummy[:], dummy[:]); err == nil {
 		t.Fatal("process on closed LPF should fail")
 	}
 
@@ -220,8 +219,8 @@ func TestLPFLifecycleAndControls(t *testing.T) {
 	if err := nilLPF.Close(); err != nil {
 		t.Errorf("nil Close: %v", err)
 	}
-	if err := nilLPF.ProcessPCMFrames(nil, nil, 0); err == nil {
-		t.Error("nil ProcessPCMFrames should return error")
+	if err := nilLPF.Process(nil, nil); err == nil {
+		t.Error("nil Process should return error")
 	}
 }
 
@@ -251,8 +250,8 @@ func TestLPFClearCacheRestoresCoefficients(t *testing.T) {
 
 	highFreq := generateSine(t, lib, sampleRate, 8000.0, frames)
 	out := make([]float32, frames)
-	if err := lpf1.ProcessPCMFrames(unsafe.Pointer(&out[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames: %v", err)
+	if err := lpf1.Process(out, highFreq); err != nil {
+		t.Fatalf("Process: %v", err)
 	}
 	if got := rms(out); got > 0.3 {
 		t.Errorf("LPF1 after ClearCache expected attenuation, got RMS %f", got)
@@ -275,8 +274,8 @@ func TestLPFClearCacheRestoresCoefficients(t *testing.T) {
 		t.Fatalf("ClearCache: %v", err)
 	}
 
-	if err := lpf3.ProcessPCMFrames(unsafe.Pointer(&out[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames: %v", err)
+	if err := lpf3.Process(out, highFreq); err != nil {
+		t.Fatalf("Process: %v", err)
 	}
 	if got := rms(out); got > 0.1 {
 		t.Errorf("LPF (order 3) after ClearCache expected heavy attenuation, got RMS %f", got)

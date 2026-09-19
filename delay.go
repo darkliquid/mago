@@ -33,8 +33,9 @@ func DefaultDelayConfig(channels, sampleRate, delayInFrames uint32, decay float3
 
 // Delay wraps miniaudio's ma_delay line effect.
 type Delay struct {
-	handle *delayHandle
-	lib    *Library
+	handle   *delayHandle
+	lib      *Library
+	channels uint32
 }
 
 // NewDelay creates and initializes a delay line effect.
@@ -74,21 +75,27 @@ func (lib *Library) NewDelay(config DelayConfig) (*Delay, error) {
 	}
 
 	return &Delay{
-		handle: handle,
-		lib:    lib,
+		handle:   handle,
+		lib:      lib,
+		channels: config.Channels,
 	}, nil
 }
 
-// ProcessPCMFrames processes audio frames through the delay effect.
-// pFramesOut and pFramesIn can point to the same buffer for in-place processing.
-func (d *Delay) ProcessPCMFrames(pFramesOut, pFramesIn unsafe.Pointer, frameCount uint32) error {
+// Process processes float32 audio frames through the delay effect.
+// out and in can point to the same slice for in-place processing.
+func (d *Delay) Process(out, in []float32) error {
 	if d == nil || d.handle == nil {
 		return fmt.Errorf("mago: nil delay")
 	}
 	if err := d.lib.ensureOpen(); err != nil {
 		return err
 	}
-	return d.lib.resultError("ma_delay_process_pcm_frames", d.lib.bindings.maDelayProcessPCMFrames(d.handle, pFramesOut, pFramesIn, frameCount))
+	frameCount, err := validateFilterSlices(d.channels, out, in)
+	if err != nil || frameCount == 0 {
+		return err
+	}
+	return d.lib.resultError("ma_delay_process_pcm_frames",
+		d.lib.bindings.maDelayProcessPCMFrames(d.handle, unsafe.Pointer(&out[0]), unsafe.Pointer(&in[0]), uint32(frameCount)))
 }
 
 // Wet returns the wet mix factor (0.0 to 1.0).

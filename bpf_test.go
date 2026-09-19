@@ -2,7 +2,6 @@ package mago
 
 import (
 	"testing"
-	"unsafe"
 )
 
 func TestBPF2FrequencyAttenuation(t *testing.T) {
@@ -33,14 +32,14 @@ func TestBPF2FrequencyAttenuation(t *testing.T) {
 	outMid := make([]float32, frames)
 	outHigh := make([]float32, frames)
 
-	if err := bpf.ProcessPCMFrames(unsafe.Pointer(&outLow[0]), unsafe.Pointer(&lowFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames low: %v", err)
+	if err := bpf.Process(outLow, lowFreq); err != nil {
+		t.Fatalf("Process low: %v", err)
 	}
-	if err := bpf.ProcessPCMFrames(unsafe.Pointer(&outMid[0]), unsafe.Pointer(&midFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames mid: %v", err)
+	if err := bpf.Process(outMid, midFreq); err != nil {
+		t.Fatalf("Process mid: %v", err)
 	}
-	if err := bpf.ProcessPCMFrames(unsafe.Pointer(&outHigh[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames high: %v", err)
+	if err := bpf.Process(outHigh, highFreq); err != nil {
+		t.Fatalf("Process high: %v", err)
 	}
 
 	lowRMS := rms(outLow)
@@ -87,14 +86,14 @@ func TestBPFNthOrderFrequencyAttenuation(t *testing.T) {
 	outMid := make([]float32, frames)
 	outHigh := make([]float32, frames)
 
-	if err := bpf.ProcessPCMFrames(unsafe.Pointer(&outLow[0]), unsafe.Pointer(&lowFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames low: %v", err)
+	if err := bpf.Process(outLow, lowFreq); err != nil {
+		t.Fatalf("Process low: %v", err)
 	}
-	if err := bpf.ProcessPCMFrames(unsafe.Pointer(&outMid[0]), unsafe.Pointer(&midFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames mid: %v", err)
+	if err := bpf.Process(outMid, midFreq); err != nil {
+		t.Fatalf("Process mid: %v", err)
 	}
-	if err := bpf.ProcessPCMFrames(unsafe.Pointer(&outHigh[0]), unsafe.Pointer(&highFreq[0]), frames); err != nil {
-		t.Fatalf("ProcessPCMFrames high: %v", err)
+	if err := bpf.Process(outHigh, highFreq); err != nil {
+		t.Fatalf("Process high: %v", err)
 	}
 
 	lowRMS := rms(outLow)
@@ -158,7 +157,7 @@ func TestBPFLifecycleAndControls(t *testing.T) {
 	}
 
 	var dummy [4]float32
-	if err := bpf.ProcessPCMFrames(unsafe.Pointer(&dummy[0]), unsafe.Pointer(&dummy[0]), 4); err == nil {
+	if err := bpf.Process(dummy[:], dummy[:]); err == nil {
 		t.Fatal("process on closed BPF should fail")
 	}
 
@@ -166,7 +165,7 @@ func TestBPFLifecycleAndControls(t *testing.T) {
 	if err := nilBPF.Close(); err != nil {
 		t.Errorf("nil Close: %v", err)
 	}
-	if err := nilBPF.ProcessPCMFrames(nil, nil, 0); err == nil {
-		t.Error("nil ProcessPCMFrames should return error")
+	if err := nilBPF.Process(nil, nil); err == nil {
+		t.Error("nil Process should return error")
 	}
 }

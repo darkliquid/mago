@@ -68,6 +68,19 @@ var (
 	ErrOutputTooSmall     = fmt.Errorf("mago: output slice too small for input frames")
 )
 
+func validateFilterSlices[T float32 | int16](channels uint32, out, in []T) (uint64, error) {
+	if len(in) == 0 {
+		return 0, nil
+	}
+	if channels == 0 || len(in)%int(channels) != 0 {
+		return 0, ErrInvalidSliceLength
+	}
+	if len(out) < len(in) {
+		return 0, ErrOutputTooSmall
+	}
+	return uint64(len(in) / int(channels)), nil
+}
+
 // DeviceID is a type-safe opaque identifier for a hardware audio endpoint.
 // It mirrors the ma_device_id union, whose largest member is a 256-byte buffer.
 // Its size is validated by layout_test.go against the vendored header.

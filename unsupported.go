@@ -350,11 +350,10 @@ type Biquad struct{}
 func (*Library) NewBiquad(BiquadConfig) (*Biquad, error) { return nil, errUnsupportedPlatform }
 func (*Biquad) Reinit(BiquadConfig) error                { return errUnsupportedPlatform }
 func (*Biquad) ClearCache() error                        { return errUnsupportedPlatform }
-func (*Biquad) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
-	return errUnsupportedPlatform
-}
-func (*Biquad) Latency() uint32 { return 0 }
-func (*Biquad) Close() error    { return errUnsupportedPlatform }
+func (*Biquad) Process([]float32, []float32) error       { return errUnsupportedPlatform }
+func (*Biquad) ProcessS16([]int16, []int16) error       { return errUnsupportedPlatform }
+func (*Biquad) Latency() uint32                          { return 0 }
+func (*Biquad) Close() error                             { return errUnsupportedPlatform }
 
 type LowPassFilter1Config struct {
 	Format          Format
@@ -398,7 +397,10 @@ func (*Library) NewLPF1(LowPassFilter1Config) (*LowPassFilter1, error) {
 }
 func (*LowPassFilter1) Reinit(LowPassFilter1Config) error { return errUnsupportedPlatform }
 func (*LowPassFilter1) ClearCache() error                 { return errUnsupportedPlatform }
-func (*LowPassFilter1) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*LowPassFilter1) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*LowPassFilter1) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*LowPassFilter1) Latency() uint32 { return 0 }
@@ -412,7 +414,10 @@ func (*Library) NewLPF2(LowPassFilter2Config) (*LowPassFilter2, error) {
 }
 func (*LowPassFilter2) Reinit(LowPassFilter2Config) error { return errUnsupportedPlatform }
 func (*LowPassFilter2) ClearCache() error                 { return errUnsupportedPlatform }
-func (*LowPassFilter2) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*LowPassFilter2) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*LowPassFilter2) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*LowPassFilter2) Latency() uint32 { return 0 }
@@ -426,7 +431,10 @@ func (*Library) NewLPF(LowPassFilterConfig) (*LowPassFilter, error) {
 }
 func (*LowPassFilter) Reinit(LowPassFilterConfig) error { return errUnsupportedPlatform }
 func (*LowPassFilter) ClearCache() error                { return errUnsupportedPlatform }
-func (*LowPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*LowPassFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*LowPassFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*LowPassFilter) Latency() uint32 { return 0 }
@@ -475,7 +483,10 @@ func (*Library) NewHPF1(HighPassFilter1Config) (*HighPassFilter1, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*HighPassFilter1) Reinit(HighPassFilter1Config) error { return errUnsupportedPlatform }
-func (*HighPassFilter1) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*HighPassFilter1) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*HighPassFilter1) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*HighPassFilter1) Latency() uint32 { return 0 }
@@ -488,7 +499,10 @@ func (*Library) NewHPF2(HighPassFilter2Config) (*HighPassFilter2, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*HighPassFilter2) Reinit(HighPassFilter2Config) error { return errUnsupportedPlatform }
-func (*HighPassFilter2) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*HighPassFilter2) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*HighPassFilter2) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*HighPassFilter2) Latency() uint32 { return 0 }
@@ -501,7 +515,10 @@ func (*Library) NewHPF(HighPassFilterConfig) (*HighPassFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*HighPassFilter) Reinit(HighPassFilterConfig) error { return errUnsupportedPlatform }
-func (*HighPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*HighPassFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*HighPassFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*HighPassFilter) Latency() uint32 { return 0 }
@@ -540,7 +557,10 @@ func (*Library) NewBPF2(BandPassFilter2Config) (*BandPassFilter2, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*BandPassFilter2) Reinit(BandPassFilter2Config) error { return errUnsupportedPlatform }
-func (*BandPassFilter2) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*BandPassFilter2) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*BandPassFilter2) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*BandPassFilter2) Latency() uint32 { return 0 }
@@ -553,7 +573,10 @@ func (*Library) NewBPF(BandPassFilterConfig) (*BandPassFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*BandPassFilter) Reinit(BandPassFilterConfig) error { return errUnsupportedPlatform }
-func (*BandPassFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*BandPassFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*BandPassFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*BandPassFilter) Latency() uint32 { return 0 }
@@ -621,7 +644,10 @@ func (*Library) NewNotch2(NotchFilterConfig) (*NotchFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*NotchFilter) Reinit(NotchFilterConfig) error { return errUnsupportedPlatform }
-func (*NotchFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*NotchFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*NotchFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*NotchFilter) Latency() uint32 { return 0 }
@@ -634,7 +660,10 @@ func (*Library) NewPeak2(PeakFilterConfig) (*PeakFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*PeakFilter) Reinit(PeakFilterConfig) error { return errUnsupportedPlatform }
-func (*PeakFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*PeakFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*PeakFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*PeakFilter) Latency() uint32 { return 0 }
@@ -650,7 +679,10 @@ func (*Library) NewLowShelf2(LowShelfFilterConfig) (*LowShelfFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*LowShelfFilter) Reinit(LowShelfFilterConfig) error { return errUnsupportedPlatform }
-func (*LowShelfFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*LowShelfFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*LowShelfFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*LowShelfFilter) Latency() uint32 { return 0 }
@@ -666,7 +698,10 @@ func (*Library) NewHighShelf2(HighShelfFilterConfig) (*HighShelfFilter, error) {
 	return nil, errUnsupportedPlatform
 }
 func (*HighShelfFilter) Reinit(HighShelfFilterConfig) error { return errUnsupportedPlatform }
-func (*HighShelfFilter) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint64) error {
+func (*HighShelfFilter) Process([]float32, []float32) error {
+	return errUnsupportedPlatform
+}
+func (*HighShelfFilter) ProcessS16([]int16, []int16) error {
 	return errUnsupportedPlatform
 }
 func (*HighShelfFilter) Latency() uint32 { return 0 }
@@ -699,7 +734,7 @@ type Delay struct{}
 func (*Library) NewDelay(DelayConfig) (*Delay, error) {
 	return nil, errUnsupportedPlatform
 }
-func (*Delay) ProcessPCMFrames(unsafe.Pointer, unsafe.Pointer, uint32) error {
+func (*Delay) Process([]float32, []float32) error {
 	return errUnsupportedPlatform
 }
 func (*Delay) Wet() float32           { return 0 }
