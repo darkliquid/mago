@@ -61,51 +61,77 @@ const (
 )
 
 type bindingSet struct {
-	maVersion                             func(*uint32, *uint32, *uint32)
-	maVersionString                       func() string
-	maResultDescription                   func(Result) string
-	maContextInit                         func(*Backend, uint32, unsafe.Pointer, *contextHandle) Result
-	maContextUninit                       func(*contextHandle)
-	maContextEnumerateDevices             func(*contextHandle, uintptr, uintptr) Result
-	magoDeviceInit                        func(*contextHandle, *deviceConfigNative, **deviceHandle) Result
-	magoDeviceUninitFree                  func(*deviceHandle)
-	maDeviceStart                         func(*deviceHandle) Result
-	maDeviceStop                          func(*deviceHandle) Result
-	maDeviceGetState                      func(*deviceHandle) DeviceState
-	maDeviceGetName                       func(*deviceHandle, DeviceType, *byte, uintptr, *uintptr) Result
-	maDeviceGetInfo                       func(*deviceHandle, DeviceType, *deviceInfoNative) Result
-	maDeviceGetLog                        func(*deviceHandle) *logHandle
-	maDeviceGetContext                    func(*deviceHandle) *contextHandle
-	maDeviceSetMasterVolume               func(*deviceHandle, float32) Result
-	maDeviceGetMasterVolume               func(*deviceHandle, *float32) Result
-	maDeviceSetMasterVolumeDB             func(*deviceHandle, float32) Result
-	maDeviceGetMasterVolumeDB             func(*deviceHandle, *float32) Result
-	maContextGetLog                       func(*contextHandle) *logHandle
-	maContextGetDeviceInfo                func(*contextHandle, DeviceType, unsafe.Pointer, *deviceInfoNative) Result
-	magoAlloc                             func(int32) unsafe.Pointer
-	magoFree                              func(unsafe.Pointer)
-	maLogInit                             func(unsafe.Pointer, *logHandle) Result
-	maLogUninit                           func(*logHandle)
-	maLogPost                             func(*logHandle, uint32, string) Result
-	maLogLevelToString                    func(uint32) string
-	magoLogRegisterCallback               func(*logHandle, uintptr, uintptr) Result
-	magoLogUnregisterCallback             func(*logHandle, uintptr, uintptr) Result
-	magoContextConfigInit                 func(unsafe.Pointer)
-	magoContextConfigSetLog               func(unsafe.Pointer, *logHandle)
-	maPCMConvert                          func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, DitherMode)
-	maConvertPCMFramesFormat              func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, uint32, DitherMode)
-	maConvertFrames                       func(unsafe.Pointer, uint64, Format, uint32, uint32, unsafe.Pointer, uint64, Format, uint32, uint32) uint64
-	maChannelMapInitStandard              func(StandardChannelMap, *uint8, uintptr, uint32)
-	maChannelMapInitBlank                 func(*uint8, uint32)
-	maChannelMapCopy                      func(*uint8, *uint8, uint32)
-	maChannelMapCopyOrDefault             func(*uint8, uintptr, *uint8, uint32)
-	maChannelMapGetChannel                func(*uint8, uint32, uint32) Channel
-	maChannelMapToString                  func(*uint8, uint32, *byte, uintptr) uintptr
-	maChannelConverterInit                func(*channelConverterConfigNative, unsafe.Pointer, *channelConverterHandle) Result
-	maChannelConverterUninit              func(*channelConverterHandle, unsafe.Pointer)
-	maChannelConverterProcessPCMFrames    func(*channelConverterHandle, unsafe.Pointer, unsafe.Pointer, uint64) Result
-	maChannelConverterGetInputChannelMap  func(*channelConverterHandle, *uint8, uintptr) Result
-	maChannelConverterGetOutputChannelMap func(*channelConverterHandle, *uint8, uintptr) Result
+	maVersion                                    func(*uint32, *uint32, *uint32)
+	maVersionString                              func() string
+	maResultDescription                          func(Result) string
+	maContextInit                                func(*Backend, uint32, unsafe.Pointer, *contextHandle) Result
+	maContextUninit                              func(*contextHandle)
+	maContextEnumerateDevices                    func(*contextHandle, uintptr, uintptr) Result
+	magoDeviceInit                               func(*contextHandle, *deviceConfigNative, **deviceHandle) Result
+	magoDeviceUninitFree                         func(*deviceHandle)
+	maDeviceStart                                func(*deviceHandle) Result
+	maDeviceStop                                 func(*deviceHandle) Result
+	maDeviceGetState                             func(*deviceHandle) DeviceState
+	maDeviceGetName                              func(*deviceHandle, DeviceType, *byte, uintptr, *uintptr) Result
+	maDeviceGetInfo                              func(*deviceHandle, DeviceType, *deviceInfoNative) Result
+	maDeviceGetLog                               func(*deviceHandle) *logHandle
+	maDeviceGetContext                           func(*deviceHandle) *contextHandle
+	maDeviceSetMasterVolume                      func(*deviceHandle, float32) Result
+	maDeviceGetMasterVolume                      func(*deviceHandle, *float32) Result
+	maDeviceSetMasterVolumeDB                    func(*deviceHandle, float32) Result
+	maDeviceGetMasterVolumeDB                    func(*deviceHandle, *float32) Result
+	maContextGetLog                              func(*contextHandle) *logHandle
+	maContextGetDeviceInfo                       func(*contextHandle, DeviceType, unsafe.Pointer, *deviceInfoNative) Result
+	magoAlloc                                    func(int32) unsafe.Pointer
+	magoFree                                     func(unsafe.Pointer)
+	maLogInit                                    func(unsafe.Pointer, *logHandle) Result
+	maLogUninit                                  func(*logHandle)
+	maLogPost                                    func(*logHandle, uint32, string) Result
+	maLogLevelToString                           func(uint32) string
+	magoLogRegisterCallback                      func(*logHandle, uintptr, uintptr) Result
+	magoLogUnregisterCallback                    func(*logHandle, uintptr, uintptr) Result
+	magoContextConfigInit                        func(unsafe.Pointer)
+	magoContextConfigSetLog                      func(unsafe.Pointer, *logHandle)
+	maPCMConvert                                 func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, DitherMode)
+	maConvertPCMFramesFormat                     func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, uint32, DitherMode)
+	maConvertFrames                              func(unsafe.Pointer, uint64, Format, uint32, uint32, unsafe.Pointer, uint64, Format, uint32, uint32) uint64
+	maChannelMapInitStandard                     func(StandardChannelMap, *uint8, uintptr, uint32)
+	maChannelMapInitBlank                        func(*uint8, uint32)
+	maChannelMapCopy                             func(*uint8, *uint8, uint32)
+	maChannelMapCopyOrDefault                    func(*uint8, uintptr, *uint8, uint32)
+	maChannelMapGetChannel                       func(*uint8, uint32, uint32) Channel
+	maChannelMapToString                         func(*uint8, uint32, *byte, uintptr) uintptr
+	maChannelConverterInit                       func(*channelConverterConfigNative, unsafe.Pointer, *channelConverterHandle) Result
+	maChannelConverterUninit                     func(*channelConverterHandle, unsafe.Pointer)
+	maChannelConverterProcessPCMFrames           func(*channelConverterHandle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maChannelConverterGetInputChannelMap         func(*channelConverterHandle, *uint8, uintptr) Result
+	maChannelConverterGetOutputChannelMap        func(*channelConverterHandle, *uint8, uintptr) Result
+	maResamplerInit                              func(*resamplerConfigNative, unsafe.Pointer, *resamplerHandle) Result
+	maResamplerUninit                            func(*resamplerHandle, unsafe.Pointer)
+	maResamplerProcessPCMFrames                  func(*resamplerHandle, unsafe.Pointer, *uint64, unsafe.Pointer, *uint64) Result
+	maResamplerSetRate                           func(*resamplerHandle, uint32, uint32) Result
+	maResamplerSetRateRatio                      func(*resamplerHandle, float32) Result
+	maResamplerReset                             func(*resamplerHandle) Result
+	maResamplerGetRequiredInputFrameCount        func(*resamplerHandle, uint64, *uint64) Result
+	maResamplerGetExpectedOutputFrameCount       func(*resamplerHandle, uint64, *uint64) Result
+	maLinearResamplerInit                        func(*linearResamplerConfigNative, unsafe.Pointer, *linearResamplerHandle) Result
+	maLinearResamplerUninit                      func(*linearResamplerHandle, unsafe.Pointer)
+	maLinearResamplerProcessPCMFrames            func(*linearResamplerHandle, unsafe.Pointer, *uint64, unsafe.Pointer, *uint64) Result
+	maLinearResamplerSetRate                     func(*linearResamplerHandle, uint32, uint32) Result
+	maLinearResamplerSetRateRatio                func(*linearResamplerHandle, float32) Result
+	maLinearResamplerReset                       func(*linearResamplerHandle) Result
+	maLinearResamplerGetRequiredInputFrameCount  func(*linearResamplerHandle, uint64, *uint64) Result
+	maLinearResamplerGetExpectedOutputFrameCount func(*linearResamplerHandle, uint64, *uint64) Result
+	maDataConverterInit                          func(*dataConverterConfigNative, unsafe.Pointer, *dataConverterHandle) Result
+	maDataConverterUninit                        func(*dataConverterHandle, unsafe.Pointer)
+	maDataConverterProcessPCMFrames              func(*dataConverterHandle, unsafe.Pointer, *uint64, unsafe.Pointer, *uint64) Result
+	maDataConverterSetRate                       func(*dataConverterHandle, uint32, uint32) Result
+	maDataConverterSetRateRatio                  func(*dataConverterHandle, float32) Result
+	maDataConverterReset                         func(*dataConverterHandle) Result
+	maDataConverterGetRequiredInputFrameCount    func(*dataConverterHandle, uint64, *uint64) Result
+	maDataConverterGetExpectedOutputFrameCount   func(*dataConverterHandle, uint64, *uint64) Result
+	maDataConverterGetInputChannelMap            func(*dataConverterHandle, *uint8, uintptr) Result
+	maDataConverterGetOutputChannelMap           func(*dataConverterHandle, *uint8, uintptr) Result
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -154,6 +180,32 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maChannelConverterProcessPCMFrames, handle, "ma_channel_converter_process_pcm_frames")
 	purego.RegisterLibFunc(&b.maChannelConverterGetInputChannelMap, handle, "ma_channel_converter_get_input_channel_map")
 	purego.RegisterLibFunc(&b.maChannelConverterGetOutputChannelMap, handle, "ma_channel_converter_get_output_channel_map")
+	purego.RegisterLibFunc(&b.maResamplerInit, handle, "ma_resampler_init")
+	purego.RegisterLibFunc(&b.maResamplerUninit, handle, "ma_resampler_uninit")
+	purego.RegisterLibFunc(&b.maResamplerProcessPCMFrames, handle, "ma_resampler_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maResamplerSetRate, handle, "ma_resampler_set_rate")
+	purego.RegisterLibFunc(&b.maResamplerSetRateRatio, handle, "ma_resampler_set_rate_ratio")
+	purego.RegisterLibFunc(&b.maResamplerReset, handle, "ma_resampler_reset")
+	purego.RegisterLibFunc(&b.maResamplerGetRequiredInputFrameCount, handle, "ma_resampler_get_required_input_frame_count")
+	purego.RegisterLibFunc(&b.maResamplerGetExpectedOutputFrameCount, handle, "ma_resampler_get_expected_output_frame_count")
+	purego.RegisterLibFunc(&b.maLinearResamplerInit, handle, "ma_linear_resampler_init")
+	purego.RegisterLibFunc(&b.maLinearResamplerUninit, handle, "ma_linear_resampler_uninit")
+	purego.RegisterLibFunc(&b.maLinearResamplerProcessPCMFrames, handle, "ma_linear_resampler_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maLinearResamplerSetRate, handle, "ma_linear_resampler_set_rate")
+	purego.RegisterLibFunc(&b.maLinearResamplerSetRateRatio, handle, "ma_linear_resampler_set_rate_ratio")
+	purego.RegisterLibFunc(&b.maLinearResamplerReset, handle, "ma_linear_resampler_reset")
+	purego.RegisterLibFunc(&b.maLinearResamplerGetRequiredInputFrameCount, handle, "ma_linear_resampler_get_required_input_frame_count")
+	purego.RegisterLibFunc(&b.maLinearResamplerGetExpectedOutputFrameCount, handle, "ma_linear_resampler_get_expected_output_frame_count")
+	purego.RegisterLibFunc(&b.maDataConverterInit, handle, "ma_data_converter_init")
+	purego.RegisterLibFunc(&b.maDataConverterUninit, handle, "ma_data_converter_uninit")
+	purego.RegisterLibFunc(&b.maDataConverterProcessPCMFrames, handle, "ma_data_converter_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maDataConverterSetRate, handle, "ma_data_converter_set_rate")
+	purego.RegisterLibFunc(&b.maDataConverterSetRateRatio, handle, "ma_data_converter_set_rate_ratio")
+	purego.RegisterLibFunc(&b.maDataConverterReset, handle, "ma_data_converter_reset")
+	purego.RegisterLibFunc(&b.maDataConverterGetRequiredInputFrameCount, handle, "ma_data_converter_get_required_input_frame_count")
+	purego.RegisterLibFunc(&b.maDataConverterGetExpectedOutputFrameCount, handle, "ma_data_converter_get_expected_output_frame_count")
+	purego.RegisterLibFunc(&b.maDataConverterGetInputChannelMap, handle, "ma_data_converter_get_input_channel_map")
+	purego.RegisterLibFunc(&b.maDataConverterGetOutputChannelMap, handle, "ma_data_converter_get_output_channel_map")
 }
 
 var _ unsafe.Pointer
