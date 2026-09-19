@@ -328,4 +328,3 @@ type noiseConfigNative struct {
 
 type waveformHandle struct{}
 type noiseHandle struct{}
-

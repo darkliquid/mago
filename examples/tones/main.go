@@ -276,4 +276,3 @@ func parseWaveformType(s string) (mago.WaveformType, error) {
 		return 0, fmt.Errorf("unknown waveform type %q (expected sine, square, triangle, or sawtooth)", s)
 	}
 }
-

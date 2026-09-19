@@ -29,14 +29,7 @@ func (lib *Library) NewWaveform(config WaveformConfig) (*Waveform, error) {
 		return nil, err
 	}
 
-	native := waveformConfigNative{
-		Format:     config.Format,
-		Channels:   config.Channels,
-		SampleRate: config.SampleRate,
-		Type:       config.Type,
-		Amplitude:  config.Amplitude,
-		Frequency:  config.Frequency,
-	}
+	native := waveformConfigNative(config)
 
 	handle := (*waveformHandle)(lib.bindings.magoAlloc(magoObjectWaveform))
 	if handle == nil {

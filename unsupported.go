@@ -275,14 +275,16 @@ type WaveformConfig struct {
 }
 type Waveform struct{}
 
-func (*Library) NewWaveform(WaveformConfig) (*Waveform, error)        { return nil, errUnsupportedPlatform }
-func (*Waveform) ReadPCMFrames(unsafe.Pointer, uint64) (uint64, error) { return 0, errUnsupportedPlatform }
-func (*Waveform) SeekToPCMFrame(uint64) error                          { return errUnsupportedPlatform }
-func (*Waveform) SetAmplitude(float64) error                           { return errUnsupportedPlatform }
-func (*Waveform) SetFrequency(float64) error                           { return errUnsupportedPlatform }
-func (*Waveform) SetType(WaveformType) error                           { return errUnsupportedPlatform }
-func (*Waveform) SetSampleRate(uint32) error                           { return errUnsupportedPlatform }
-func (*Waveform) Close() error                                         { return errUnsupportedPlatform }
+func (*Library) NewWaveform(WaveformConfig) (*Waveform, error) { return nil, errUnsupportedPlatform }
+func (*Waveform) ReadPCMFrames(unsafe.Pointer, uint64) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*Waveform) SeekToPCMFrame(uint64) error { return errUnsupportedPlatform }
+func (*Waveform) SetAmplitude(float64) error  { return errUnsupportedPlatform }
+func (*Waveform) SetFrequency(float64) error  { return errUnsupportedPlatform }
+func (*Waveform) SetType(WaveformType) error  { return errUnsupportedPlatform }
+func (*Waveform) SetSampleRate(uint32) error  { return errUnsupportedPlatform }
+func (*Waveform) Close() error                { return errUnsupportedPlatform }
 
 type NoiseConfig struct {
 	Format            Format
@@ -296,8 +298,7 @@ type Noise struct{}
 
 func (*Library) NewNoise(NoiseConfig) (*Noise, error)               { return nil, errUnsupportedPlatform }
 func (*Noise) ReadPCMFrames(unsafe.Pointer, uint64) (uint64, error) { return 0, errUnsupportedPlatform }
-func (*Noise) SetAmplitude(float64) error                          { return errUnsupportedPlatform }
-func (*Noise) SetSeed(int32) error                                 { return errUnsupportedPlatform }
-func (*Noise) SetType(NoiseType) error                             { return errUnsupportedPlatform }
-func (*Noise) Close() error                                        { return errUnsupportedPlatform }
-
+func (*Noise) SetAmplitude(float64) error                           { return errUnsupportedPlatform }
+func (*Noise) SetSeed(int32) error                                  { return errUnsupportedPlatform }
+func (*Noise) SetType(NoiseType) error                              { return errUnsupportedPlatform }
+func (*Noise) Close() error                                         { return errUnsupportedPlatform }
