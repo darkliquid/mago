@@ -7,14 +7,12 @@ package example
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/darkliquid/mago"
-	"github.com/darkliquid/mago/internal/buildlib"
 )
 
 // Backend pairs a human-readable name with the mago backend value.
@@ -23,28 +21,12 @@ type Backend struct {
 	Backend mago.Backend
 }
 
-// FindRepoRoot locates the repository root relative to this helper file, so it
-// is correct regardless of which example calls it.
-func FindRepoRoot() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("resolve caller path")
-	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..")), nil
-}
-
-// Open builds the native library for the current host, loads it, and returns the
-// open library. The caller is responsible for closing it.
+// Open loads the native library. mago embeds a prebuilt library for each
+// supported platform, so this extracts it to the user cache and loads it with no
+// compiler required. Set MAGO_MINIAUDIO_LIB (or pass mago.WithLibraryPath) to use
+// a locally built library instead. The caller is responsible for closing it.
 func Open() (*mago.Library, error) {
-	root, err := FindRepoRoot()
-	if err != nil {
-		return nil, err
-	}
-	libPath := buildlib.DefaultOutputPath(root)
-	if err := buildlib.Build(root, libPath, ""); err != nil {
-		return nil, err
-	}
-	return mago.Open(mago.WithLibraryPath(libPath))
+	return mago.Open()
 }
 
 // Candidates lists the backends worth trying on the current platform, ending

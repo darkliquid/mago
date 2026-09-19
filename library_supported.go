@@ -3,6 +3,8 @@
 package mago
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -239,6 +241,14 @@ func resolveLibraryPath(explicit string) (string, error) {
 	return "", fmt.Errorf("mago: could not find a runtime miniaudio library (%v); set %s or use WithLibraryPath (searched %v)", names, envLibraryPath, candidates)
 }
 
+// embeddedLibraryDigest returns a short digest of the embedded library bytes so
+// the cache is invalidated whenever the embedded library changes, even when the
+// miniaudio version has not.
+func embeddedLibraryDigest() string {
+	sum := sha256.Sum256(embeddedLibData)
+	return hex.EncodeToString(sum[:8])
+}
+
 func resolveCachedLibrary() (string, error) {
 	if len(embeddedLibData) == 0 || embeddedLibName == "" {
 		return "", errors.New("mago: no embedded library")
@@ -249,13 +259,16 @@ func resolveCachedLibrary() (string, error) {
 		return "", fmt.Errorf("mago: could not determine user cache directory: %w", err)
 	}
 
-	// We include the version in the path to avoid conflicts between different mago versions
+	// Include the miniaudio version and a digest of the embedded bytes in the
+	// path. The digest matters because the bridge can change without a miniaudio
+	// version bump; without it a stale cached library would be loaded and fail
+	// with missing symbols.
 	magoCacheDir := filepath.Join(cacheDir, "mago", fmt.Sprintf("%d.%d.%d", ExpectedMiniaudioVersionMajor, ExpectedMiniaudioVersionMinor, ExpectedMiniaudioVersionRevision))
 	if err := os.MkdirAll(magoCacheDir, 0o755); err != nil {
 		return "", fmt.Errorf("mago: could not create cache directory: %w", err)
 	}
 
-	cachePath := filepath.Join(magoCacheDir, embeddedLibName)
+	cachePath := filepath.Join(magoCacheDir, embeddedLibraryDigest()+"-"+embeddedLibName)
 	if _, err := os.Stat(cachePath); err == nil {
 		// Cache hit!
 		return cachePath, nil

@@ -290,7 +290,9 @@ go run ./examples/logging
 ```
 
 All of the examples accept `--backend` and fall back to the null backend when no
-real device backend is available, so they run on a headless machine.
+real device backend is available, so they run on a headless machine. They load
+the embedded library and need no compiler; set `MAGO_MINIAUDIO_LIB` to run them
+against a locally built library instead.
 
 You can override the backend/device selection. The accepted backend values are platform-dependent:
 

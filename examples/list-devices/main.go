@@ -3,21 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 
 	"github.com/darkliquid/mago"
-	"github.com/darkliquid/mago/internal/buildlib"
 )
 
 func main() {
-	repoRoot, err := findRepoRoot()
-	must(err)
-
-	libPath := buildlib.DefaultOutputPath(repoRoot)
-	must(ensureSharedLibrary(repoRoot, libPath))
-
-	lib, err := mago.Open(mago.WithLibraryPath(libPath))
+	lib, err := mago.Open()
 	must(err)
 	defer func() {
 		must(lib.Close())
@@ -63,18 +55,6 @@ func printDevices(kind string, devices []mago.DeviceInfo) {
 		}
 		fmt.Printf("  %s %s\n", marker, device.Name)
 	}
-}
-
-func findRepoRoot() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("resolve caller path")
-	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..")), nil
-}
-
-func ensureSharedLibrary(repoRoot, libPath string) error {
-	return buildlib.Build(repoRoot, libPath, "")
 }
 
 func backendCandidates() []struct {

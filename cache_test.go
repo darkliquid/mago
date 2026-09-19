@@ -54,3 +54,27 @@ func TestCacheExtraction(t *testing.T) {
 	}
 	t.Logf("Extracted library version: %s", version)
 }
+
+func TestEmbeddedLibraryCacheKeyIncludesDigest(t *testing.T) {
+	if len(embeddedLibData) == 0 {
+		t.Skip("No embedded library data for this platform")
+	}
+
+	digest := embeddedLibraryDigest()
+	if digest == "" {
+		t.Fatal("expected a non-empty embedded library digest")
+	}
+
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", tmpDir)
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("LOCALAPPDATA", tmpDir)
+
+	path, err := resolveCachedLibrary()
+	if err != nil {
+		t.Fatalf("resolveCachedLibrary: %v", err)
+	}
+	if !strings.Contains(filepath.Base(path), digest) {
+		t.Fatalf("cache path %q does not include the embedded library digest %q", path, digest)
+	}
+}
