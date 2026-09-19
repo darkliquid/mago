@@ -333,6 +333,88 @@ func (device *Device) Close() error {
 	return nil
 }
 
+// State reports the device's current state.
+func (device *Device) State() DeviceState {
+	if device == nil || device.handle == nil {
+		return DeviceStateUninitialized
+	}
+	return device.lib.bindings.maDeviceGetState(device.handle)
+}
+
+// Name reports the device name for its primary type.
+func (device *Device) Name() (string, error) {
+	return device.NameFor(device.primaryType)
+}
+
+// NameFor reports the device name for a specific stream type.
+func (device *Device) NameFor(t DeviceType) (string, error) {
+	if device == nil || device.handle == nil {
+		return "", fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return "", err
+	}
+
+	var buffer [256]byte
+	var length uintptr
+	result := device.lib.bindings.maDeviceGetName(device.handle, t, &buffer[0], uintptr(len(buffer)), &length)
+	if result != Success {
+		return "", device.lib.resultError("ma_device_get_name", result)
+	}
+	if length > uintptr(len(buffer)) {
+		length = uintptr(len(buffer))
+	}
+	return string(buffer[:length]), nil
+}
+
+// Info reports basic information about the device for its primary type.
+func (device *Device) Info() (DeviceInfo, error) {
+	return device.InfoFor(device.primaryType)
+}
+
+// InfoFor reports basic information about the device for a specific stream type.
+func (device *Device) InfoFor(t DeviceType) (DeviceInfo, error) {
+	if device == nil || device.handle == nil {
+		return DeviceInfo{}, fmt.Errorf("mago: nil device")
+	}
+	if err := device.lib.ensureOpen(); err != nil {
+		return DeviceInfo{}, err
+	}
+
+	native := (*deviceInfoNative)(device.lib.bindings.magoAlloc(magoObjectDeviceInfo))
+	if native == nil {
+		return DeviceInfo{}, fmt.Errorf("mago: allocate device info: out of memory")
+	}
+	defer device.lib.bindings.magoFree(unsafe.Pointer(native))
+
+	if result := device.lib.bindings.maDeviceGetInfo(device.handle, t, native); result != Success {
+		return DeviceInfo{}, device.lib.resultError("ma_device_get_info", result)
+	}
+	return copyDeviceInfo(native), nil
+}
+
+// Log returns the device's log, or nil when none is attached. The result is
+// borrowed: closing it only detaches the handle.
+func (device *Device) Log() *Log {
+	if device == nil || device.handle == nil {
+		return nil
+	}
+	return borrowedLog(device.lib, device.lib.bindings.maDeviceGetLog(device.handle))
+}
+
+// Context returns the context that owns this device. The result is borrowed:
+// closing it only detaches the handle.
+func (device *Device) Context() *Context {
+	if device == nil || device.handle == nil {
+		return nil
+	}
+	handle := device.lib.bindings.maDeviceGetContext(device.handle)
+	if handle == nil {
+		return nil
+	}
+	return &Context{lib: device.lib, handle: handle, owned: false}
+}
+
 func boolToBool32(v bool) uint32 {
 	if v {
 		return 1

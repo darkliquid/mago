@@ -13,6 +13,7 @@ import (
 type Context struct {
 	lib    *Library
 	handle *contextHandle
+	owned  bool
 }
 
 func (lib *Library) NewContext(backends ...Backend) (*Context, error) {
@@ -43,11 +44,15 @@ func (lib *Library) NewContext(backends ...Backend) (*Context, error) {
 		return nil, lib.resultError("ma_context_init", result)
 	}
 
-	return &Context{lib: lib, handle: handle}, nil
+	return &Context{lib: lib, handle: handle, owned: true}, nil
 }
 
 func (ctx *Context) Close() error {
 	if ctx == nil || ctx.handle == nil {
+		return nil
+	}
+	if !ctx.owned {
+		ctx.handle = nil
 		return nil
 	}
 
@@ -59,6 +64,15 @@ func (ctx *Context) Close() error {
 	ctx.lib.bindings.magoFree(unsafe.Pointer(ctx.handle))
 	ctx.handle = nil
 	return nil
+}
+
+// Log returns the context's own log, or nil when none is attached. The result
+// is borrowed: closing it only detaches the handle.
+func (ctx *Context) Log() *Log {
+	if ctx == nil || ctx.handle == nil {
+		return nil
+	}
+	return borrowedLog(ctx.lib, ctx.lib.bindings.maContextGetLog(ctx.handle))
 }
 
 type deviceEnumerator struct {
