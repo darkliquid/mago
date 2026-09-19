@@ -213,6 +213,84 @@ type bindingSet struct {
 	maNoiseSetAmplitude                          func(*noiseHandle, float64) Result
 	maNoiseSetSeed                               func(*noiseHandle, int32) Result
 	maNoiseSetType                               func(*noiseHandle, NoiseType) Result
+	maBiquadInit                                 func(*biquadConfigNative, unsafe.Pointer, *biquadHandle) Result
+	maBiquadUninit                               func(*biquadHandle, unsafe.Pointer)
+	maBiquadReinit                               func(*biquadConfigNative, *biquadHandle) Result
+	maBiquadClearCache                           func(*biquadHandle) Result
+	maBiquadProcessPCMFrames                     func(*biquadHandle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maBiquadGetLatency                           func(*biquadHandle) uint32
+	maLPF1Init                                   func(*lpf1ConfigNative, unsafe.Pointer, *lpf1Handle) Result
+	maLPF1Uninit                                 func(*lpf1Handle, unsafe.Pointer)
+	maLPF1Reinit                                 func(*lpf1ConfigNative, *lpf1Handle) Result
+	maLPF1ClearCache                             func(*lpf1Handle) Result
+	maLPF1ProcessPCMFrames                       func(*lpf1Handle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maLPF1GetLatency                             func(*lpf1Handle) uint32
+	maLPF2Init                                   func(*lpf2ConfigNative, unsafe.Pointer, *lpf2Handle) Result
+	maLPF2Uninit                                 func(*lpf2Handle, unsafe.Pointer)
+	maLPF2Reinit                                 func(*lpf2ConfigNative, *lpf2Handle) Result
+	maLPF2ClearCache                             func(*lpf2Handle) Result
+	maLPF2ProcessPCMFrames                       func(*lpf2Handle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maLPF2GetLatency                             func(*lpf2Handle) uint32
+	maLPFInit                                    func(*lpfConfigNative, unsafe.Pointer, *lpfHandle) Result
+	maLPFUninit                                  func(*lpfHandle, unsafe.Pointer)
+	maLPFReinit                                  func(*lpfConfigNative, *lpfHandle) Result
+	maLPFClearCache                              func(*lpfHandle) Result
+	maLPFProcessPCMFrames                        func(*lpfHandle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maLPFGetLatency                              func(*lpfHandle) uint32
+	maHPF1Init                                   func(*hpf1ConfigNative, unsafe.Pointer, *hpf1Handle) Result
+	maHPF1Uninit                                 func(*hpf1Handle, unsafe.Pointer)
+	maHPF1Reinit                                 func(*hpf1ConfigNative, *hpf1Handle) Result
+	maHPF1ProcessPCMFrames                       func(*hpf1Handle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maHPF1GetLatency                             func(*hpf1Handle) uint32
+	maHPF2Init                                   func(*hpf2ConfigNative, unsafe.Pointer, *hpf2Handle) Result
+	maHPF2Uninit                                 func(*hpf2Handle, unsafe.Pointer)
+	maHPF2Reinit                                 func(*hpf2ConfigNative, *hpf2Handle) Result
+	maHPF2ProcessPCMFrames                       func(*hpf2Handle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maHPF2GetLatency                             func(*hpf2Handle) uint32
+	maHPFInit                                    func(*hpfConfigNative, unsafe.Pointer, *hpfHandle) Result
+	maHPFUninit                                  func(*hpfHandle, unsafe.Pointer)
+	maHPFReinit                                  func(*hpfConfigNative, *hpfHandle) Result
+	maHPFProcessPCMFrames                        func(*hpfHandle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maHPFGetLatency                              func(*hpfHandle) uint32
+	maBPF2Init                                   func(*bpf2ConfigNative, unsafe.Pointer, *bpf2Handle) Result
+	maBPF2Uninit                                 func(*bpf2Handle, unsafe.Pointer)
+	maBPF2Reinit                                 func(*bpf2ConfigNative, *bpf2Handle) Result
+	maBPF2ProcessPCMFrames                       func(*bpf2Handle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maBPF2GetLatency                             func(*bpf2Handle) uint32
+	maBPFInit                                    func(*bpfConfigNative, unsafe.Pointer, *bpfHandle) Result
+	maBPFUninit                                  func(*bpfHandle, unsafe.Pointer)
+	maBPFReinit                                  func(*bpfConfigNative, *bpfHandle) Result
+	maBPFProcessPCMFrames                        func(*bpfHandle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maBPFGetLatency                              func(*bpfHandle) uint32
+	maNotch2Init                                 func(*notch2ConfigNative, unsafe.Pointer, *notch2Handle) Result
+	maNotch2Uninit                               func(*notch2Handle, unsafe.Pointer)
+	maNotch2Reinit                               func(*notch2ConfigNative, *notch2Handle) Result
+	maNotch2ProcessPCMFrames                     func(*notch2Handle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maNotch2GetLatency                           func(*notch2Handle) uint32
+	maPeak2Init                                  func(*peak2ConfigNative, unsafe.Pointer, *peak2Handle) Result
+	maPeak2Uninit                                func(*peak2Handle, unsafe.Pointer)
+	maPeak2Reinit                                func(*peak2ConfigNative, *peak2Handle) Result
+	maPeak2ProcessPCMFrames                      func(*peak2Handle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maPeak2GetLatency                            func(*peak2Handle) uint32
+	maLoShelf2Init                               func(*loshelf2ConfigNative, unsafe.Pointer, *loshelf2Handle) Result
+	maLoShelf2Uninit                             func(*loshelf2Handle, unsafe.Pointer)
+	maLoShelf2Reinit                             func(*loshelf2ConfigNative, *loshelf2Handle) Result
+	maLoShelf2ProcessPCMFrames                   func(*loshelf2Handle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maLoShelf2GetLatency                         func(*loshelf2Handle) uint32
+	maHiShelf2Init                               func(*hishelf2ConfigNative, unsafe.Pointer, *hishelf2Handle) Result
+	maHiShelf2Uninit                             func(*hishelf2Handle, unsafe.Pointer)
+	maHiShelf2Reinit                             func(*hishelf2ConfigNative, *hishelf2Handle) Result
+	maHiShelf2ProcessPCMFrames                   func(*hishelf2Handle, unsafe.Pointer, unsafe.Pointer, uint64) Result
+	maHiShelf2GetLatency                         func(*hishelf2Handle) uint32
+	maDelayInit                                  func(*delayConfigNative, unsafe.Pointer, *delayHandle) Result
+	maDelayUninit                                func(*delayHandle, unsafe.Pointer)
+	maDelayProcessPCMFrames                      func(*delayHandle, unsafe.Pointer, unsafe.Pointer, uint32) Result
+	maDelaySetWet                                func(*delayHandle, float32)
+	maDelayGetWet                                func(*delayHandle) float32
+	maDelaySetDry                                func(*delayHandle, float32)
+	maDelayGetDry                                func(*delayHandle) float32
+	maDelaySetDecay                              func(*delayHandle, float32)
+	maDelayGetDecay                              func(*delayHandle) float32
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -359,6 +437,84 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maNoiseSetAmplitude, handle, "ma_noise_set_amplitude")
 	purego.RegisterLibFunc(&b.maNoiseSetSeed, handle, "ma_noise_set_seed")
 	purego.RegisterLibFunc(&b.maNoiseSetType, handle, "ma_noise_set_type")
+	purego.RegisterLibFunc(&b.maBiquadInit, handle, "ma_biquad_init")
+	purego.RegisterLibFunc(&b.maBiquadUninit, handle, "ma_biquad_uninit")
+	purego.RegisterLibFunc(&b.maBiquadReinit, handle, "ma_biquad_reinit")
+	purego.RegisterLibFunc(&b.maBiquadClearCache, handle, "ma_biquad_clear_cache")
+	purego.RegisterLibFunc(&b.maBiquadProcessPCMFrames, handle, "ma_biquad_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maBiquadGetLatency, handle, "ma_biquad_get_latency")
+	purego.RegisterLibFunc(&b.maLPF1Init, handle, "ma_lpf1_init")
+	purego.RegisterLibFunc(&b.maLPF1Uninit, handle, "ma_lpf1_uninit")
+	purego.RegisterLibFunc(&b.maLPF1Reinit, handle, "ma_lpf1_reinit")
+	purego.RegisterLibFunc(&b.maLPF1ClearCache, handle, "ma_lpf1_clear_cache")
+	purego.RegisterLibFunc(&b.maLPF1ProcessPCMFrames, handle, "ma_lpf1_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maLPF1GetLatency, handle, "ma_lpf1_get_latency")
+	purego.RegisterLibFunc(&b.maLPF2Init, handle, "ma_lpf2_init")
+	purego.RegisterLibFunc(&b.maLPF2Uninit, handle, "ma_lpf2_uninit")
+	purego.RegisterLibFunc(&b.maLPF2Reinit, handle, "ma_lpf2_reinit")
+	purego.RegisterLibFunc(&b.maLPF2ClearCache, handle, "ma_lpf2_clear_cache")
+	purego.RegisterLibFunc(&b.maLPF2ProcessPCMFrames, handle, "ma_lpf2_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maLPF2GetLatency, handle, "ma_lpf2_get_latency")
+	purego.RegisterLibFunc(&b.maLPFInit, handle, "ma_lpf_init")
+	purego.RegisterLibFunc(&b.maLPFUninit, handle, "ma_lpf_uninit")
+	purego.RegisterLibFunc(&b.maLPFReinit, handle, "ma_lpf_reinit")
+	purego.RegisterLibFunc(&b.maLPFClearCache, handle, "ma_lpf_clear_cache")
+	purego.RegisterLibFunc(&b.maLPFProcessPCMFrames, handle, "ma_lpf_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maLPFGetLatency, handle, "ma_lpf_get_latency")
+	purego.RegisterLibFunc(&b.maHPF1Init, handle, "ma_hpf1_init")
+	purego.RegisterLibFunc(&b.maHPF1Uninit, handle, "ma_hpf1_uninit")
+	purego.RegisterLibFunc(&b.maHPF1Reinit, handle, "ma_hpf1_reinit")
+	purego.RegisterLibFunc(&b.maHPF1ProcessPCMFrames, handle, "ma_hpf1_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maHPF1GetLatency, handle, "ma_hpf1_get_latency")
+	purego.RegisterLibFunc(&b.maHPF2Init, handle, "ma_hpf2_init")
+	purego.RegisterLibFunc(&b.maHPF2Uninit, handle, "ma_hpf2_uninit")
+	purego.RegisterLibFunc(&b.maHPF2Reinit, handle, "ma_hpf2_reinit")
+	purego.RegisterLibFunc(&b.maHPF2ProcessPCMFrames, handle, "ma_hpf2_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maHPF2GetLatency, handle, "ma_hpf2_get_latency")
+	purego.RegisterLibFunc(&b.maHPFInit, handle, "ma_hpf_init")
+	purego.RegisterLibFunc(&b.maHPFUninit, handle, "ma_hpf_uninit")
+	purego.RegisterLibFunc(&b.maHPFReinit, handle, "ma_hpf_reinit")
+	purego.RegisterLibFunc(&b.maHPFProcessPCMFrames, handle, "ma_hpf_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maHPFGetLatency, handle, "ma_hpf_get_latency")
+	purego.RegisterLibFunc(&b.maBPF2Init, handle, "ma_bpf2_init")
+	purego.RegisterLibFunc(&b.maBPF2Uninit, handle, "ma_bpf2_uninit")
+	purego.RegisterLibFunc(&b.maBPF2Reinit, handle, "ma_bpf2_reinit")
+	purego.RegisterLibFunc(&b.maBPF2ProcessPCMFrames, handle, "ma_bpf2_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maBPF2GetLatency, handle, "ma_bpf2_get_latency")
+	purego.RegisterLibFunc(&b.maBPFInit, handle, "ma_bpf_init")
+	purego.RegisterLibFunc(&b.maBPFUninit, handle, "ma_bpf_uninit")
+	purego.RegisterLibFunc(&b.maBPFReinit, handle, "ma_bpf_reinit")
+	purego.RegisterLibFunc(&b.maBPFProcessPCMFrames, handle, "ma_bpf_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maBPFGetLatency, handle, "ma_bpf_get_latency")
+	purego.RegisterLibFunc(&b.maNotch2Init, handle, "ma_notch2_init")
+	purego.RegisterLibFunc(&b.maNotch2Uninit, handle, "ma_notch2_uninit")
+	purego.RegisterLibFunc(&b.maNotch2Reinit, handle, "ma_notch2_reinit")
+	purego.RegisterLibFunc(&b.maNotch2ProcessPCMFrames, handle, "ma_notch2_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maNotch2GetLatency, handle, "ma_notch2_get_latency")
+	purego.RegisterLibFunc(&b.maPeak2Init, handle, "ma_peak2_init")
+	purego.RegisterLibFunc(&b.maPeak2Uninit, handle, "ma_peak2_uninit")
+	purego.RegisterLibFunc(&b.maPeak2Reinit, handle, "ma_peak2_reinit")
+	purego.RegisterLibFunc(&b.maPeak2ProcessPCMFrames, handle, "ma_peak2_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maPeak2GetLatency, handle, "ma_peak2_get_latency")
+	purego.RegisterLibFunc(&b.maLoShelf2Init, handle, "ma_loshelf2_init")
+	purego.RegisterLibFunc(&b.maLoShelf2Uninit, handle, "ma_loshelf2_uninit")
+	purego.RegisterLibFunc(&b.maLoShelf2Reinit, handle, "ma_loshelf2_reinit")
+	purego.RegisterLibFunc(&b.maLoShelf2ProcessPCMFrames, handle, "ma_loshelf2_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maLoShelf2GetLatency, handle, "ma_loshelf2_get_latency")
+	purego.RegisterLibFunc(&b.maHiShelf2Init, handle, "ma_hishelf2_init")
+	purego.RegisterLibFunc(&b.maHiShelf2Uninit, handle, "ma_hishelf2_uninit")
+	purego.RegisterLibFunc(&b.maHiShelf2Reinit, handle, "ma_hishelf2_reinit")
+	purego.RegisterLibFunc(&b.maHiShelf2ProcessPCMFrames, handle, "ma_hishelf2_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maHiShelf2GetLatency, handle, "ma_hishelf2_get_latency")
+	purego.RegisterLibFunc(&b.maDelayInit, handle, "ma_delay_init")
+	purego.RegisterLibFunc(&b.maDelayUninit, handle, "ma_delay_uninit")
+	purego.RegisterLibFunc(&b.maDelayProcessPCMFrames, handle, "ma_delay_process_pcm_frames")
+	purego.RegisterLibFunc(&b.maDelaySetWet, handle, "ma_delay_set_wet")
+	purego.RegisterLibFunc(&b.maDelayGetWet, handle, "ma_delay_get_wet")
+	purego.RegisterLibFunc(&b.maDelaySetDry, handle, "ma_delay_set_dry")
+	purego.RegisterLibFunc(&b.maDelayGetDry, handle, "ma_delay_get_dry")
+	purego.RegisterLibFunc(&b.maDelaySetDecay, handle, "ma_delay_set_decay")
+	purego.RegisterLibFunc(&b.maDelayGetDecay, handle, "ma_delay_get_decay")
 }
 
 var _ unsafe.Pointer
