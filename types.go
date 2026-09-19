@@ -99,6 +99,10 @@ const (
 	magoObjectResampler        int32 = 7
 	magoObjectLinearResampler  int32 = 8
 	magoObjectDataConverter    int32 = 9
+	magoObjectAudioBuffer      int32 = 10
+	magoObjectAudioBufferRef   int32 = 11
+	magoObjectRingBuffer       int32 = 12
+	magoObjectPCMRingBuffer    int32 = 13
 )
 
 type channelConverterHandle struct{}
@@ -269,3 +273,27 @@ type dataConverterConfigNative struct {
 type resamplerHandle struct{}
 type linearResamplerHandle struct{}
 type dataConverterHandle struct{}
+type audioBufferHandle struct{}
+type audioBufferRefHandle struct{}
+type ringBufferHandle struct{}
+type pcmRingBufferHandle struct{}
+
+// allocationCallbacksNative mirrors ma_allocation_callbacks. mago always passes
+// zeroed callbacks so miniaudio uses its default allocator.
+type allocationCallbacksNative struct {
+	UserData  unsafe.Pointer
+	OnMalloc  unsafe.Pointer
+	OnRealloc unsafe.Pointer
+	OnFree    unsafe.Pointer
+}
+
+// audioBufferConfigNative mirrors ma_audio_buffer_config. Validated by
+// layout_test.go.
+type audioBufferConfigNative struct {
+	Format              Format
+	Channels            uint32
+	SampleRate          uint32
+	SizeInFrames        uint64
+	Data                unsafe.Pointer
+	AllocationCallbacks allocationCallbacksNative
+}

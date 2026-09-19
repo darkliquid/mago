@@ -32,5 +32,10 @@ int main(void)
     printf("offsetof:ma_data_converter_config.ppChannelWeights %zu\n", offsetof(ma_data_converter_config, ppChannelWeights));
     printf("offsetof:ma_data_converter_config.allowDynamicSampleRate %zu\n", offsetof(ma_data_converter_config, allowDynamicSampleRate));
     printf("offsetof:ma_data_converter_config.resampling %zu\n", offsetof(ma_data_converter_config, resampling));
+    printf("sizeof:ma_audio_buffer_config %zu\n", sizeof(ma_audio_buffer_config));
+    printf("offsetof:ma_audio_buffer_config.sizeInFrames %zu\n", offsetof(ma_audio_buffer_config, sizeInFrames));
+    printf("offsetof:ma_audio_buffer_config.pData %zu\n", offsetof(ma_audio_buffer_config, pData));
+    printf("offsetof:ma_audio_buffer_config.allocationCallbacks %zu\n", offsetof(ma_audio_buffer_config, allocationCallbacks));
+    printf("sizeof:ma_allocation_callbacks %zu\n", sizeof(ma_allocation_callbacks));
     return 0;
 }

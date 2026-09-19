@@ -54,7 +54,11 @@ enum mago_object_type
     MAGO_OBJECT_CHANNEL_CONVERTER = 6,
     MAGO_OBJECT_RESAMPLER         = 7,
     MAGO_OBJECT_LINEAR_RESAMPLER  = 8,
-    MAGO_OBJECT_DATA_CONVERTER    = 9
+    MAGO_OBJECT_DATA_CONVERTER    = 9,
+    MAGO_OBJECT_AUDIO_BUFFER      = 10,
+    MAGO_OBJECT_AUDIO_BUFFER_REF  = 11,
+    MAGO_OBJECT_RB                = 12,
+    MAGO_OBJECT_PCM_RB            = 13
 };
 
 MAGO_API void* mago_alloc(int type)
@@ -70,6 +74,10 @@ MAGO_API void* mago_alloc(int type)
         case MAGO_OBJECT_RESAMPLER:         return calloc(1, sizeof(ma_resampler));
         case MAGO_OBJECT_LINEAR_RESAMPLER:  return calloc(1, sizeof(ma_linear_resampler));
         case MAGO_OBJECT_DATA_CONVERTER:    return calloc(1, sizeof(ma_data_converter));
+        case MAGO_OBJECT_AUDIO_BUFFER:      return calloc(1, sizeof(ma_audio_buffer));
+        case MAGO_OBJECT_AUDIO_BUFFER_REF:  return calloc(1, sizeof(ma_audio_buffer_ref));
+        case MAGO_OBJECT_RB:                return calloc(1, sizeof(ma_rb));
+        case MAGO_OBJECT_PCM_RB:            return calloc(1, sizeof(ma_pcm_rb));
         default:                            return NULL;
     }
 }
