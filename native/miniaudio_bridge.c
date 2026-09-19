@@ -64,7 +64,21 @@ enum mago_object_type
     MAGO_OBJECT_RB                = 12,
     MAGO_OBJECT_PCM_RB            = 13,
     MAGO_OBJECT_WAVEFORM          = 14,
-    MAGO_OBJECT_NOISE             = 15
+    MAGO_OBJECT_NOISE             = 15,
+    MAGO_OBJECT_BIQUAD            = 16,
+    MAGO_OBJECT_LPF1              = 17,
+    MAGO_OBJECT_LPF2              = 18,
+    MAGO_OBJECT_LPF               = 19,
+    MAGO_OBJECT_HPF1              = 20,
+    MAGO_OBJECT_HPF2              = 21,
+    MAGO_OBJECT_HPF               = 22,
+    MAGO_OBJECT_BPF2              = 23,
+    MAGO_OBJECT_BPF               = 24,
+    MAGO_OBJECT_NOTCH2            = 25,
+    MAGO_OBJECT_PEAK2             = 26,
+    MAGO_OBJECT_LOSHELF2          = 27,
+    MAGO_OBJECT_HISHELF2          = 28,
+    MAGO_OBJECT_DELAY             = 29
 };
 
 MAGO_API void* mago_alloc(int type)
@@ -86,6 +100,20 @@ MAGO_API void* mago_alloc(int type)
         case MAGO_OBJECT_PCM_RB:            return calloc(1, sizeof(ma_pcm_rb));
         case MAGO_OBJECT_WAVEFORM:          return calloc(1, sizeof(ma_waveform));
         case MAGO_OBJECT_NOISE:             return calloc(1, sizeof(ma_noise));
+        case MAGO_OBJECT_BIQUAD:            return calloc(1, sizeof(ma_biquad));
+        case MAGO_OBJECT_LPF1:              return calloc(1, sizeof(ma_lpf1));
+        case MAGO_OBJECT_LPF2:              return calloc(1, sizeof(ma_lpf2));
+        case MAGO_OBJECT_LPF:               return calloc(1, sizeof(ma_lpf));
+        case MAGO_OBJECT_HPF1:              return calloc(1, sizeof(ma_hpf1));
+        case MAGO_OBJECT_HPF2:              return calloc(1, sizeof(ma_hpf2));
+        case MAGO_OBJECT_HPF:               return calloc(1, sizeof(ma_hpf));
+        case MAGO_OBJECT_BPF2:              return calloc(1, sizeof(ma_bpf2));
+        case MAGO_OBJECT_BPF:               return calloc(1, sizeof(ma_bpf));
+        case MAGO_OBJECT_NOTCH2:            return calloc(1, sizeof(ma_notch2));
+        case MAGO_OBJECT_PEAK2:             return calloc(1, sizeof(ma_peak2));
+        case MAGO_OBJECT_LOSHELF2:          return calloc(1, sizeof(ma_loshelf2));
+        case MAGO_OBJECT_HISHELF2:          return calloc(1, sizeof(ma_hishelf2));
+        case MAGO_OBJECT_DELAY:             return calloc(1, sizeof(ma_delay));
         default:                            return NULL;
     }
 }

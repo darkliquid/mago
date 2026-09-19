@@ -105,6 +105,20 @@ const (
 	magoObjectPCMRingBuffer    int32 = 13
 	magoObjectWaveform         int32 = 14
 	magoObjectNoise            int32 = 15
+	magoObjectBiquad           int32 = 16
+	magoObjectLPF1             int32 = 17
+	magoObjectLPF2             int32 = 18
+	magoObjectLPF              int32 = 19
+	magoObjectHPF1             int32 = 20
+	magoObjectHPF2             int32 = 21
+	magoObjectHPF              int32 = 22
+	magoObjectBPF2             int32 = 23
+	magoObjectBPF              int32 = 24
+	magoObjectNotch2           int32 = 25
+	magoObjectPeak2            int32 = 26
+	magoObjectLoShelf2         int32 = 27
+	magoObjectHiShelf2         int32 = 28
+	magoObjectDelay            int32 = 29
 )
 
 type channelConverterHandle struct{}
@@ -328,3 +342,106 @@ type noiseConfigNative struct {
 
 type waveformHandle struct{}
 type noiseHandle struct{}
+type biquadHandle struct{}
+type lpf1Handle struct{}
+type lpf2Handle struct{}
+type lpfHandle struct{}
+type hpf1Handle struct{}
+type hpf2Handle struct{}
+type hpfHandle struct{}
+type bpf2Handle struct{}
+type bpfHandle struct{}
+type notch2Handle struct{}
+type peak2Handle struct{}
+type loshelf2Handle struct{}
+type hishelf2Handle struct{}
+type delayHandle struct{}
+
+// biquadConfigNative mirrors ma_biquad_config. Validated by layout_test.go.
+type biquadConfigNative struct {
+	Format   Format
+	Channels uint32
+	B0       float64
+	B1       float64
+	B2       float64
+	A0       float64
+	A1       float64
+	A2       float64
+}
+
+// lpf1ConfigNative mirrors ma_lpf1_config and ma_lpf2_config. Validated by layout_test.go.
+type lpf1ConfigNative struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+	Q               float64
+}
+
+type lpf2ConfigNative = lpf1ConfigNative
+
+// lpfConfigNative mirrors ma_lpf_config. Validated by layout_test.go.
+type lpfConfigNative struct {
+	Format          Format
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+	Order           uint32
+}
+
+// hpf1ConfigNative mirrors ma_hpf1_config. Validated by layout_test.go.
+type hpf1ConfigNative = lpf1ConfigNative
+
+// hpf2ConfigNative mirrors ma_hpf2_config. Validated by layout_test.go.
+type hpf2ConfigNative = lpf1ConfigNative
+
+// hpfConfigNative mirrors ma_hpf_config. Validated by layout_test.go.
+type hpfConfigNative = lpfConfigNative
+
+// bpf2ConfigNative mirrors ma_bpf2_config. Validated by layout_test.go.
+type bpf2ConfigNative = lpf1ConfigNative
+
+// bpfConfigNative mirrors ma_bpf_config. Validated by layout_test.go.
+type bpfConfigNative = lpfConfigNative
+
+// notch2ConfigNative mirrors ma_notch2_config. Validated by layout_test.go.
+type notch2ConfigNative struct {
+	Format     Format
+	Channels   uint32
+	SampleRate uint32
+	Q          float64
+	Frequency  float64
+}
+
+// peak2ConfigNative mirrors ma_peak2_config. Validated by layout_test.go.
+type peak2ConfigNative struct {
+	Format     Format
+	Channels   uint32
+	SampleRate uint32
+	GainDB     float64
+	Q          float64
+	Frequency  float64
+}
+
+// loshelf2ConfigNative mirrors ma_loshelf2_config and ma_hishelf2_config. Validated by layout_test.go.
+type loshelf2ConfigNative struct {
+	Format     Format
+	Channels   uint32
+	SampleRate uint32
+	GainDB     float64
+	ShelfSlope float64
+	Frequency  float64
+}
+
+type hishelf2ConfigNative = loshelf2ConfigNative
+
+// delayConfigNative mirrors ma_delay_config. Validated by layout_test.go.
+type delayConfigNative struct {
+	Channels      uint32
+	SampleRate    uint32
+	DelayInFrames uint32
+	DelayStart    uint32
+	Wet           float32
+	Dry           float32
+	Decay         float32
+}

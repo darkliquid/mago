@@ -53,5 +53,76 @@ int main(void)
     printf("offsetof:ma_noise_config.duplicateChannels %zu\n", offsetof(ma_noise_config, duplicateChannels));
     printf("sizeof:ma_waveform %zu\n", sizeof(ma_waveform));
     printf("sizeof:ma_noise %zu\n", sizeof(ma_noise));
+
+    printf("sizeof:ma_biquad_config %zu\n", sizeof(ma_biquad_config));
+    printf("offsetof:ma_biquad_config.format %zu\n", offsetof(ma_biquad_config, format));
+    printf("offsetof:ma_biquad_config.channels %zu\n", offsetof(ma_biquad_config, channels));
+    printf("offsetof:ma_biquad_config.b0 %zu\n", offsetof(ma_biquad_config, b0));
+    printf("offsetof:ma_biquad_config.b1 %zu\n", offsetof(ma_biquad_config, b1));
+    printf("offsetof:ma_biquad_config.b2 %zu\n", offsetof(ma_biquad_config, b2));
+    printf("offsetof:ma_biquad_config.a0 %zu\n", offsetof(ma_biquad_config, a0));
+    printf("offsetof:ma_biquad_config.a1 %zu\n", offsetof(ma_biquad_config, a1));
+    printf("offsetof:ma_biquad_config.a2 %zu\n", offsetof(ma_biquad_config, a2));
+
+    printf("sizeof:ma_lpf1_config %zu\n", sizeof(ma_lpf1_config));
+    printf("offsetof:ma_lpf1_config.format %zu\n", offsetof(ma_lpf1_config, format));
+    printf("offsetof:ma_lpf1_config.channels %zu\n", offsetof(ma_lpf1_config, channels));
+    printf("offsetof:ma_lpf1_config.sampleRate %zu\n", offsetof(ma_lpf1_config, sampleRate));
+    printf("offsetof:ma_lpf1_config.cutoffFrequency %zu\n", offsetof(ma_lpf1_config, cutoffFrequency));
+    printf("offsetof:ma_lpf1_config.q %zu\n", offsetof(ma_lpf1_config, q));
+
+    printf("sizeof:ma_lpf_config %zu\n", sizeof(ma_lpf_config));
+    printf("offsetof:ma_lpf_config.format %zu\n", offsetof(ma_lpf_config, format));
+    printf("offsetof:ma_lpf_config.channels %zu\n", offsetof(ma_lpf_config, channels));
+    printf("offsetof:ma_lpf_config.sampleRate %zu\n", offsetof(ma_lpf_config, sampleRate));
+    printf("offsetof:ma_lpf_config.cutoffFrequency %zu\n", offsetof(ma_lpf_config, cutoffFrequency));
+    printf("offsetof:ma_lpf_config.order %zu\n", offsetof(ma_lpf_config, order));
+
+    printf("sizeof:ma_notch2_config %zu\n", sizeof(ma_notch2_config));
+    printf("offsetof:ma_notch2_config.format %zu\n", offsetof(ma_notch2_config, format));
+    printf("offsetof:ma_notch2_config.channels %zu\n", offsetof(ma_notch2_config, channels));
+    printf("offsetof:ma_notch2_config.sampleRate %zu\n", offsetof(ma_notch2_config, sampleRate));
+    printf("offsetof:ma_notch2_config.q %zu\n", offsetof(ma_notch2_config, q));
+    printf("offsetof:ma_notch2_config.frequency %zu\n", offsetof(ma_notch2_config, frequency));
+
+    printf("sizeof:ma_peak2_config %zu\n", sizeof(ma_peak2_config));
+    printf("offsetof:ma_peak2_config.format %zu\n", offsetof(ma_peak2_config, format));
+    printf("offsetof:ma_peak2_config.channels %zu\n", offsetof(ma_peak2_config, channels));
+    printf("offsetof:ma_peak2_config.sampleRate %zu\n", offsetof(ma_peak2_config, sampleRate));
+    printf("offsetof:ma_peak2_config.gainDB %zu\n", offsetof(ma_peak2_config, gainDB));
+    printf("offsetof:ma_peak2_config.q %zu\n", offsetof(ma_peak2_config, q));
+    printf("offsetof:ma_peak2_config.frequency %zu\n", offsetof(ma_peak2_config, frequency));
+
+    printf("sizeof:ma_loshelf2_config %zu\n", sizeof(ma_loshelf2_config));
+    printf("offsetof:ma_loshelf2_config.format %zu\n", offsetof(ma_loshelf2_config, format));
+    printf("offsetof:ma_loshelf2_config.channels %zu\n", offsetof(ma_loshelf2_config, channels));
+    printf("offsetof:ma_loshelf2_config.sampleRate %zu\n", offsetof(ma_loshelf2_config, sampleRate));
+    printf("offsetof:ma_loshelf2_config.gainDB %zu\n", offsetof(ma_loshelf2_config, gainDB));
+    printf("offsetof:ma_loshelf2_config.shelfSlope %zu\n", offsetof(ma_loshelf2_config, shelfSlope));
+    printf("offsetof:ma_loshelf2_config.frequency %zu\n", offsetof(ma_loshelf2_config, frequency));
+
+    printf("sizeof:ma_delay_config %zu\n", sizeof(ma_delay_config));
+    printf("offsetof:ma_delay_config.channels %zu\n", offsetof(ma_delay_config, channels));
+    printf("offsetof:ma_delay_config.sampleRate %zu\n", offsetof(ma_delay_config, sampleRate));
+    printf("offsetof:ma_delay_config.delayInFrames %zu\n", offsetof(ma_delay_config, delayInFrames));
+    printf("offsetof:ma_delay_config.delayStart %zu\n", offsetof(ma_delay_config, delayStart));
+    printf("offsetof:ma_delay_config.wet %zu\n", offsetof(ma_delay_config, wet));
+    printf("offsetof:ma_delay_config.dry %zu\n", offsetof(ma_delay_config, dry));
+    printf("offsetof:ma_delay_config.decay %zu\n", offsetof(ma_delay_config, decay));
+
+    printf("sizeof:ma_biquad %zu\n", sizeof(ma_biquad));
+    printf("sizeof:ma_lpf1 %zu\n", sizeof(ma_lpf1));
+    printf("sizeof:ma_lpf2 %zu\n", sizeof(ma_lpf2));
+    printf("sizeof:ma_lpf %zu\n", sizeof(ma_lpf));
+    printf("sizeof:ma_hpf1 %zu\n", sizeof(ma_hpf1));
+    printf("sizeof:ma_hpf2 %zu\n", sizeof(ma_hpf2));
+    printf("sizeof:ma_hpf %zu\n", sizeof(ma_hpf));
+    printf("sizeof:ma_bpf2 %zu\n", sizeof(ma_bpf2));
+    printf("sizeof:ma_bpf %zu\n", sizeof(ma_bpf));
+    printf("sizeof:ma_notch2 %zu\n", sizeof(ma_notch2));
+    printf("sizeof:ma_peak2 %zu\n", sizeof(ma_peak2));
+    printf("sizeof:ma_loshelf2 %zu\n", sizeof(ma_loshelf2));
+    printf("sizeof:ma_hishelf2 %zu\n", sizeof(ma_hishelf2));
+    printf("sizeof:ma_delay %zu\n", sizeof(ma_delay));
     return 0;
 }

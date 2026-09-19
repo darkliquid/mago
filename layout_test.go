@@ -145,4 +145,151 @@ func TestMirroredStructLayouts(t *testing.T) {
 			t.Errorf("offsetof ma_noise_config.%s: mirror %d, header %d", name, got, want)
 		}
 	}
+
+	if got, want := uint64(unsafe.Sizeof(biquadConfigNative{})), probe["sizeof:ma_biquad_config"]; got != want {
+		t.Errorf("sizeof biquadConfigNative: mirror %d, header %d", got, want)
+	}
+	bqCfg := biquadConfigNative{}
+	bqOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"format":   {unsafe.Offsetof(bqCfg.Format), "offsetof:ma_biquad_config.format"},
+		"channels": {unsafe.Offsetof(bqCfg.Channels), "offsetof:ma_biquad_config.channels"},
+		"b0":       {unsafe.Offsetof(bqCfg.B0), "offsetof:ma_biquad_config.b0"},
+		"b1":       {unsafe.Offsetof(bqCfg.B1), "offsetof:ma_biquad_config.b1"},
+		"b2":       {unsafe.Offsetof(bqCfg.B2), "offsetof:ma_biquad_config.b2"},
+		"a0":       {unsafe.Offsetof(bqCfg.A0), "offsetof:ma_biquad_config.a0"},
+		"a1":       {unsafe.Offsetof(bqCfg.A1), "offsetof:ma_biquad_config.a1"},
+		"a2":       {unsafe.Offsetof(bqCfg.A2), "offsetof:ma_biquad_config.a2"},
+	}
+	for name, check := range bqOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_biquad_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
+
+	if got, want := uint64(unsafe.Sizeof(lpf1ConfigNative{})), probe["sizeof:ma_lpf1_config"]; got != want {
+		t.Errorf("sizeof lpf1ConfigNative: mirror %d, header %d", got, want)
+	}
+	lpf1Cfg := lpf1ConfigNative{}
+	lpf1Offsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"format":          {unsafe.Offsetof(lpf1Cfg.Format), "offsetof:ma_lpf1_config.format"},
+		"channels":        {unsafe.Offsetof(lpf1Cfg.Channels), "offsetof:ma_lpf1_config.channels"},
+		"sampleRate":      {unsafe.Offsetof(lpf1Cfg.SampleRate), "offsetof:ma_lpf1_config.sampleRate"},
+		"cutoffFrequency": {unsafe.Offsetof(lpf1Cfg.CutoffFrequency), "offsetof:ma_lpf1_config.cutoffFrequency"},
+		"q":               {unsafe.Offsetof(lpf1Cfg.Q), "offsetof:ma_lpf1_config.q"},
+	}
+	for name, check := range lpf1Offsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_lpf1_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
+
+	if got, want := uint64(unsafe.Sizeof(lpfConfigNative{})), probe["sizeof:ma_lpf_config"]; got != want {
+		t.Errorf("sizeof lpfConfigNative: mirror %d, header %d", got, want)
+	}
+	lpfCfg := lpfConfigNative{}
+	lpfOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"format":          {unsafe.Offsetof(lpfCfg.Format), "offsetof:ma_lpf_config.format"},
+		"channels":        {unsafe.Offsetof(lpfCfg.Channels), "offsetof:ma_lpf_config.channels"},
+		"sampleRate":      {unsafe.Offsetof(lpfCfg.SampleRate), "offsetof:ma_lpf_config.sampleRate"},
+		"cutoffFrequency": {unsafe.Offsetof(lpfCfg.CutoffFrequency), "offsetof:ma_lpf_config.cutoffFrequency"},
+		"order":           {unsafe.Offsetof(lpfCfg.Order), "offsetof:ma_lpf_config.order"},
+	}
+	for name, check := range lpfOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_lpf_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
+
+	if got, want := uint64(unsafe.Sizeof(notch2ConfigNative{})), probe["sizeof:ma_notch2_config"]; got != want {
+		t.Errorf("sizeof notch2ConfigNative: mirror %d, header %d", got, want)
+	}
+	notchCfg := notch2ConfigNative{}
+	notchOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"format":     {unsafe.Offsetof(notchCfg.Format), "offsetof:ma_notch2_config.format"},
+		"channels":   {unsafe.Offsetof(notchCfg.Channels), "offsetof:ma_notch2_config.channels"},
+		"sampleRate": {unsafe.Offsetof(notchCfg.SampleRate), "offsetof:ma_notch2_config.sampleRate"},
+		"q":          {unsafe.Offsetof(notchCfg.Q), "offsetof:ma_notch2_config.q"},
+		"frequency":  {unsafe.Offsetof(notchCfg.Frequency), "offsetof:ma_notch2_config.frequency"},
+	}
+	for name, check := range notchOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_notch2_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
+
+	if got, want := uint64(unsafe.Sizeof(peak2ConfigNative{})), probe["sizeof:ma_peak2_config"]; got != want {
+		t.Errorf("sizeof peak2ConfigNative: mirror %d, header %d", got, want)
+	}
+	peakCfg := peak2ConfigNative{}
+	peakOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"format":     {unsafe.Offsetof(peakCfg.Format), "offsetof:ma_peak2_config.format"},
+		"channels":   {unsafe.Offsetof(peakCfg.Channels), "offsetof:ma_peak2_config.channels"},
+		"sampleRate": {unsafe.Offsetof(peakCfg.SampleRate), "offsetof:ma_peak2_config.sampleRate"},
+		"gainDB":     {unsafe.Offsetof(peakCfg.GainDB), "offsetof:ma_peak2_config.gainDB"},
+		"q":          {unsafe.Offsetof(peakCfg.Q), "offsetof:ma_peak2_config.q"},
+		"frequency":  {unsafe.Offsetof(peakCfg.Frequency), "offsetof:ma_peak2_config.frequency"},
+	}
+	for name, check := range peakOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_peak2_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
+
+	if got, want := uint64(unsafe.Sizeof(loshelf2ConfigNative{})), probe["sizeof:ma_loshelf2_config"]; got != want {
+		t.Errorf("sizeof loshelf2ConfigNative: mirror %d, header %d", got, want)
+	}
+	shelfCfg := loshelf2ConfigNative{}
+	shelfOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"format":     {unsafe.Offsetof(shelfCfg.Format), "offsetof:ma_loshelf2_config.format"},
+		"channels":   {unsafe.Offsetof(shelfCfg.Channels), "offsetof:ma_loshelf2_config.channels"},
+		"sampleRate": {unsafe.Offsetof(shelfCfg.SampleRate), "offsetof:ma_loshelf2_config.sampleRate"},
+		"gainDB":     {unsafe.Offsetof(shelfCfg.GainDB), "offsetof:ma_loshelf2_config.gainDB"},
+		"shelfSlope": {unsafe.Offsetof(shelfCfg.ShelfSlope), "offsetof:ma_loshelf2_config.shelfSlope"},
+		"frequency":  {unsafe.Offsetof(shelfCfg.Frequency), "offsetof:ma_loshelf2_config.frequency"},
+	}
+	for name, check := range shelfOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_loshelf2_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
+
+	if got, want := uint64(unsafe.Sizeof(delayConfigNative{})), probe["sizeof:ma_delay_config"]; got != want {
+		t.Errorf("sizeof delayConfigNative: mirror %d, header %d", got, want)
+	}
+	delayCfg := delayConfigNative{}
+	delayOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"channels":      {unsafe.Offsetof(delayCfg.Channels), "offsetof:ma_delay_config.channels"},
+		"sampleRate":    {unsafe.Offsetof(delayCfg.SampleRate), "offsetof:ma_delay_config.sampleRate"},
+		"delayInFrames": {unsafe.Offsetof(delayCfg.DelayInFrames), "offsetof:ma_delay_config.delayInFrames"},
+		"delayStart":    {unsafe.Offsetof(delayCfg.DelayStart), "offsetof:ma_delay_config.delayStart"},
+		"wet":           {unsafe.Offsetof(delayCfg.Wet), "offsetof:ma_delay_config.wet"},
+		"dry":           {unsafe.Offsetof(delayCfg.Dry), "offsetof:ma_delay_config.dry"},
+		"decay":         {unsafe.Offsetof(delayCfg.Decay), "offsetof:ma_delay_config.decay"},
+	}
+	for name, check := range delayOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_delay_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
 }
