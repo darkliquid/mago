@@ -376,6 +376,105 @@ type bindingSet struct {
 	maDelayNodeGetDry                            func(*nodeHandle) float32
 	maDelayNodeSetDecay                          func(*nodeHandle, float32)
 	maDelayNodeGetDecay                          func(*nodeHandle) float32
+	maEngineInit                                 func(*engineConfigNative, *engineHandle) Result
+	maEngineUninit                               func(*engineHandle)
+	maEngineReadPCMFrames                        func(*engineHandle, unsafe.Pointer, uint64, *uint64) Result
+	maEngineGetNodeGraph                         func(*engineHandle) *nodeGraphHandle
+	maEngineGetEndpoint                          func(*engineHandle) *nodeHandle
+	maEngineGetTimeInPCMFrames                   func(*engineHandle) uint64
+	maEngineSetTimeInPCMFrames                   func(*engineHandle, uint64) Result
+	maEngineGetChannels                          func(*engineHandle) uint32
+	maEngineGetSampleRate                        func(*engineHandle) uint32
+	maEngineStart                                func(*engineHandle) Result
+	maEngineStop                                 func(*engineHandle) Result
+	maEngineSetVolume                            func(*engineHandle, float32) Result
+	maEngineGetVolume                            func(*engineHandle) float32
+	maEngineSetGainDB                            func(*engineHandle, float32) Result
+	maEngineGetGainDB                            func(*engineHandle) float32
+	maEngineGetListenerCount                     func(*engineHandle) uint32
+	maEngineFindClosestListener                  func(*engineHandle, float32, float32, float32) uint32
+	maEngineListenerSetPosition                  func(*engineHandle, uint32, float32, float32, float32)
+	maEngineListenerSetDirection                 func(*engineHandle, uint32, float32, float32, float32)
+	maEngineListenerSetVelocity                  func(*engineHandle, uint32, float32, float32, float32)
+	maEngineListenerSetCone                      func(*engineHandle, uint32, float32, float32, float32)
+	maEngineListenerGetCone                      func(*engineHandle, uint32, *float32, *float32, *float32)
+	maEngineListenerSetWorldUp                   func(*engineHandle, uint32, float32, float32, float32)
+	maEngineListenerSetEnabled                   func(*engineHandle, uint32, uint32)
+	maEngineListenerIsEnabled                    func(*engineHandle, uint32) uint32
+	maEnginePlaySoundEx                          func(*engineHandle, string, *nodeHandle, uint32) Result
+	maEnginePlaySound                            func(*engineHandle, string, *soundHandle) Result
+	magoEngineListenerGetPosition                func(*engineHandle, uint32, *float32)
+	magoEngineListenerGetDirection               func(*engineHandle, uint32, *float32)
+	magoEngineListenerGetVelocity                func(*engineHandle, uint32, *float32)
+	magoEngineListenerGetWorldUp                 func(*engineHandle, uint32, *float32)
+	maSoundInitFromFile                          func(*engineHandle, string, uint32, *soundHandle, unsafe.Pointer, *soundHandle) Result
+	maSoundInitFromDataSource                    func(*engineHandle, *dataSourceHandle, uint32, *soundHandle, *soundHandle) Result
+	maSoundInitCopy                              func(*engineHandle, *soundHandle, uint32, *soundHandle, *soundHandle) Result
+	maSoundGroupInit                             func(*engineHandle, uint32, *soundHandle, *soundHandle) Result
+	maSoundUninit                                func(*soundHandle)
+	maSoundStart                                 func(*soundHandle) Result
+	maSoundStop                                  func(*soundHandle) Result
+	maSoundStopWithFadeInPCMFrames               func(*soundHandle, uint64) Result
+	maSoundResetStartTime                        func(*soundHandle)
+	maSoundResetStopTime                         func(*soundHandle)
+	maSoundResetFade                             func(*soundHandle)
+	maSoundResetStopTimeAndFade                  func(*soundHandle)
+	maSoundSetVolume                             func(*soundHandle, float32)
+	maSoundGetVolume                             func(*soundHandle) float32
+	maSoundSetPan                                func(*soundHandle, float32)
+	maSoundGetPan                                func(*soundHandle) float32
+	maSoundSetPanMode                            func(*soundHandle, PanMode)
+	maSoundGetPanMode                            func(*soundHandle) PanMode
+	maSoundSetPitch                              func(*soundHandle, float32)
+	maSoundGetPitch                              func(*soundHandle) float32
+	maSoundSetSpatializationEnabled              func(*soundHandle, uint32)
+	maSoundIsSpatializationEnabled               func(*soundHandle) uint32
+	maSoundSetPinnedListenerIndex                func(*soundHandle, uint32)
+	maSoundGetPinnedListenerIndex                func(*soundHandle) uint32
+	maSoundGetListenerIndex                      func(*soundHandle) uint32
+	magoSoundGetDirectionToListener              func(*soundHandle, *float32)
+	maSoundSetPosition                           func(*soundHandle, float32, float32, float32)
+	magoSoundGetPosition                         func(*soundHandle, *float32)
+	maSoundSetDirection                          func(*soundHandle, float32, float32, float32)
+	magoSoundGetDirection                        func(*soundHandle, *float32)
+	maSoundSetVelocity                           func(*soundHandle, float32, float32, float32)
+	magoSoundGetVelocity                         func(*soundHandle, *float32)
+	maSoundSetAttenuationModel                   func(*soundHandle, AttenuationModel)
+	maSoundGetAttenuationModel                   func(*soundHandle) AttenuationModel
+	maSoundSetPositioning                        func(*soundHandle, Positioning)
+	maSoundGetPositioning                        func(*soundHandle) Positioning
+	maSoundSetRolloff                            func(*soundHandle, float32)
+	maSoundGetRolloff                            func(*soundHandle) float32
+	maSoundSetMinGain                            func(*soundHandle, float32)
+	maSoundGetMinGain                            func(*soundHandle) float32
+	maSoundSetMaxGain                            func(*soundHandle, float32)
+	maSoundGetMaxGain                            func(*soundHandle) float32
+	maSoundSetMinDistance                        func(*soundHandle, float32)
+	maSoundGetMinDistance                        func(*soundHandle) float32
+	maSoundSetMaxDistance                        func(*soundHandle, float32)
+	maSoundGetMaxDistance                        func(*soundHandle) float32
+	maSoundSetCone                               func(*soundHandle, float32, float32, float32)
+	maSoundGetCone                               func(*soundHandle, *float32, *float32, *float32)
+	maSoundSetDopplerFactor                      func(*soundHandle, float32)
+	maSoundGetDopplerFactor                      func(*soundHandle) float32
+	maSoundSetDirectionalAttenuationFactor       func(*soundHandle, float32)
+	maSoundGetDirectionalAttenuationFactor       func(*soundHandle) float32
+	maSoundSetFadeInPCMFrames                    func(*soundHandle, float32, float32, uint64)
+	maSoundSetFadeStartInPCMFrames               func(*soundHandle, float32, float32, uint64, uint64)
+	maSoundGetCurrentFadeVolume                  func(*soundHandle) float32
+	maSoundSetStartTimeInPCMFrames               func(*soundHandle, uint64)
+	maSoundSetStopTimeInPCMFrames                func(*soundHandle, uint64)
+	maSoundSetStopTimeWithFadeInPCMFrames        func(*soundHandle, uint64, uint64)
+	maSoundIsPlaying                             func(*soundHandle) uint32
+	maSoundGetTimeInPCMFrames                    func(*soundHandle) uint64
+	maSoundSetLooping                            func(*soundHandle, uint32)
+	maSoundIsLooping                             func(*soundHandle) uint32
+	maSoundAtEnd                                 func(*soundHandle) uint32
+	maSoundSeekToPCMFrame                        func(*soundHandle, uint64) Result
+	maSoundGetDataFormat                         func(*soundHandle, *Format, *uint32, *uint32, *uint8, uintptr) Result
+	maSoundGetCursorInPCMFrames                  func(*soundHandle, *uint64) Result
+	maSoundGetLengthInPCMFrames                  func(*soundHandle, *uint64) Result
+	maSoundSetEndCallback                        func(*soundHandle, uintptr, uintptr) Result
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -684,6 +783,105 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maDelayNodeGetDry, handle, "ma_delay_node_get_dry")
 	purego.RegisterLibFunc(&b.maDelayNodeSetDecay, handle, "ma_delay_node_set_decay")
 	purego.RegisterLibFunc(&b.maDelayNodeGetDecay, handle, "ma_delay_node_get_decay")
+	purego.RegisterLibFunc(&b.maEngineInit, handle, "ma_engine_init")
+	purego.RegisterLibFunc(&b.maEngineUninit, handle, "ma_engine_uninit")
+	purego.RegisterLibFunc(&b.maEngineReadPCMFrames, handle, "ma_engine_read_pcm_frames")
+	purego.RegisterLibFunc(&b.maEngineGetNodeGraph, handle, "ma_engine_get_node_graph")
+	purego.RegisterLibFunc(&b.maEngineGetEndpoint, handle, "ma_engine_get_endpoint")
+	purego.RegisterLibFunc(&b.maEngineGetTimeInPCMFrames, handle, "ma_engine_get_time_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maEngineSetTimeInPCMFrames, handle, "ma_engine_set_time_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maEngineGetChannels, handle, "ma_engine_get_channels")
+	purego.RegisterLibFunc(&b.maEngineGetSampleRate, handle, "ma_engine_get_sample_rate")
+	purego.RegisterLibFunc(&b.maEngineStart, handle, "ma_engine_start")
+	purego.RegisterLibFunc(&b.maEngineStop, handle, "ma_engine_stop")
+	purego.RegisterLibFunc(&b.maEngineSetVolume, handle, "ma_engine_set_volume")
+	purego.RegisterLibFunc(&b.maEngineGetVolume, handle, "ma_engine_get_volume")
+	purego.RegisterLibFunc(&b.maEngineSetGainDB, handle, "ma_engine_set_gain_db")
+	purego.RegisterLibFunc(&b.maEngineGetGainDB, handle, "ma_engine_get_gain_db")
+	purego.RegisterLibFunc(&b.maEngineGetListenerCount, handle, "ma_engine_get_listener_count")
+	purego.RegisterLibFunc(&b.maEngineFindClosestListener, handle, "ma_engine_find_closest_listener")
+	purego.RegisterLibFunc(&b.maEngineListenerSetPosition, handle, "ma_engine_listener_set_position")
+	purego.RegisterLibFunc(&b.maEngineListenerSetDirection, handle, "ma_engine_listener_set_direction")
+	purego.RegisterLibFunc(&b.maEngineListenerSetVelocity, handle, "ma_engine_listener_set_velocity")
+	purego.RegisterLibFunc(&b.maEngineListenerSetCone, handle, "ma_engine_listener_set_cone")
+	purego.RegisterLibFunc(&b.maEngineListenerGetCone, handle, "ma_engine_listener_get_cone")
+	purego.RegisterLibFunc(&b.maEngineListenerSetWorldUp, handle, "ma_engine_listener_set_world_up")
+	purego.RegisterLibFunc(&b.maEngineListenerSetEnabled, handle, "ma_engine_listener_set_enabled")
+	purego.RegisterLibFunc(&b.maEngineListenerIsEnabled, handle, "ma_engine_listener_is_enabled")
+	purego.RegisterLibFunc(&b.maEnginePlaySoundEx, handle, "ma_engine_play_sound_ex")
+	purego.RegisterLibFunc(&b.maEnginePlaySound, handle, "ma_engine_play_sound")
+	purego.RegisterLibFunc(&b.magoEngineListenerGetPosition, handle, "mago_engine_listener_get_position")
+	purego.RegisterLibFunc(&b.magoEngineListenerGetDirection, handle, "mago_engine_listener_get_direction")
+	purego.RegisterLibFunc(&b.magoEngineListenerGetVelocity, handle, "mago_engine_listener_get_velocity")
+	purego.RegisterLibFunc(&b.magoEngineListenerGetWorldUp, handle, "mago_engine_listener_get_world_up")
+	purego.RegisterLibFunc(&b.maSoundInitFromFile, handle, "ma_sound_init_from_file")
+	purego.RegisterLibFunc(&b.maSoundInitFromDataSource, handle, "ma_sound_init_from_data_source")
+	purego.RegisterLibFunc(&b.maSoundInitCopy, handle, "ma_sound_init_copy")
+	purego.RegisterLibFunc(&b.maSoundGroupInit, handle, "ma_sound_group_init")
+	purego.RegisterLibFunc(&b.maSoundUninit, handle, "ma_sound_uninit")
+	purego.RegisterLibFunc(&b.maSoundStart, handle, "ma_sound_start")
+	purego.RegisterLibFunc(&b.maSoundStop, handle, "ma_sound_stop")
+	purego.RegisterLibFunc(&b.maSoundStopWithFadeInPCMFrames, handle, "ma_sound_stop_with_fade_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maSoundResetStartTime, handle, "ma_sound_reset_start_time")
+	purego.RegisterLibFunc(&b.maSoundResetStopTime, handle, "ma_sound_reset_stop_time")
+	purego.RegisterLibFunc(&b.maSoundResetFade, handle, "ma_sound_reset_fade")
+	purego.RegisterLibFunc(&b.maSoundResetStopTimeAndFade, handle, "ma_sound_reset_stop_time_and_fade")
+	purego.RegisterLibFunc(&b.maSoundSetVolume, handle, "ma_sound_set_volume")
+	purego.RegisterLibFunc(&b.maSoundGetVolume, handle, "ma_sound_get_volume")
+	purego.RegisterLibFunc(&b.maSoundSetPan, handle, "ma_sound_set_pan")
+	purego.RegisterLibFunc(&b.maSoundGetPan, handle, "ma_sound_get_pan")
+	purego.RegisterLibFunc(&b.maSoundSetPanMode, handle, "ma_sound_set_pan_mode")
+	purego.RegisterLibFunc(&b.maSoundGetPanMode, handle, "ma_sound_get_pan_mode")
+	purego.RegisterLibFunc(&b.maSoundSetPitch, handle, "ma_sound_set_pitch")
+	purego.RegisterLibFunc(&b.maSoundGetPitch, handle, "ma_sound_get_pitch")
+	purego.RegisterLibFunc(&b.maSoundSetSpatializationEnabled, handle, "ma_sound_set_spatialization_enabled")
+	purego.RegisterLibFunc(&b.maSoundIsSpatializationEnabled, handle, "ma_sound_is_spatialization_enabled")
+	purego.RegisterLibFunc(&b.maSoundSetPinnedListenerIndex, handle, "ma_sound_set_pinned_listener_index")
+	purego.RegisterLibFunc(&b.maSoundGetPinnedListenerIndex, handle, "ma_sound_get_pinned_listener_index")
+	purego.RegisterLibFunc(&b.maSoundGetListenerIndex, handle, "ma_sound_get_listener_index")
+	purego.RegisterLibFunc(&b.magoSoundGetDirectionToListener, handle, "mago_sound_get_direction_to_listener")
+	purego.RegisterLibFunc(&b.maSoundSetPosition, handle, "ma_sound_set_position")
+	purego.RegisterLibFunc(&b.magoSoundGetPosition, handle, "mago_sound_get_position")
+	purego.RegisterLibFunc(&b.maSoundSetDirection, handle, "ma_sound_set_direction")
+	purego.RegisterLibFunc(&b.magoSoundGetDirection, handle, "mago_sound_get_direction")
+	purego.RegisterLibFunc(&b.maSoundSetVelocity, handle, "ma_sound_set_velocity")
+	purego.RegisterLibFunc(&b.magoSoundGetVelocity, handle, "mago_sound_get_velocity")
+	purego.RegisterLibFunc(&b.maSoundSetAttenuationModel, handle, "ma_sound_set_attenuation_model")
+	purego.RegisterLibFunc(&b.maSoundGetAttenuationModel, handle, "ma_sound_get_attenuation_model")
+	purego.RegisterLibFunc(&b.maSoundSetPositioning, handle, "ma_sound_set_positioning")
+	purego.RegisterLibFunc(&b.maSoundGetPositioning, handle, "ma_sound_get_positioning")
+	purego.RegisterLibFunc(&b.maSoundSetRolloff, handle, "ma_sound_set_rolloff")
+	purego.RegisterLibFunc(&b.maSoundGetRolloff, handle, "ma_sound_get_rolloff")
+	purego.RegisterLibFunc(&b.maSoundSetMinGain, handle, "ma_sound_set_min_gain")
+	purego.RegisterLibFunc(&b.maSoundGetMinGain, handle, "ma_sound_get_min_gain")
+	purego.RegisterLibFunc(&b.maSoundSetMaxGain, handle, "ma_sound_set_max_gain")
+	purego.RegisterLibFunc(&b.maSoundGetMaxGain, handle, "ma_sound_get_max_gain")
+	purego.RegisterLibFunc(&b.maSoundSetMinDistance, handle, "ma_sound_set_min_distance")
+	purego.RegisterLibFunc(&b.maSoundGetMinDistance, handle, "ma_sound_get_min_distance")
+	purego.RegisterLibFunc(&b.maSoundSetMaxDistance, handle, "ma_sound_set_max_distance")
+	purego.RegisterLibFunc(&b.maSoundGetMaxDistance, handle, "ma_sound_get_max_distance")
+	purego.RegisterLibFunc(&b.maSoundSetCone, handle, "ma_sound_set_cone")
+	purego.RegisterLibFunc(&b.maSoundGetCone, handle, "ma_sound_get_cone")
+	purego.RegisterLibFunc(&b.maSoundSetDopplerFactor, handle, "ma_sound_set_doppler_factor")
+	purego.RegisterLibFunc(&b.maSoundGetDopplerFactor, handle, "ma_sound_get_doppler_factor")
+	purego.RegisterLibFunc(&b.maSoundSetDirectionalAttenuationFactor, handle, "ma_sound_set_directional_attenuation_factor")
+	purego.RegisterLibFunc(&b.maSoundGetDirectionalAttenuationFactor, handle, "ma_sound_get_directional_attenuation_factor")
+	purego.RegisterLibFunc(&b.maSoundSetFadeInPCMFrames, handle, "ma_sound_set_fade_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maSoundSetFadeStartInPCMFrames, handle, "ma_sound_set_fade_start_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maSoundGetCurrentFadeVolume, handle, "ma_sound_get_current_fade_volume")
+	purego.RegisterLibFunc(&b.maSoundSetStartTimeInPCMFrames, handle, "ma_sound_set_start_time_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maSoundSetStopTimeInPCMFrames, handle, "ma_sound_set_stop_time_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maSoundSetStopTimeWithFadeInPCMFrames, handle, "ma_sound_set_stop_time_with_fade_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maSoundIsPlaying, handle, "ma_sound_is_playing")
+	purego.RegisterLibFunc(&b.maSoundGetTimeInPCMFrames, handle, "ma_sound_get_time_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maSoundSetLooping, handle, "ma_sound_set_looping")
+	purego.RegisterLibFunc(&b.maSoundIsLooping, handle, "ma_sound_is_looping")
+	purego.RegisterLibFunc(&b.maSoundAtEnd, handle, "ma_sound_at_end")
+	purego.RegisterLibFunc(&b.maSoundSeekToPCMFrame, handle, "ma_sound_seek_to_pcm_frame")
+	purego.RegisterLibFunc(&b.maSoundGetDataFormat, handle, "ma_sound_get_data_format")
+	purego.RegisterLibFunc(&b.maSoundGetCursorInPCMFrames, handle, "ma_sound_get_cursor_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maSoundGetLengthInPCMFrames, handle, "ma_sound_get_length_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maSoundSetEndCallback, handle, "ma_sound_set_end_callback")
 }
 
 var _ unsafe.Pointer

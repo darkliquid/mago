@@ -16,8 +16,9 @@ const nodeBusCountUnknown uint32 = 255
 const maxNodeBusCount uint32 = 254
 
 var (
-	errNilNode      = errors.New("mago: nil node")
-	errNilNodeGraph = errors.New("mago: nil node graph")
+	errNilNode           = errors.New("mago: nil node")
+	errNilNodeGraph      = errors.New("mago: nil node graph")
+	errBorrowedNodeGraph = errors.New("mago: node graph is owned by its engine and cannot be closed")
 )
 
 // defaultNodeConfig returns what ma_node_config_init() would produce. Go cannot
@@ -64,6 +65,9 @@ type NodeGraph struct {
 	endpoint *nodeHandle
 	channels uint32
 	closed   bool
+	// owned is false for a graph that belongs to something else, such as an
+	// Engine. Close refuses to free one of those.
+	owned bool
 }
 
 // NewNodeGraph creates an empty node graph with the given channel count.
@@ -99,7 +103,20 @@ func (lib *Library) NewNodeGraph(config NodeGraphConfig) (*NodeGraph, error) {
 		handle:   handle,
 		endpoint: lib.bindings.maNodeGraphGetEndpoint(handle),
 		channels: config.Channels,
+		owned:    true,
 	}, nil
+}
+
+// borrowedNodeGraph wraps a node graph that another object owns, so its nodes can
+// report their graph and callers can route into its endpoint without being able
+// to free it.
+func borrowedNodeGraph(lib *Library, handle *nodeGraphHandle, endpoint *nodeHandle, channels uint32) *NodeGraph {
+	return &NodeGraph{
+		lib:      lib,
+		handle:   handle,
+		endpoint: endpoint,
+		channels: channels,
+	}
 }
 
 func (g *NodeGraph) ensure() error {
@@ -136,9 +153,10 @@ func (g *NodeGraph) ProcessingSizeInFrames() uint32 {
 	return g.lib.bindings.maNodeGraphGetProcessingSizeInFrames(g.handle)
 }
 
-// Read pulls up to len(out)/Channels() frames of interleaved f32 audio from the
-// graph's endpoint. It returns the number of frames written, which is short only
-// when a node in the graph ran out of data.
+// Read fills out with interleaved f32 frames read from the graph's endpoint and
+// returns how many of them the graph actually produced. miniaudio always writes
+// the whole slice, silencing whatever the graph had nothing to contribute, so the
+// return value is short only when a node in the graph ran out of data.
 func (g *NodeGraph) Read(out []float32) (uint64, error) {
 	if err := g.ensure(); err != nil {
 		return 0, err
@@ -182,9 +200,15 @@ func (g *NodeGraph) SetTime(globalTime uint64) error {
 // Close uninitialises the graph and frees its memory. Close every node created
 // from the graph first: miniaudio does not track nodes for you, and a graph that
 // is freed while a node still points at it leaves that node dangling.
+//
+// A graph that belongs to another object, such as an Engine, reports an error
+// rather than freeing something it does not own.
 func (g *NodeGraph) Close() error {
 	if g == nil || g.handle == nil {
 		return nil
+	}
+	if !g.owned {
+		return errBorrowedNodeGraph
 	}
 	if err := g.lib.ensureOpen(); err != nil {
 		return err

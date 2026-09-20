@@ -118,36 +118,13 @@ type DataSourceNode struct {
 // read directly; any other DataSource is registered as a custom data source
 // first, and the node closes that registration when it closes.
 func (g *NodeGraph) NewDataSourceNode(source DataSource) (*DataSourceNode, error) {
-	if source == nil {
-		return nil, errors.New("mago: nil data source")
-	}
 	if err := g.ensure(); err != nil {
 		return nil, err
 	}
 
-	format, _, _, err := source.DataFormat()
+	handle, wrapper, err := g.lib.resolveDataSource(source)
 	if err != nil {
-		return nil, fmt.Errorf("mago: read data source format: %w", err)
-	}
-	if format != FormatF32 {
-		return nil, fmt.Errorf("mago: node graphs only process f32 data sources, got format %d", format)
-	}
-
-	var (
-		handle  *dataSourceHandle
-		wrapper *CustomDataSource
-	)
-	if native, ok := source.(nativeDataSource); ok {
-		handle = native.nativeDataSourceHandle()
-	} else {
-		wrapper, err = g.lib.NewCustomDataSource(source)
-		if err != nil {
-			return nil, err
-		}
-		handle = wrapper.handle
-	}
-	if handle == nil {
-		return nil, errors.New("mago: data source is not initialised")
+		return nil, err
 	}
 
 	handleNode, raw, err := g.allocateNode(magoObjectDataSourceNode)

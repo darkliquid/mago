@@ -4,6 +4,7 @@ package mago
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"unsafe"
@@ -14,12 +15,46 @@ import (
 // layout miniaudio expects; the typed reads remain the efficient path.
 
 // nativeDataSource is implemented by the objects that miniaudio already treats
-// as data sources. A node graph can read one directly instead of bouncing every
-// frame through Go callbacks, which is faster and keeps miniaudio's own seeking
-// and looping behaviour.
+// as data sources. A node graph or a sound can read one directly instead of
+// bouncing every frame through Go callbacks, which is faster and keeps
+// miniaudio's own seeking and looping behaviour.
 type nativeDataSource interface {
 	DataSource
 	nativeDataSourceHandle() *dataSourceHandle
+}
+
+// resolveDataSource turns any DataSource into the ma_data_source* a node graph or
+// a sound needs. Sources miniaudio already understands are used directly; any
+// other Go source is registered through the bridge, and the returned wrapper is
+// then owned by the caller and must be closed after whatever reads it.
+//
+// miniaudio only mixes f32, so a source reporting anything else is rejected here
+// rather than failing later with an opaque result code.
+func (lib *Library) resolveDataSource(source DataSource) (*dataSourceHandle, *CustomDataSource, error) {
+	if source == nil {
+		return nil, nil, errors.New("mago: nil data source")
+	}
+
+	format, _, _, err := source.DataFormat()
+	if err != nil {
+		return nil, nil, fmt.Errorf("mago: read data source format: %w", err)
+	}
+	if format != FormatF32 {
+		return nil, nil, fmt.Errorf("mago: miniaudio only consumes f32 data sources, got format %d", format)
+	}
+
+	if native, ok := source.(nativeDataSource); ok {
+		if handle := native.nativeDataSourceHandle(); handle != nil {
+			return handle, nil, nil
+		}
+		return nil, nil, errors.New("mago: data source is not initialised")
+	}
+
+	wrapper, err := lib.NewCustomDataSource(source)
+	if err != nil {
+		return nil, nil, err
+	}
+	return wrapper.handle, wrapper, nil
 }
 
 // nativeDataSourceHandle implements nativeDataSource for Decoder. ma_decoder

@@ -4,6 +4,7 @@ package mago
 
 import (
 	"errors"
+	"time"
 )
 
 var errUnsupportedPlatform = errors.New("mago: this package is currently supported on darwin, freebsd, linux, netbsd, and windows")
@@ -981,3 +982,214 @@ func (*DelayNode) SetDry(float32) error   { return errUnsupportedPlatform }
 func (*DelayNode) Decay() float32         { return 0 }
 func (*DelayNode) SetDecay(float32) error { return errUnsupportedPlatform }
 func (*DelayNode) Close() error           { return errUnsupportedPlatform }
+
+type Vec3 struct {
+	X float32
+	Y float32
+	Z float32
+}
+
+type EngineConfig struct {
+	Context                            *Context
+	Log                                *Log
+	ListenerCount                      uint32
+	Channels                           uint32
+	SampleRate                         uint32
+	PeriodSizeInFrames                 uint32
+	PeriodSizeInMilliseconds           uint32
+	GainSmoothTimeInFrames             uint32
+	GainSmoothTimeInMilliseconds       uint32
+	DefaultVolumeSmoothTimeInPCMFrames uint32
+	PreMixStackSizeInBytes             uint32
+	MonoExpansionMode                  MonoExpansionMode
+	NoAutoStart                        bool
+	NoDevice                           bool
+}
+
+func DefaultEngineConfig(uint32, uint32) EngineConfig { return EngineConfig{} }
+
+type Engine struct{}
+
+func (*Library) NewEngine(EngineConfig) (*Engine, error) { return nil, errUnsupportedPlatform }
+func (*Engine) NodeGraph() *NodeGraph                    { return nil }
+func (*Engine) Endpoint() Node                           { return nil }
+func (*Engine) Read([]float32) (uint64, error)           { return 0, errUnsupportedPlatform }
+func (*Engine) Channels() uint32                         { return 0 }
+func (*Engine) SampleRate() uint32                       { return 0 }
+func (*Engine) Start() error                             { return errUnsupportedPlatform }
+func (*Engine) Stop() error                              { return errUnsupportedPlatform }
+func (*Engine) Volume() float32                          { return 0 }
+func (*Engine) SetVolume(float32) error                  { return errUnsupportedPlatform }
+func (*Engine) GainDB() float32                          { return 0 }
+func (*Engine) SetGainDB(float32) error                  { return errUnsupportedPlatform }
+func (*Engine) Time() uint64                             { return 0 }
+func (*Engine) SetTime(uint64) error                     { return errUnsupportedPlatform }
+func (*Engine) ListenerCount() uint32                    { return 0 }
+func (*Engine) Listener(uint32) *Listener                { return nil }
+func (*Engine) ClosestListener(Vec3) uint32              { return 0 }
+func (*Engine) PlaySound(string, *SoundGroup) error      { return errUnsupportedPlatform }
+func (*Engine) PlaySoundOn(string, Node, uint32) error   { return errUnsupportedPlatform }
+func (*Engine) Close() error                             { return errUnsupportedPlatform }
+
+type Listener struct{}
+
+func (*Listener) Index() uint32                     { return 0 }
+func (*Listener) Engine() *Engine                   { return nil }
+func (*Listener) Position() Vec3                    { return Vec3{} }
+func (*Listener) SetPosition(Vec3) error            { return errUnsupportedPlatform }
+func (*Listener) Direction() Vec3                   { return Vec3{} }
+func (*Listener) SetDirection(Vec3) error           { return errUnsupportedPlatform }
+func (*Listener) Velocity() Vec3                    { return Vec3{} }
+func (*Listener) SetVelocity(Vec3) error            { return errUnsupportedPlatform }
+func (*Listener) WorldUp() Vec3                     { return Vec3{} }
+func (*Listener) SetWorldUp(Vec3) error             { return errUnsupportedPlatform }
+func (*Listener) Cone() (float32, float32, float32) { return 0, 0, 0 }
+func (*Listener) SetCone(float32, float32, float32) error {
+	return errUnsupportedPlatform
+}
+func (*Listener) Enabled() bool         { return false }
+func (*Listener) SetEnabled(bool) error { return errUnsupportedPlatform }
+
+type SoundFlags uint32
+
+const (
+	SoundFlagStream              SoundFlags = 0x00000001
+	SoundFlagDecode              SoundFlags = 0x00000002
+	SoundFlagAsync               SoundFlags = 0x00000004
+	SoundFlagWaitInit            SoundFlags = 0x00000008
+	SoundFlagUnknownLength       SoundFlags = 0x00000010
+	SoundFlagLooping             SoundFlags = 0x00000020
+	SoundFlagNoDefaultAttachment SoundFlags = 0x00001000
+	SoundFlagNoPitch             SoundFlags = 0x00002000
+	SoundFlagNoSpatialization    SoundFlags = 0x00004000
+)
+
+type SoundConfig struct {
+	Flags SoundFlags
+	Group *SoundGroup
+}
+type SoundGroupConfig struct {
+	Flags  SoundFlags
+	Parent *SoundGroup
+}
+
+// soundStub implements the surface shared by Sound and SoundGroup on unsupported
+// platforms. In the supported build the two types share a soundCommon.
+type soundStub struct{}
+
+func (soundStub) Engine() *Engine           { return nil }
+func (soundStub) Start() error              { return errUnsupportedPlatform }
+func (soundStub) Stop() error               { return errUnsupportedPlatform }
+func (soundStub) StopWithFade(uint64) error { return errUnsupportedPlatform }
+func (soundStub) StopWithFadeInDuration(time.Duration) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) ResetStartTime() error       { return errUnsupportedPlatform }
+func (soundStub) ResetStopTime() error        { return errUnsupportedPlatform }
+func (soundStub) ResetFade() error            { return errUnsupportedPlatform }
+func (soundStub) ResetStopTimeAndFade() error { return errUnsupportedPlatform }
+func (soundStub) Volume() float32             { return 0 }
+func (soundStub) SetVolume(float32) error     { return errUnsupportedPlatform }
+func (soundStub) Pan() float32                { return 0 }
+func (soundStub) SetPan(float32) error        { return errUnsupportedPlatform }
+func (soundStub) PanMode() PanMode            { return PanModeBalance }
+func (soundStub) SetPanMode(PanMode) error    { return errUnsupportedPlatform }
+func (soundStub) Pitch() float32              { return 0 }
+func (soundStub) SetPitch(float32) error      { return errUnsupportedPlatform }
+func (soundStub) SpatializationEnabled() bool { return false }
+func (soundStub) SetSpatializationEnabled(bool) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) PinnedListenerIndex() uint32         { return 0 }
+func (soundStub) SetPinnedListenerIndex(uint32) error { return errUnsupportedPlatform }
+func (soundStub) ListenerIndex() uint32               { return 0 }
+func (soundStub) Position() Vec3                      { return Vec3{} }
+func (soundStub) SetPosition(Vec3) error              { return errUnsupportedPlatform }
+func (soundStub) Direction() Vec3                     { return Vec3{} }
+func (soundStub) SetDirection(Vec3) error             { return errUnsupportedPlatform }
+func (soundStub) Velocity() Vec3                      { return Vec3{} }
+func (soundStub) SetVelocity(Vec3) error              { return errUnsupportedPlatform }
+func (soundStub) DirectionToListener() Vec3           { return Vec3{} }
+func (soundStub) AttenuationModel() AttenuationModel  { return AttenuationNone }
+func (soundStub) SetAttenuationModel(AttenuationModel) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) Positioning() Positioning          { return PositioningAbsolute }
+func (soundStub) SetPositioning(Positioning) error  { return errUnsupportedPlatform }
+func (soundStub) Rolloff() float32                  { return 0 }
+func (soundStub) SetRolloff(float32) error          { return errUnsupportedPlatform }
+func (soundStub) MinGain() float32                  { return 0 }
+func (soundStub) SetMinGain(float32) error          { return errUnsupportedPlatform }
+func (soundStub) MaxGain() float32                  { return 0 }
+func (soundStub) SetMaxGain(float32) error          { return errUnsupportedPlatform }
+func (soundStub) MinDistance() float32              { return 0 }
+func (soundStub) SetMinDistance(float32) error      { return errUnsupportedPlatform }
+func (soundStub) MaxDistance() float32              { return 0 }
+func (soundStub) SetMaxDistance(float32) error      { return errUnsupportedPlatform }
+func (soundStub) Cone() (float32, float32, float32) { return 0, 0, 0 }
+func (soundStub) SetCone(float32, float32, float32) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) DopplerFactor() float32 { return 0 }
+func (soundStub) SetDopplerFactor(float32) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) DirectionalAttenuationFactor() float32 { return 0 }
+func (soundStub) SetDirectionalAttenuationFactor(float32) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) CurrentFadeVolume() float32 { return 0 }
+func (soundStub) SetFade(float32, float32, uint64) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) SetFadeInDuration(float32, float32, time.Duration) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) SetFadeStart(float32, float32, uint64, uint64) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) SetStartTime(uint64) error { return errUnsupportedPlatform }
+func (soundStub) SetStartTimeInDuration(time.Duration) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) SetStopTime(uint64) error { return errUnsupportedPlatform }
+func (soundStub) SetStopTimeInDuration(time.Duration) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) SetStopTimeWithFade(uint64, uint64) error {
+	return errUnsupportedPlatform
+}
+func (soundStub) IsPlaying() bool         { return false }
+func (soundStub) TimeInPCMFrames() uint64 { return 0 }
+
+type SoundGroup struct{ soundStub }
+
+func (*Engine) NewSoundGroup(SoundGroupConfig) (*SoundGroup, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*SoundGroup) Close() error { return errUnsupportedPlatform }
+
+type SoundCallback func(*Sound)
+
+type Sound struct{ soundStub }
+
+func (*Engine) NewSoundFromFile(string, SoundConfig) (*Sound, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Engine) NewSoundFromDataSource(DataSource, SoundConfig) (*Sound, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Sound) NewCopy(SoundConfig) (*Sound, error) { return nil, errUnsupportedPlatform }
+func (*Sound) DataSource() DataSource              { return nil }
+func (*Sound) SetLooping(bool) error               { return errUnsupportedPlatform }
+func (*Sound) IsLooping() bool                     { return false }
+func (*Sound) AtEnd() bool                         { return false }
+func (*Sound) SeekToPCMFrame(uint64) error         { return errUnsupportedPlatform }
+func (*Sound) SeekToDuration(time.Duration) error  { return errUnsupportedPlatform }
+func (*Sound) DataFormat() (Format, uint32, uint32, error) {
+	return FormatUnknown, 0, 0, errUnsupportedPlatform
+}
+func (*Sound) CursorInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*Sound) LengthInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*Sound) SetEndCallback(SoundCallback) error { return errUnsupportedPlatform }
+func (*Sound) Close() error                       { return errUnsupportedPlatform }

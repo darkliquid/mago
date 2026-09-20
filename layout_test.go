@@ -342,6 +342,44 @@ func TestMirroredStructLayouts(t *testing.T) {
 	}
 
 	checkNodeLayouts(t, probe)
+	checkEngineLayouts(t, probe)
+}
+
+// checkEngineLayouts validates the engine config mirror. Go builds that struct
+// rather than calling ma_engine_config_init, so every member has to land at the
+// same offset, including the two resampler configs at the end.
+func checkEngineLayouts(t *testing.T, probe map[string]uint64) {
+	t.Helper()
+
+	checkSize(t, probe, "ma_engine_config", unsafe.Sizeof(engineConfigNative{}))
+	engineCfg := engineConfigNative{}
+	checkOffsets(t, probe, "ma_engine_config", map[string]uintptr{
+		"pResourceManager":                   unsafe.Offsetof(engineCfg.ResourceManager),
+		"pContext":                           unsafe.Offsetof(engineCfg.Context),
+		"pDevice":                            unsafe.Offsetof(engineCfg.Device),
+		"pPlaybackDeviceID":                  unsafe.Offsetof(engineCfg.PlaybackDeviceID),
+		"dataCallback":                       unsafe.Offsetof(engineCfg.DataCallback),
+		"notificationCallback":               unsafe.Offsetof(engineCfg.NotificationCallback),
+		"pLog":                               unsafe.Offsetof(engineCfg.Log),
+		"listenerCount":                      unsafe.Offsetof(engineCfg.ListenerCount),
+		"channels":                           unsafe.Offsetof(engineCfg.Channels),
+		"sampleRate":                         unsafe.Offsetof(engineCfg.SampleRate),
+		"periodSizeInFrames":                 unsafe.Offsetof(engineCfg.PeriodSizeInFrames),
+		"periodSizeInMilliseconds":           unsafe.Offsetof(engineCfg.PeriodSizeInMilliseconds),
+		"gainSmoothTimeInFrames":             unsafe.Offsetof(engineCfg.GainSmoothTimeInFrames),
+		"gainSmoothTimeInMilliseconds":       unsafe.Offsetof(engineCfg.GainSmoothTimeInMilliseconds),
+		"defaultVolumeSmoothTimeInPCMFrames": unsafe.Offsetof(engineCfg.DefaultVolumeSmoothTimeInPCMFrames),
+		"preMixStackSizeInBytes":             unsafe.Offsetof(engineCfg.PreMixStackSizeInBytes),
+		"allocationCallbacks":                unsafe.Offsetof(engineCfg.AllocationCallbacks),
+		"noAutoStart":                        unsafe.Offsetof(engineCfg.NoAutoStart),
+		"noDevice":                           unsafe.Offsetof(engineCfg.NoDevice),
+		"monoExpansionMode":                  unsafe.Offsetof(engineCfg.MonoExpansionMode),
+		"pResourceManagerVFS":                unsafe.Offsetof(engineCfg.ResourceManagerVFS),
+		"onProcess":                          unsafe.Offsetof(engineCfg.OnProcess),
+		"pProcessUserData":                   unsafe.Offsetof(engineCfg.ProcessUserData),
+		"resourceManagerResampling":          unsafe.Offsetof(engineCfg.ResourceManagerResampling),
+		"pitchResampling":                    unsafe.Offsetof(engineCfg.PitchResampling),
+	})
 }
 
 // checkNodeLayouts validates the node graph mirrors. The node configs are the

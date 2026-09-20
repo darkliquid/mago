@@ -3,7 +3,7 @@
  *
  * This file is deliberately tiny. mago is a zero-CGO project: the Go side loads
  * this shared library with purego and binds exported `ma_*` symbols directly.
- * C is only allowed for the three things purego cannot do:
+ * C is only allowed for the four things purego cannot do:
  *
  *   1. Raw allocation (mago_alloc/mago_free). Go cannot call malloc without
  *      cgo, and the sizes of miniaudio's objects are not available to Go.
@@ -16,6 +16,9 @@
  *      data and notification callbacks receive no `pUserData`; user data travels
  *      through `pDevice->pUserData`, which Go cannot read without mirroring the
  *      enormous ma_device struct.
+ *   4. Struct-returning getters. purego.RegisterLibFunc panics on a struct return
+ *      outside darwin and linux, so the ma_vec3f accessors are turned into
+ *      out-parameter calls.
  *
  * Everything else (context init/uninit, device enumeration, logging) is bound
  * directly from Go against the exported `ma_*` symbols. Do not add wrappers for
@@ -98,7 +101,9 @@ enum mago_object_type
     MAGO_OBJECT_PEAK_NODE         = 40,
     MAGO_OBJECT_LOSHELF_NODE      = 41,
     MAGO_OBJECT_HISHELF_NODE      = 42,
-    MAGO_OBJECT_DELAY_NODE        = 43
+    MAGO_OBJECT_DELAY_NODE        = 43,
+    MAGO_OBJECT_ENGINE            = 44,
+    MAGO_OBJECT_SOUND             = 45
 };
 
 MAGO_API void* mago_alloc(int type)
@@ -148,6 +153,8 @@ MAGO_API void* mago_alloc(int type)
         case MAGO_OBJECT_LOSHELF_NODE:      return calloc(1, sizeof(ma_loshelf_node));
         case MAGO_OBJECT_HISHELF_NODE:      return calloc(1, sizeof(ma_hishelf_node));
         case MAGO_OBJECT_DELAY_NODE:        return calloc(1, sizeof(ma_delay_node));
+        case MAGO_OBJECT_ENGINE:            return calloc(1, sizeof(ma_engine));
+        case MAGO_OBJECT_SOUND:             return calloc(1, sizeof(ma_sound));
         default:                            return NULL;
     }
 }
@@ -734,4 +741,65 @@ MAGO_API void mago_data_source_uninit(ma_data_source* pDataSource)
 
     ma_data_source_uninit(pDataSource);
     free(pDataSource);
+}
+
+/* -------------------------------------------------------------------------
+ * 4. Struct-returning getters.
+ * purego cannot receive a struct return value on every platform mago targets:
+ * RegisterLibFunc panics for struct returns anywhere other than darwin and
+ * linux. ma_vec3f is three floats, so these shims write it through an
+ * out-parameter instead of returning it. Everything else about the engine and
+ * sound API is bound directly.
+ * ---------------------------------------------------------------------- */
+
+static void mago_write_vec3f(ma_vec3f value, float* pOut)
+{
+    if (pOut == NULL)
+    {
+        return;
+    }
+
+    pOut[0] = value.x;
+    pOut[1] = value.y;
+    pOut[2] = value.z;
+}
+
+MAGO_API void mago_engine_listener_get_position(const ma_engine* pEngine, ma_uint32 listenerIndex, float* pOut)
+{
+    mago_write_vec3f(ma_engine_listener_get_position(pEngine, listenerIndex), pOut);
+}
+
+MAGO_API void mago_engine_listener_get_direction(const ma_engine* pEngine, ma_uint32 listenerIndex, float* pOut)
+{
+    mago_write_vec3f(ma_engine_listener_get_direction(pEngine, listenerIndex), pOut);
+}
+
+MAGO_API void mago_engine_listener_get_velocity(const ma_engine* pEngine, ma_uint32 listenerIndex, float* pOut)
+{
+    mago_write_vec3f(ma_engine_listener_get_velocity(pEngine, listenerIndex), pOut);
+}
+
+MAGO_API void mago_engine_listener_get_world_up(const ma_engine* pEngine, ma_uint32 listenerIndex, float* pOut)
+{
+    mago_write_vec3f(ma_engine_listener_get_world_up(pEngine, listenerIndex), pOut);
+}
+
+MAGO_API void mago_sound_get_position(const ma_sound* pSound, float* pOut)
+{
+    mago_write_vec3f(ma_sound_get_position(pSound), pOut);
+}
+
+MAGO_API void mago_sound_get_direction(const ma_sound* pSound, float* pOut)
+{
+    mago_write_vec3f(ma_sound_get_direction(pSound), pOut);
+}
+
+MAGO_API void mago_sound_get_velocity(const ma_sound* pSound, float* pOut)
+{
+    mago_write_vec3f(ma_sound_get_velocity(pSound), pOut);
+}
+
+MAGO_API void mago_sound_get_direction_to_listener(const ma_sound* pSound, float* pOut)
+{
+    mago_write_vec3f(ma_sound_get_direction_to_listener(pSound), pOut);
 }

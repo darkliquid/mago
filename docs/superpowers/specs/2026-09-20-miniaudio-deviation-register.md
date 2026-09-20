@@ -46,10 +46,15 @@ Legend: **P** = originating phase, **Sev** = severity (H high, M medium, L low).
 | D9 | 2/3 | L | Custom channel mixing weights are rejected in the channel converter and the data converter. | `channel.go`, `resample.go` |
 | D19 | 10 | M | Custom nodes are not exposed. `ma_node_init` accepts a caller-supplied `ma_node_vtable`, but reaching it from Go needs `onProcess` and `onGetRequiredInputFrameCount` trampolines plus a bridge object, which belongs with the engine work. | `nodes.go` covers miniaudio's own node types only; `ma_node_init` is not bound |
 | D20 | 10 | L | `ma_node_init_preallocated` and `ma_node_get_heap_size` are not exposed. mago always lets miniaudio own a node's heap. Recorded as a decision, matching D8. | `nodes.go` and `nodegraph.go` allocate with `mago_alloc` and pass NULL allocation callbacks |
+| D23 | 11 | M | `ma_engine_get_device`, `ma_engine_get_log` and `ma_engine_get_resource_manager` are not exposed. Handing out a borrowed `Device` or `Log` would let a caller close something the engine owns, and the resource manager is Phase 12's subject. | `engine.go` exposes only the endpoint and the node graph, both of which refuse to close |
+| D24 | 11 | L | The `_in_milliseconds` and `_in_seconds` variants are not bound. Go `time.Duration` wrappers cover the same ground on top of the frame-based functions, converting with the engine's sample rate exactly as miniaudio's millisecond variants do. | `sound.go` `*InDuration` methods; no `ma_sound_*_in_milliseconds` binding |
+| D25 | 11 | L | `ma_sound_config` and `ma_sound_init_ex`, `ma_sound_init_from_file_w`, and the deprecated `ma_engine_get_time` / `set_time` and `*_config_init` helpers are not bound. The convenience initialisers build that config internally, so Go never has to mirror it. | `sound.go`; `ma_sound_config` has no Go mirror |
+| D26 | 11 | L | `ma_engine_config.onProcess` and the engine's `dataCallback` / `notificationCallback` hooks are not exposed. A device-less engine gives the caller the mixed frames directly, which covers the common use. | `engineConfigNativeFrom` leaves them NULL |
+| D27 | 9 | M | **Fixed in Phase 11.** A Go `DataSource` could never signal end of stream: the bridge returned `MA_SUCCESS` even when the source produced no frames, so miniaudio never set a sound's at-end flag and end callbacks could not fire. The bridge now returns `MA_AT_END` for a zero-frame read. | `datasource.go` `dataSourceReadPtr`; `TestSoundEndCallback` |
 
 ### 2.2 Dead bindings
 
-Ten of 305 registered bindings are never called. Dead bindings are not harmless: they are
+Ten of 404 registered bindings are never called. Dead bindings are not harmless: they are
 symbols we must keep exported and regenerated for seven targets.
 
 | Binding | Notes |
@@ -84,6 +89,7 @@ symbols we must keep exported and regenerated for seven targets.
 | D18 | M | Deviations live only in commit messages and closed beads. This document is the first durable register; keeping it current is a process obligation, not a task. |
 | D21 | L | The Phase 10 section of the program spec named APIs that do not exist in miniaudio 0.11.25: `ma_node_graph_get_node_count`, and the `ma_lpf1_node` / `ma_lpf2_node` / `ma_hpf1_node` / `ma_hpf2_node` / `ma_bpf2_node` / `ma_notch2_node` / `ma_peak2_node` / `ma_loshelf2_node` / `ma_hishelf2_node` filter-node variants. The spec hedged with "verify exact names at implementation time"; Phase 10 implemented the real surface, and the graph's introspection is `ma_node_graph_get_channels` / `get_time` / `set_time` / `get_processing_size_in_frames`. |
 | D22 | L | Phase 10 needed a `DataSource` interface stub in `unsupported.go` because `DataSourceNode.Source` returns one, so a sliver of WS1.2 (D16) landed early. The rest of D16 is still open. |
+| D28 | L | Phase 11 settled bead `mago-8a3.12.3`: `audio` stays a pure-Go mixer over a device callback, and `mago.Engine` is a sibling, miniaudio-backed alternative. Making `audio` engine-backed would change its `Clip`/`Stream` model and its threading, and both layers have to stay CGO-free anyway. The README states the split under "Choosing between `audio` and `Engine`". |
 
 ## 3. Remediation roadmap
 
@@ -178,10 +184,11 @@ phases 0-9".
 | WS2 finish half-built behaviour | `mago-8a3.15.2` | D1, D2, D3, D4, D5, D6 |
 | WS3 close API gaps | `mago-8a3.15.3` | D10, D11, D12, D14, D19 (`mago-8a3.15.3.5`) |
 | WS4 test the untested | `mago-8a3.15.4` | D7, D9 |
-| Process | `mago-8a3.15.5` | D18, D21 (`mago-8a3.15.5.1`) |
+| Process | `mago-8a3.15.5` | D18, D21 (`mago-8a3.15.5.1`), D28 |
 
-D20 is a recorded decision rather than work, matching D8. D22 is a note about how
-D16 landed, not a separate task.
+D20, D23, D24, D25 and D26 are recorded decisions rather than work, matching D8.
+D22 is a note about how D16 landed, and D27 was fixed in Phase 11, so neither
+needs a bead.
 
 `mago-8a3.15.3.4` (`*_vfs` variants) is blocked by `mago-8a3.13`, the Phase 12 VFS
 decision, because the variants cannot be designed before that choice is made.
