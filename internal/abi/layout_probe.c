@@ -136,5 +136,12 @@ int main(void)
     printf("offsetof:ma_decoder_config.ppCustomBackendVTables %zu\n", offsetof(ma_decoder_config, ppCustomBackendVTables));
     printf("offsetof:ma_decoder_config.customBackendCount %zu\n", offsetof(ma_decoder_config, customBackendCount));
     printf("offsetof:ma_decoder_config.pCustomBackendUserData %zu\n", offsetof(ma_decoder_config, pCustomBackendUserData));
+
+    printf("sizeof:ma_encoder_config %zu\n", sizeof(ma_encoder_config));
+    printf("offsetof:ma_encoder_config.encodingFormat %zu\n", offsetof(ma_encoder_config, encodingFormat));
+    printf("offsetof:ma_encoder_config.format %zu\n", offsetof(ma_encoder_config, format));
+    printf("offsetof:ma_encoder_config.channels %zu\n", offsetof(ma_encoder_config, channels));
+    printf("offsetof:ma_encoder_config.sampleRate %zu\n", offsetof(ma_encoder_config, sampleRate));
+    printf("offsetof:ma_encoder_config.allocationCallbacks %zu\n", offsetof(ma_encoder_config, allocationCallbacks));
     return 0;
 }

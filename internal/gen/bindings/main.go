@@ -254,6 +254,10 @@ var functions = []functionSpec{
 	{FieldName: "maDecoderGetCursorInPCMFrames", Symbol: "ma_decoder_get_cursor_in_pcm_frames", Type: "func(*decoderHandle, *uint64) Result"},
 	{FieldName: "maDecoderGetLengthInPCMFrames", Symbol: "ma_decoder_get_length_in_pcm_frames", Type: "func(*decoderHandle, *uint64) Result"},
 	{FieldName: "maDecoderGetAvailableFrames", Symbol: "ma_decoder_get_available_frames", Type: "func(*decoderHandle, *uint64) Result"},
+	{FieldName: "maEncoderInitFile", Symbol: "ma_encoder_init_file", Type: "func(string, *encoderConfigNative, *encoderHandle) Result"},
+	{FieldName: "maEncoderInit", Symbol: "ma_encoder_init", Type: "func(uintptr, uintptr, uintptr, *encoderConfigNative, *encoderHandle) Result"},
+	{FieldName: "maEncoderUninit", Symbol: "ma_encoder_uninit", Type: "func(*encoderHandle)"},
+	{FieldName: "maEncoderWritePCMFrames", Symbol: "ma_encoder_write_pcm_frames", Type: "func(*encoderHandle, unsafe.Pointer, uint64, *uint64) Result"},
 }
 
 var baseConstants = []constSpec{

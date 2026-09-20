@@ -156,6 +156,7 @@ const (
 	magoObjectHiShelf2         int32 = 28
 	magoObjectDelay            int32 = 29
 	magoObjectDecoder          int32 = 30
+	magoObjectEncoder          int32 = 31
 )
 
 type channelConverterHandle struct{}
@@ -394,6 +395,16 @@ type loshelf2Handle struct{}
 type hishelf2Handle struct{}
 type delayHandle struct{}
 type decoderHandle struct{}
+type encoderHandle struct{}
+
+// encoderConfigNative mirrors ma_encoder_config. Validated by layout_test.go.
+type encoderConfigNative struct {
+	EncodingFormat      EncodingFormat
+	Format              Format
+	Channels            uint32
+	SampleRate          uint32
+	AllocationCallbacks allocationCallbacksNative
+}
 
 // EncodingFormat mirrors ma_encoding_format.
 type EncodingFormat int32

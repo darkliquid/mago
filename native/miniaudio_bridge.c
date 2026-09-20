@@ -79,7 +79,8 @@ enum mago_object_type
     MAGO_OBJECT_LOSHELF2          = 27,
     MAGO_OBJECT_HISHELF2          = 28,
     MAGO_OBJECT_DELAY             = 29,
-    MAGO_OBJECT_DECODER           = 30
+    MAGO_OBJECT_DECODER           = 30,
+    MAGO_OBJECT_ENCODER           = 31
 };
 
 MAGO_API void* mago_alloc(int type)
@@ -116,6 +117,7 @@ MAGO_API void* mago_alloc(int type)
         case MAGO_OBJECT_HISHELF2:          return calloc(1, sizeof(ma_hishelf2));
         case MAGO_OBJECT_DELAY:             return calloc(1, sizeof(ma_delay));
         case MAGO_OBJECT_DECODER:           return calloc(1, sizeof(ma_decoder));
+        case MAGO_OBJECT_ENCODER:           return calloc(1, sizeof(ma_encoder));
         default:                            return NULL;
     }
 }
