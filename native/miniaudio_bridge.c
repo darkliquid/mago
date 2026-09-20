@@ -535,3 +535,173 @@ MAGO_API ma_result mago_encoder_init(
     *ppBridge = pBridge;
     return MA_SUCCESS;
 }
+
+/* -------------------------------------------------------------------------
+ * Custom data source bridge.
+ * ma_data_source_vtable callbacks receive the ma_data_source itself, not our
+ * user data, so Go cannot map them back to a source without knowing the object
+ * layout. mago_data_source puts ma_data_source_base first, stores the Go
+ * callbacks and a token, and forwards through this static vtable. Category 3.
+ * ---------------------------------------------------------------------- */
+
+typedef ma_result (*mago_ds_read_cb)(uintptr_t userData, void* pFramesOut, ma_uint64 frameCount, ma_uint64* pFramesRead);
+typedef ma_result (*mago_ds_seek_cb)(uintptr_t userData, ma_uint64 frameIndex);
+typedef ma_result (*mago_ds_format_cb)(uintptr_t userData, ma_format* pFormat, ma_uint32* pChannels, ma_uint32* pSampleRate, ma_channel* pChannelMap, size_t channelMapCap);
+typedef ma_result (*mago_ds_cursor_cb)(uintptr_t userData, ma_uint64* pCursor);
+typedef ma_result (*mago_ds_length_cb)(uintptr_t userData, ma_uint64* pLength);
+typedef ma_result (*mago_ds_looping_cb)(uintptr_t userData, ma_bool32 isLooping);
+
+typedef struct
+{
+    ma_data_source_base base; /* Must be first. */
+    uintptr_t onRead;
+    uintptr_t onSeek;
+    uintptr_t onGetDataFormat;
+    uintptr_t onGetCursor;
+    uintptr_t onGetLength;
+    uintptr_t onSetLooping;
+    uintptr_t userData;
+} mago_data_source;
+
+static ma_result mago_data_source_on_read(ma_data_source* pDataSource, void* pFramesOut, ma_uint64 frameCount, ma_uint64* pFramesRead)
+{
+    mago_data_source* pDataSource2 = (mago_data_source*)pDataSource;
+
+    if (pDataSource2 == NULL || pDataSource2->onRead == 0)
+    {
+        return MA_INVALID_ARGS;
+    }
+
+    return ((mago_ds_read_cb)pDataSource2->onRead)(pDataSource2->userData, pFramesOut, frameCount, pFramesRead);
+}
+
+static ma_result mago_data_source_on_seek(ma_data_source* pDataSource, ma_uint64 frameIndex)
+{
+    mago_data_source* pDataSource2 = (mago_data_source*)pDataSource;
+
+    if (pDataSource2 == NULL || pDataSource2->onSeek == 0)
+    {
+        return MA_NOT_IMPLEMENTED;
+    }
+
+    return ((mago_ds_seek_cb)pDataSource2->onSeek)(pDataSource2->userData, frameIndex);
+}
+
+static ma_result mago_data_source_on_get_data_format(ma_data_source* pDataSource, ma_format* pFormat, ma_uint32* pChannels, ma_uint32* pSampleRate, ma_channel* pChannelMap, size_t channelMapCap)
+{
+    mago_data_source* pDataSource2 = (mago_data_source*)pDataSource;
+
+    if (pDataSource2 == NULL || pDataSource2->onGetDataFormat == 0)
+    {
+        return MA_NOT_IMPLEMENTED;
+    }
+
+    return ((mago_ds_format_cb)pDataSource2->onGetDataFormat)(pDataSource2->userData, pFormat, pChannels, pSampleRate, pChannelMap, channelMapCap);
+}
+
+static ma_result mago_data_source_on_get_cursor(ma_data_source* pDataSource, ma_uint64* pCursor)
+{
+    mago_data_source* pDataSource2 = (mago_data_source*)pDataSource;
+
+    if (pDataSource2 == NULL || pDataSource2->onGetCursor == 0)
+    {
+        return MA_NOT_IMPLEMENTED;
+    }
+
+    return ((mago_ds_cursor_cb)pDataSource2->onGetCursor)(pDataSource2->userData, pCursor);
+}
+
+static ma_result mago_data_source_on_get_length(ma_data_source* pDataSource, ma_uint64* pLength)
+{
+    mago_data_source* pDataSource2 = (mago_data_source*)pDataSource;
+
+    if (pDataSource2 == NULL || pDataSource2->onGetLength == 0)
+    {
+        return MA_NOT_IMPLEMENTED;
+    }
+
+    return ((mago_ds_length_cb)pDataSource2->onGetLength)(pDataSource2->userData, pLength);
+}
+
+static ma_result mago_data_source_on_set_looping(ma_data_source* pDataSource, ma_bool32 isLooping)
+{
+    mago_data_source* pDataSource2 = (mago_data_source*)pDataSource;
+
+    if (pDataSource2 == NULL || pDataSource2->onSetLooping == 0)
+    {
+        return MA_NOT_IMPLEMENTED;
+    }
+
+    return ((mago_ds_looping_cb)pDataSource2->onSetLooping)(pDataSource2->userData, isLooping);
+}
+
+static const ma_data_source_vtable g_mago_data_source_vtable =
+{
+    mago_data_source_on_read,
+    mago_data_source_on_seek,
+    mago_data_source_on_get_data_format,
+    mago_data_source_on_get_cursor,
+    mago_data_source_on_get_length,
+    mago_data_source_on_set_looping,
+    0
+};
+
+MAGO_API ma_result mago_data_source_init(
+    uintptr_t onRead,
+    uintptr_t onSeek,
+    uintptr_t onGetDataFormat,
+    uintptr_t onGetCursor,
+    uintptr_t onGetLength,
+    uintptr_t onSetLooping,
+    uintptr_t userData,
+    ma_data_source** ppDataSource)
+{
+    mago_data_source* pDataSource;
+    ma_data_source_config config;
+    ma_result result;
+
+    if (ppDataSource == NULL)
+    {
+        return MA_INVALID_ARGS;
+    }
+
+    *ppDataSource = NULL;
+
+    pDataSource = (mago_data_source*)calloc(1, sizeof(mago_data_source));
+    if (pDataSource == NULL)
+    {
+        return MA_OUT_OF_MEMORY;
+    }
+
+    pDataSource->onRead = onRead;
+    pDataSource->onSeek = onSeek;
+    pDataSource->onGetDataFormat = onGetDataFormat;
+    pDataSource->onGetCursor = onGetCursor;
+    pDataSource->onGetLength = onGetLength;
+    pDataSource->onSetLooping = onSetLooping;
+    pDataSource->userData = userData;
+
+    config = ma_data_source_config_init();
+    config.vtable = &g_mago_data_source_vtable;
+
+    result = ma_data_source_init(&config, &pDataSource->base);
+    if (result != MA_SUCCESS)
+    {
+        free(pDataSource);
+        return result;
+    }
+
+    *ppDataSource = (ma_data_source*)pDataSource;
+    return MA_SUCCESS;
+}
+
+MAGO_API void mago_data_source_uninit(ma_data_source* pDataSource)
+{
+    if (pDataSource == NULL)
+    {
+        return;
+    }
+
+    ma_data_source_uninit(pDataSource);
+    free(pDataSource);
+}

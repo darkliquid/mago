@@ -258,6 +258,14 @@ var functions = []functionSpec{
 	{FieldName: "magoEncoderInit", Symbol: "mago_encoder_init", Type: "func(*encoderHandle, *encoderConfigNative, uintptr, uintptr, uintptr, **encoderBridgeNative) Result"},
 	{FieldName: "maEncoderUninit", Symbol: "ma_encoder_uninit", Type: "func(*encoderHandle)"},
 	{FieldName: "maEncoderWritePCMFrames", Symbol: "ma_encoder_write_pcm_frames", Type: "func(*encoderHandle, unsafe.Pointer, uint64, *uint64) Result"},
+	{FieldName: "magoDataSourceInit", Symbol: "mago_data_source_init", Type: "func(uintptr, uintptr, uintptr, uintptr, uintptr, uintptr, uintptr, **dataSourceHandle) Result"},
+	{FieldName: "magoDataSourceUninit", Symbol: "mago_data_source_uninit", Type: "func(*dataSourceHandle)"},
+	{FieldName: "maDataSourceReadPCMFrames", Symbol: "ma_data_source_read_pcm_frames", Type: "func(*dataSourceHandle, unsafe.Pointer, uint64, *uint64) Result"},
+	{FieldName: "maDataSourceSeekToPCMFrame", Symbol: "ma_data_source_seek_to_pcm_frame", Type: "func(*dataSourceHandle, uint64) Result"},
+	{FieldName: "maDataSourceGetDataFormat", Symbol: "ma_data_source_get_data_format", Type: "func(*dataSourceHandle, *Format, *uint32, *uint32, *uint8, uintptr) Result"},
+	{FieldName: "maDataSourceGetCursorInPCMFrames", Symbol: "ma_data_source_get_cursor_in_pcm_frames", Type: "func(*dataSourceHandle, *uint64) Result"},
+	{FieldName: "maDataSourceGetLengthInPCMFrames", Symbol: "ma_data_source_get_length_in_pcm_frames", Type: "func(*dataSourceHandle, *uint64) Result"},
+	{FieldName: "maDataSourceSetLooping", Symbol: "ma_data_source_set_looping", Type: "func(*dataSourceHandle, uint32) Result"},
 }
 
 var baseConstants = []constSpec{
