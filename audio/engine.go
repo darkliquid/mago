@@ -182,11 +182,16 @@ func (e *Engine) Devices() ([]DeviceInfo, []DeviceInfo, error) {
 // pure-Go path first; anything else falls back to miniaudio's decoder, which
 // also handles FLAC and MP3.
 func (e *Engine) Load(r io.Reader) (*Clip, error) {
+	if e == nil {
+		return nil, fmt.Errorf("audio: nil engine")
+	}
+
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
 	if clip, wavErr := decodeWAV(bytes.NewReader(data)); wavErr == nil {
+		clip.lib = e.lib
 		return clip, nil
 	}
 	return e.decodeWithDecoder(data)
@@ -246,6 +251,7 @@ func (e *Engine) decodeWithDecoder(data []byte) (*Clip, error) {
 		channels:   int(channels),
 		sampleRate: int(sampleRate),
 		frameCount: len(samples) / int(channels),
+		lib:        e.lib,
 	}, nil
 }
 

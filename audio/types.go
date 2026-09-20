@@ -42,6 +42,7 @@ type Clip struct {
 	channels   int
 	sampleRate int
 	frameCount int
+	lib        *mago.Library
 }
 
 // Stream represents one active or paused playback instance of a Clip.
