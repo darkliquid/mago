@@ -16,7 +16,8 @@
 - **ZERO CGO.** `mise run check-cgo` must pass.
 - **Minimal C.** One `mago_object_type` value plus its `mago_alloc` case.
 - **Safe-slice APIs.** Public write methods take Go slices; examples must not import `unsafe`.
-- **One native rebuild for the phase** (Task 1).
+- **Two native rebuilds for the phase.** Task 1 adds the allocation type; Task 2 adds the
+  encoder callback bridge (see below), which is a second C change.
 - **Never hand-edit** `zz_generated.bindings.go` or `embed_*.go`.
 - **Mirrors are validated** by `internal/abi` + `layout_test.go`.
 - **Commit style:** conventional commits, imperative subject under 72 chars, body explaining why.
@@ -36,6 +37,10 @@
   - `ma_encoder_seek_proc(ma_encoder*, ma_int64 offset, ma_seek_origin origin)`
 - `ma_seek_origin` is start 0, current 1, end 2.
 - The encoder needs `onSeek` because the container header is patched when the encoder is uninitialized, so a plain `io.Writer` is not enough: buffer in Go and expose the finished bytes.
+- **`ma_encoder_init`'s callbacks receive the `ma_encoder`, not our user data.** Reading
+  their sink from Go would mean mirroring `ma_encoder`, so the bridge adds a small
+  `mago_encoder_bridge` plus two trampolines and a `mago_encoder_init` wrapper (bridge
+  rule category 3). `ma_encoder` does expose `pUserData`, which the trampolines read.
 - WAV and FLAC encoders are both available (`MA_HAS_FLAC`); `EncodingFormat` already exists from Phase 7.
 - `ma_encoder_write_pcm_frames(encoder, in, frameCount, *pFramesWritten)` reports frames written.
 
