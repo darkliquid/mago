@@ -282,6 +282,7 @@ var baseConstants = []constSpec{
 	{Name: "DeviceNotStarted", Type: "Result", Value: "-302"},
 	{Name: "DeviceNotStopped", Type: "Result", Value: "-303"},
 	{Name: "AtEnd", Type: "Result", Value: "-17"},
+	{Name: "NotImplemented", Type: "Result", Value: "-29"},
 	{Name: "BackendWASAPI", Type: "Backend", Value: "0"},
 	{Name: "BackendDSound", Type: "Backend", Value: "1"},
 	{Name: "BackendWinMM", Type: "Backend", Value: "2"},
