@@ -2,7 +2,10 @@ package audio
 
 import (
 	"fmt"
+	"io"
 	"time"
+
+	"github.com/darkliquid/mago"
 )
 
 // Duration returns the clip duration based on the decoded frame count and sample rate.
@@ -24,6 +27,53 @@ func (c *Clip) Channels() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.channels
+}
+
+// Encode renders the clip as WAV bytes.
+//
+// The clip must have been loaded through an Engine so that it has a library to
+// encode with.
+func (c *Clip) Encode() ([]byte, error) {
+	if c == nil {
+		return nil, fmt.Errorf("audio: nil clip")
+	}
+	if c.lib == nil {
+		return nil, fmt.Errorf("audio: clip has no library; load it through an Engine")
+	}
+
+	c.mu.RLock()
+	samples := c.samples
+	channels := c.channels
+	sampleRate := c.sampleRate
+	c.mu.RUnlock()
+
+	if channels <= 0 || sampleRate <= 0 {
+		return nil, fmt.Errorf("audio: clip has no samples to encode")
+	}
+
+	encoder, err := c.lib.NewEncoderWriter(mago.DefaultEncoderConfig(uint32(channels), uint32(sampleRate)))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = encoder.Close() }()
+
+	if _, err := encoder.WriteF32(samples); err != nil {
+		return nil, err
+	}
+	if err := encoder.Finish(); err != nil {
+		return nil, err
+	}
+	return encoder.Bytes(), nil
+}
+
+// WriteWAV writes the clip to w as a WAV stream.
+func (c *Clip) WriteWAV(w io.Writer) error {
+	data, err := c.Encode()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(data)
+	return err
 }
 
 // Release frees the clip's decoded sample buffer.

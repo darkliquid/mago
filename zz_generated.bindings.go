@@ -300,6 +300,10 @@ type bindingSet struct {
 	maDecoderGetCursorInPCMFrames                func(*decoderHandle, *uint64) Result
 	maDecoderGetLengthInPCMFrames                func(*decoderHandle, *uint64) Result
 	maDecoderGetAvailableFrames                  func(*decoderHandle, *uint64) Result
+	maEncoderInitFile                            func(string, *encoderConfigNative, *encoderHandle) Result
+	magoEncoderInit                              func(*encoderHandle, *encoderConfigNative, uintptr, uintptr, uintptr, **encoderBridgeNative) Result
+	maEncoderUninit                              func(*encoderHandle)
+	maEncoderWritePCMFrames                      func(*encoderHandle, unsafe.Pointer, uint64, *uint64) Result
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -533,6 +537,10 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maDecoderGetCursorInPCMFrames, handle, "ma_decoder_get_cursor_in_pcm_frames")
 	purego.RegisterLibFunc(&b.maDecoderGetLengthInPCMFrames, handle, "ma_decoder_get_length_in_pcm_frames")
 	purego.RegisterLibFunc(&b.maDecoderGetAvailableFrames, handle, "ma_decoder_get_available_frames")
+	purego.RegisterLibFunc(&b.maEncoderInitFile, handle, "ma_encoder_init_file")
+	purego.RegisterLibFunc(&b.magoEncoderInit, handle, "mago_encoder_init")
+	purego.RegisterLibFunc(&b.maEncoderUninit, handle, "ma_encoder_uninit")
+	purego.RegisterLibFunc(&b.maEncoderWritePCMFrames, handle, "ma_encoder_write_pcm_frames")
 }
 
 var _ unsafe.Pointer

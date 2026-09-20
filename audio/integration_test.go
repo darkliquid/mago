@@ -162,3 +162,45 @@ func extensibleTestWAV(t *testing.T, samples []float32, channels int, sampleRate
 	wav.Write(pcm.Bytes())
 	return wav.Bytes()
 }
+
+func TestClipEncodesToWAV(t *testing.T) {
+	libPath := testlib.BuildRuntimeLibrary(t, "..")
+
+	engine, err := Open(Config{
+		LibraryPath:        libPath,
+		Backends:           []mago.Backend{mago.BackendNull},
+		SampleRate:         48000,
+		Channels:           1,
+		PeriodSizeInFrames: 64,
+		DeviceIndex:        -1,
+	})
+	if err != nil {
+		t.Fatalf("open engine: %v", err)
+	}
+	defer func() { _ = engine.Close() }()
+
+	samples := make([]float32, 256)
+	for i := range samples {
+		samples[i] = 0.25
+	}
+	clip, err := engine.Load(bytes.NewReader(mustTestWAV(t, samples, 1, 48000)))
+	if err != nil {
+		t.Fatalf("load clip: %v", err)
+	}
+
+	encoded, err := clip.Encode()
+	if err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	if len(encoded) < 44 || string(encoded[0:4]) != "RIFF" || string(encoded[8:12]) != "WAVE" {
+		t.Fatalf("encoded output is not a WAV stream: % x", encoded[:12])
+	}
+
+	var buf bytes.Buffer
+	if err := clip.WriteWAV(&buf); err != nil {
+		t.Fatalf("WriteWAV: %v", err)
+	}
+	if buf.Len() != len(encoded) {
+		t.Fatalf("WriteWAV wrote %d bytes, Encode produced %d", buf.Len(), len(encoded))
+	}
+}

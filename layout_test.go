@@ -320,4 +320,24 @@ func TestMirroredStructLayouts(t *testing.T) {
 			t.Errorf("offsetof ma_decoder_config.%s: mirror %d, header %d", name, got, want)
 		}
 	}
+
+	if got, want := uint64(unsafe.Sizeof(encoderConfigNative{})), probe["sizeof:ma_encoder_config"]; got != want {
+		t.Errorf("sizeof encoderConfigNative: mirror %d, header %d", got, want)
+	}
+	encoderCfg := encoderConfigNative{}
+	encoderOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"encodingFormat":      {unsafe.Offsetof(encoderCfg.EncodingFormat), "offsetof:ma_encoder_config.encodingFormat"},
+		"format":              {unsafe.Offsetof(encoderCfg.Format), "offsetof:ma_encoder_config.format"},
+		"channels":            {unsafe.Offsetof(encoderCfg.Channels), "offsetof:ma_encoder_config.channels"},
+		"sampleRate":          {unsafe.Offsetof(encoderCfg.SampleRate), "offsetof:ma_encoder_config.sampleRate"},
+		"allocationCallbacks": {unsafe.Offsetof(encoderCfg.AllocationCallbacks), "offsetof:ma_encoder_config.allocationCallbacks"},
+	}
+	for name, check := range encoderOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_encoder_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
 }

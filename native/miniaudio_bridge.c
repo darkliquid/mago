@@ -79,7 +79,8 @@ enum mago_object_type
     MAGO_OBJECT_LOSHELF2          = 27,
     MAGO_OBJECT_HISHELF2          = 28,
     MAGO_OBJECT_DELAY             = 29,
-    MAGO_OBJECT_DECODER           = 30
+    MAGO_OBJECT_DECODER           = 30,
+    MAGO_OBJECT_ENCODER           = 31
 };
 
 MAGO_API void* mago_alloc(int type)
@@ -116,6 +117,7 @@ MAGO_API void* mago_alloc(int type)
         case MAGO_OBJECT_HISHELF2:          return calloc(1, sizeof(ma_hishelf2));
         case MAGO_OBJECT_DELAY:             return calloc(1, sizeof(ma_delay));
         case MAGO_OBJECT_DECODER:           return calloc(1, sizeof(ma_decoder));
+        case MAGO_OBJECT_ENCODER:           return calloc(1, sizeof(ma_encoder));
         default:                            return NULL;
     }
 }
@@ -439,4 +441,97 @@ MAGO_API void mago_context_config_set_log(void* pConfig, ma_log* pLog)
     {
         ((ma_context_config*)pConfig)->pLog = pLog;
     }
+}
+
+/* -------------------------------------------------------------------------
+ * Encoder callback bridge.
+ * ma_encoder_init's callbacks receive the encoder, not our user data, so Go
+ * cannot map them back to a sink without reading ma_encoder's internals. These
+ * trampolines read pEncoder->pUserData (a mago_encoder_bridge) and forward to
+ * the Go callbacks. This is category 3 in the bridge rules.
+ * ---------------------------------------------------------------------- */
+
+typedef ma_result (*mago_encoder_write_callback)(uintptr_t userData, void* pBufferIn, size_t bytesToWrite, size_t* pBytesWritten);
+typedef ma_result (*mago_encoder_seek_callback)(uintptr_t userData, int64_t offset, uint32_t origin);
+
+typedef struct
+{
+    mago_encoder_write_callback write;
+    mago_encoder_seek_callback seek;
+    uintptr_t userData;
+} mago_encoder_bridge;
+
+static ma_result mago_on_encoder_write(ma_encoder* pEncoder, const void* pBufferIn, size_t bytesToWrite, size_t* pBytesWritten)
+{
+    mago_encoder_bridge* pBridge;
+
+    if (pEncoder == NULL)
+    {
+        return MA_INVALID_ARGS;
+    }
+
+    pBridge = (mago_encoder_bridge*)pEncoder->pUserData;
+    if (pBridge == NULL || pBridge->write == NULL)
+    {
+        return MA_INVALID_ARGS;
+    }
+
+    return pBridge->write(pBridge->userData, (void*)pBufferIn, bytesToWrite, pBytesWritten);
+}
+
+static ma_result mago_on_encoder_seek(ma_encoder* pEncoder, ma_int64 offset, ma_seek_origin origin)
+{
+    mago_encoder_bridge* pBridge;
+
+    if (pEncoder == NULL)
+    {
+        return MA_INVALID_ARGS;
+    }
+
+    pBridge = (mago_encoder_bridge*)pEncoder->pUserData;
+    if (pBridge == NULL || pBridge->seek == NULL)
+    {
+        return MA_INVALID_ARGS;
+    }
+
+    return pBridge->seek(pBridge->userData, (int64_t)offset, (uint32_t)origin);
+}
+
+MAGO_API ma_result mago_encoder_init(
+    ma_encoder* pEncoder,
+    const ma_encoder_config* pConfig,
+    uintptr_t onWrite,
+    uintptr_t onSeek,
+    uintptr_t userData,
+    mago_encoder_bridge** ppBridge)
+{
+    mago_encoder_bridge* pBridge;
+    ma_result result;
+
+    if (pEncoder == NULL || pConfig == NULL || ppBridge == NULL)
+    {
+        return MA_INVALID_ARGS;
+    }
+
+    *ppBridge = NULL;
+
+    pBridge = (mago_encoder_bridge*)calloc(1, sizeof(mago_encoder_bridge));
+    if (pBridge == NULL)
+    {
+        return MA_OUT_OF_MEMORY;
+    }
+
+    pBridge->write = (mago_encoder_write_callback)onWrite;
+    pBridge->seek = (mago_encoder_seek_callback)onSeek;
+    pBridge->userData = userData;
+
+    result = ma_encoder_init(mago_on_encoder_write, mago_on_encoder_seek, pBridge, pConfig, pEncoder);
+    if (result != MA_SUCCESS)
+    {
+        free(pBridge);
+        return result;
+    }
+
+    *ppBridge = pBridge;
+    return MA_SUCCESS;
 }
