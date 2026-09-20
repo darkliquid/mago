@@ -31,6 +31,43 @@ const (
 	NodeStateStopped NodeState = 1
 )
 
+// MonoExpansionMode mirrors ma_mono_expansion_mode: how a mono sound is spread
+// across the engine's channels when spatialization is disabled.
+type MonoExpansionMode int32
+
+const (
+	MonoExpansionModeDuplicate  MonoExpansionMode = 0
+	MonoExpansionModeAverage    MonoExpansionMode = 1
+	MonoExpansionModeStereoOnly MonoExpansionMode = 2
+)
+
+// PanMode mirrors ma_pan_mode: a balance control or a true pan.
+type PanMode int32
+
+const (
+	PanModeBalance PanMode = 0
+	PanModePan     PanMode = 1
+)
+
+// AttenuationModel mirrors ma_attenuation_model: how a sound fades with distance.
+type AttenuationModel int32
+
+const (
+	AttenuationNone        AttenuationModel = 0
+	AttenuationInverse     AttenuationModel = 1
+	AttenuationLinear      AttenuationModel = 2
+	AttenuationExponential AttenuationModel = 3
+)
+
+// Positioning mirrors ma_positioning: absolute world coordinates or coordinates
+// relative to the listener.
+type Positioning int32
+
+const (
+	PositioningAbsolute Positioning = 0
+	PositioningRelative Positioning = 1
+)
+
 type Version struct {
 	Major    uint32
 	Minor    uint32
@@ -177,6 +214,8 @@ const (
 	magoObjectLoShelfNode      int32 = 41
 	magoObjectHiShelfNode      int32 = 42
 	magoObjectDelayNode        int32 = 43
+	magoObjectEngine           int32 = 44
+	magoObjectSound            int32 = 45
 )
 
 type channelConverterHandle struct{}
@@ -636,4 +675,42 @@ type hishelfNodeConfigNative = loshelfNodeConfigNative
 type delayNodeConfigNative struct {
 	NodeConfig nodeConfigNative
 	Delay      delayConfigNative
+}
+
+type engineHandle struct{}
+type soundHandle struct{}
+
+// engineConfigNative mirrors ma_engine_config. Validated by layout_test.go.
+//
+// Go has to build this struct itself rather than call ma_engine_config_init,
+// which returns by value. The defaults that matter are reproduced in
+// engineConfig: a single listener, duplicate mono expansion, and the two
+// resampler configs, one of which disables low-pass filtering for pitch
+// shifting exactly as ma_engine_config_init does.
+type engineConfigNative struct {
+	ResourceManager                    unsafe.Pointer // ma_resource_manager*, always nil
+	Context                            *contextHandle
+	Device                             unsafe.Pointer // ma_device*, always nil
+	PlaybackDeviceID                   *DeviceID
+	DataCallback                       uintptr
+	NotificationCallback               uintptr
+	Log                                *logHandle
+	ListenerCount                      uint32
+	Channels                           uint32
+	SampleRate                         uint32
+	PeriodSizeInFrames                 uint32
+	PeriodSizeInMilliseconds           uint32
+	GainSmoothTimeInFrames             uint32
+	GainSmoothTimeInMilliseconds       uint32
+	DefaultVolumeSmoothTimeInPCMFrames uint32
+	PreMixStackSizeInBytes             uint32
+	AllocationCallbacks                allocationCallbacksNative
+	NoAutoStart                        uint32
+	NoDevice                           uint32
+	MonoExpansionMode                  MonoExpansionMode
+	ResourceManagerVFS                 unsafe.Pointer // ma_vfs*, always nil
+	OnProcess                          uintptr
+	ProcessUserData                    unsafe.Pointer
+	ResourceManagerResampling          resamplerConfigNative
+	PitchResampling                    resamplerConfigNative
 }

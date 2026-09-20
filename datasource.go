@@ -70,6 +70,13 @@ var (
 			return callbackResult(Error)
 		}
 		writeUint64(framesRead, read)
+		if read == 0 {
+			// miniaudio learns that a data source has finished only from MA_AT_END.
+			// A Go source that produces nothing is therefore treated as exhausted,
+			// which is what lets a sound set its at-end flag and fire its end
+			// callback instead of looping forever on silence.
+			return callbackResult(AtEnd)
+		}
 		return callbackResult(Success)
 	})
 

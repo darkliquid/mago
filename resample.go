@@ -37,6 +37,19 @@ type Resampler struct {
 	channels uint32
 }
 
+// resamplerConfigFrom converts a ResamplerConfig into the native layout shared by
+// ma_resampler_config and ma_data_converter_config.resampling.
+func resamplerConfigFrom(config ResamplerConfig) resamplerConfigNative {
+	return resamplerConfigNative{
+		Format:        config.Format,
+		Channels:      config.Channels,
+		SampleRateIn:  config.SampleRateIn,
+		SampleRateOut: config.SampleRateOut,
+		Algorithm:     config.Algorithm,
+		Linear:        resamplerLinearConfigNative{LPFOrder: config.LinearLPFOrder},
+	}
+}
+
 // NewResampler creates a resampler. Custom resampling backends are rejected.
 func (lib *Library) NewResampler(config ResamplerConfig) (*Resampler, error) {
 	if err := lib.ensureOpen(); err != nil {
@@ -46,14 +59,7 @@ func (lib *Library) NewResampler(config ResamplerConfig) (*Resampler, error) {
 		return nil, fmt.Errorf("mago: custom resampling backends are not supported")
 	}
 
-	native := resamplerConfigNative{
-		Format:        config.Format,
-		Channels:      config.Channels,
-		SampleRateIn:  config.SampleRateIn,
-		SampleRateOut: config.SampleRateOut,
-		Algorithm:     config.Algorithm,
-		Linear:        resamplerLinearConfigNative{LPFOrder: config.LinearLPFOrder},
-	}
+	native := resamplerConfigFrom(config)
 
 	handle := (*resamplerHandle)(lib.bindings.magoAlloc(magoObjectResampler))
 	if handle == nil {

@@ -16,8 +16,9 @@ Three layers:
 1. **Root `mago` package** - low-level, explicit ABI: `Open()`/`Library`,
    `NewContext`, `Devices`, `NewPlaybackDevice`, `Device.Start/Stop/Close`, and
    callback registration, plus the software DSP objects (waveform/noise, filters,
-   delay, decoders/encoders, buffers, resamplers, data sources) and `NodeGraph`
-   for building routing racks. Platform-specific files: `*_supported.go`
+   delay, decoders/encoders, buffers, resamplers, data sources), `NodeGraph` for
+   building routing racks, and `Engine`/`Sound`/`SoundGroup` for miniaudio's
+   high-level mixer. Platform-specific files: `*_supported.go`
    (build-tagged for the supported OSes) and `unsupported.go` (stub API for
    everything else so the package still compiles).
 2. **`audio` subpackage** - higher-level software mixer/engine: WAV decoding,
@@ -92,8 +93,11 @@ cgo files, no `//export`; `CGO_ENABLED=0` always). cgo usage is rejected by
 miniaudio through purego. C may only: (1) allocate raw memory Go cannot size
 (`mago_alloc`/`mago_free`); (2) build a by-value, large config Go must not
 mirror (the `ma_device_config` setter); (3) provide callback trampolines for C
-signatures that carry no `pUserData` (device data/notification). No other
-wrappers: bind `ma_*` symbols directly; every `mago_*` shim must be justified.
+signatures that carry no `pUserData` (device data/notification); (4) return a
+struct to Go, because `purego.RegisterLibFunc` panics on a struct return outside
+darwin and linux, which is why the `ma_vec3f` getters have out-parameter shims.
+No other wrappers: bind `ma_*` symbols directly; every `mago_*` shim must be
+justified.
 
 A struct-returning config is **not** automatically category 2. If the struct has
 a fixed layout and carries no opaque internal pointer, mirror it in `types.go`

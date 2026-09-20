@@ -66,6 +66,7 @@ The current implementation includes:
 - playback device creation
 - callback-based audio output
 - a node graph for building routing racks, with per-bus volume and scheduled node states
+- miniaudio's high-level engine for sounds, groups, fades and 3D spatialization
 - a higher-level `audio` subpackage for ergonomic stream playback
 - a `speaker` subpackage compatible with `gopxl/beep/speaker`
 
@@ -209,6 +210,55 @@ Notes:
 - The included `examples/audio-wav` demo shows loading a WAV stream from memory and changing speed / direction / fades at runtime.
 
 
+## `NodeGraph` and `Engine`
+
+The root package also exposes miniaudio's own mixing layers, for when a single
+callback is not enough.
+
+`mago.NodeGraph` is a routable pipeline: create nodes from the graph (`NodeGraph.NewDataSourceNode`, `NewBiquadNode`,
+`NewSplitterNode`, `NewDelayNode` and the rest), attach their output buses, and read the endpoint frame by frame. Per-bus
+volume and node start/stop times are scheduled on the graph's global clock.
+
+`mago.Engine` is the high-level layer on top of it. It owns a node graph, a resource manager and, unless `NoDevice` is
+set, a playback device:
+
+```go
+engine, err := lib.NewEngine(mago.DefaultEngineConfig(2, 48000))
+music, err := engine.NewSoundGroup(mago.SoundGroupConfig{})
+sound, err := engine.NewSoundFromFile("track.wav", mago.SoundConfig{Group: music})
+
+sound.SetVolume(0.8)
+sound.SetPosition(mago.Vec3{X: 4})
+sound.SetAttenuationModel(mago.AttenuationInverse)
+engine.Listener(0).SetPosition(mago.Vec3{})
+
+sound.Start()
+```
+
+A new `Sound` starts stopped, so call `Start` to hear it; a `SoundGroup` starts playing immediately. Groups nest, so
+their volume and pan cascade down to the sounds attached to them. `Sound.SetEndCallback` reports when a sound finishes,
+and the callback runs on the mixing thread, so signal another goroutine rather than touching the sound from it.
+
+### Choosing between `audio` and `Engine`
+
+The `audio` package is a pure-Go mixer built on a device callback: it decodes WAV itself, owns its own `Clip`/`Stream`
+model, and needs nothing from miniaudio beyond the device. `Engine` is miniaudio's own mixer and resource manager: it
+loads and decodes more formats, spatializes sounds in 3D, and mixes through a node graph you can route into.
+
+Neither replaces the other, and both are CGO-free. Reach for `audio` (or `speaker`) when you want a small, predictable
+software mixer over in-memory data. Reach for `Engine` when you want file loading, groups, fades and 3D positioning
+without writing the mixing yourself.
+
+### Threading
+
+For both layers, only `Read` is lock-free and belongs to a single audio thread. Everything else, including creating and
+closing nodes, sounds and groups, is a control-thread operation. A sound outlives nothing: close sounds and groups
+before the engine, and nodes before the graph, because miniaudio's own teardown reaches into its parent.
+
+`Engine` can also run without a device at all. Set `EngineConfig.NoDevice` and drive it with `Engine.Read`, which is what
+`examples/engine` does and what makes the engine testable with no audio hardware.
+
+
 ## `beep`-compatible `speaker` package
 
 If you already have `github.com/gopxl/beep` streamers, use `github.com/darkliquid/mago/speaker`.
@@ -338,12 +388,18 @@ Build a routing rack with the node graph:
 go run ./examples/nodegraph
 ```
 
+Play a sound through miniaudio's engine, with groups and a moving listener:
+
+```bash
+go run ./examples/engine
+```
+
 All of the examples accept `--backend` and fall back to the null backend when no
 real device backend is available, so they run on a headless machine. They load
 the embedded library and need no compiler; set `MAGO_MINIAUDIO_LIB` to run them
 against a locally built library instead. `convert-formats`, `channel-map`,
-`resample`, `buffers`, `decode`, `encode`, `datasource` and `nodegraph` need no
-audio device at all.
+`resample`, `buffers`, `decode`, `encode`, `datasource`, `nodegraph` and
+`engine` need no audio device at all.
 
 You can override the backend/device selection. The accepted backend values are platform-dependent:
 

@@ -20,4 +20,9 @@
 //
 // miniaudio's own logging can be surfaced to Go with Library.NewLog and
 // Log.Register.
+//
+// Above the device callback there are two mixing layers: NodeGraph for routing
+// audio through nodes, and Engine for playing Sound and SoundGroup objects with
+// groups, fades and 3D spatialization. With EngineConfig.NoDevice an engine is
+// driven by Engine.Read instead of a device, so it needs no audio hardware.
 package mago

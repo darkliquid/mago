@@ -198,5 +198,36 @@ int main(void)
     printf("sizeof:ma_loshelf_node %zu\n", sizeof(ma_loshelf_node));
     printf("sizeof:ma_hishelf_node %zu\n", sizeof(ma_hishelf_node));
     printf("sizeof:ma_delay_node %zu\n", sizeof(ma_delay_node));
+
+    printf("sizeof:ma_engine_config %zu\n", sizeof(ma_engine_config));
+    printf("offsetof:ma_engine_config.pResourceManager %zu\n", offsetof(ma_engine_config, pResourceManager));
+    printf("offsetof:ma_engine_config.pContext %zu\n", offsetof(ma_engine_config, pContext));
+    printf("offsetof:ma_engine_config.pDevice %zu\n", offsetof(ma_engine_config, pDevice));
+    printf("offsetof:ma_engine_config.pPlaybackDeviceID %zu\n", offsetof(ma_engine_config, pPlaybackDeviceID));
+    printf("offsetof:ma_engine_config.dataCallback %zu\n", offsetof(ma_engine_config, dataCallback));
+    printf("offsetof:ma_engine_config.notificationCallback %zu\n", offsetof(ma_engine_config, notificationCallback));
+    printf("offsetof:ma_engine_config.pLog %zu\n", offsetof(ma_engine_config, pLog));
+    printf("offsetof:ma_engine_config.listenerCount %zu\n", offsetof(ma_engine_config, listenerCount));
+    printf("offsetof:ma_engine_config.channels %zu\n", offsetof(ma_engine_config, channels));
+    printf("offsetof:ma_engine_config.sampleRate %zu\n", offsetof(ma_engine_config, sampleRate));
+    printf("offsetof:ma_engine_config.periodSizeInFrames %zu\n", offsetof(ma_engine_config, periodSizeInFrames));
+    printf("offsetof:ma_engine_config.periodSizeInMilliseconds %zu\n", offsetof(ma_engine_config, periodSizeInMilliseconds));
+    printf("offsetof:ma_engine_config.gainSmoothTimeInFrames %zu\n", offsetof(ma_engine_config, gainSmoothTimeInFrames));
+    printf("offsetof:ma_engine_config.gainSmoothTimeInMilliseconds %zu\n", offsetof(ma_engine_config, gainSmoothTimeInMilliseconds));
+    printf("offsetof:ma_engine_config.defaultVolumeSmoothTimeInPCMFrames %zu\n", offsetof(ma_engine_config, defaultVolumeSmoothTimeInPCMFrames));
+    printf("offsetof:ma_engine_config.preMixStackSizeInBytes %zu\n", offsetof(ma_engine_config, preMixStackSizeInBytes));
+    printf("offsetof:ma_engine_config.allocationCallbacks %zu\n", offsetof(ma_engine_config, allocationCallbacks));
+    printf("offsetof:ma_engine_config.noAutoStart %zu\n", offsetof(ma_engine_config, noAutoStart));
+    printf("offsetof:ma_engine_config.noDevice %zu\n", offsetof(ma_engine_config, noDevice));
+    printf("offsetof:ma_engine_config.monoExpansionMode %zu\n", offsetof(ma_engine_config, monoExpansionMode));
+    printf("offsetof:ma_engine_config.pResourceManagerVFS %zu\n", offsetof(ma_engine_config, pResourceManagerVFS));
+    printf("offsetof:ma_engine_config.onProcess %zu\n", offsetof(ma_engine_config, onProcess));
+    printf("offsetof:ma_engine_config.pProcessUserData %zu\n", offsetof(ma_engine_config, pProcessUserData));
+    printf("offsetof:ma_engine_config.resourceManagerResampling %zu\n", offsetof(ma_engine_config, resourceManagerResampling));
+    printf("offsetof:ma_engine_config.pitchResampling %zu\n", offsetof(ma_engine_config, pitchResampling));
+
+    printf("sizeof:ma_engine %zu\n", sizeof(ma_engine));
+    printf("sizeof:ma_sound %zu\n", sizeof(ma_sound));
+    printf("sizeof:ma_vec3f %zu\n", sizeof(ma_vec3f));
     return 0;
 }
