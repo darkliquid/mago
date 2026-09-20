@@ -397,6 +397,7 @@ type delayHandle struct{}
 type decoderHandle struct{}
 type encoderHandle struct{}
 type encoderBridgeNative struct{}
+type dataSourceHandle struct{}
 
 // encoderConfigNative mirrors ma_encoder_config. Validated by layout_test.go.
 type encoderConfigNative struct {

@@ -19,9 +19,11 @@ type WaveformConfig struct {
 
 // Waveform generates periodic audio waveforms (sine, square, triangle, sawtooth).
 type Waveform struct {
-	lib      *Library
-	handle   *waveformHandle
-	channels uint32
+	lib        *Library
+	handle     *waveformHandle
+	channels   uint32
+	format     Format
+	sampleRate uint32
 }
 
 // NewWaveform creates and initializes a new Waveform generator.
@@ -43,7 +45,7 @@ func (lib *Library) NewWaveform(config WaveformConfig) (*Waveform, error) {
 		return nil, lib.resultError("ma_waveform_init", result)
 	}
 
-	return &Waveform{lib: lib, handle: handle, channels: config.Channels}, nil
+	return &Waveform{lib: lib, handle: handle, channels: config.Channels, format: config.Format, sampleRate: config.SampleRate}, nil
 }
 
 // Read writes up to len(out)/channels frames into out, returning how many frames were written.

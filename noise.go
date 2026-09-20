@@ -22,6 +22,7 @@ type Noise struct {
 	lib      *Library
 	handle   *noiseHandle
 	channels uint32
+	format   Format
 }
 
 // NewNoise creates and initializes a new Noise generator.
@@ -50,7 +51,7 @@ func (lib *Library) NewNoise(config NoiseConfig) (*Noise, error) {
 		return nil, lib.resultError("ma_noise_init", result)
 	}
 
-	return &Noise{lib: lib, handle: handle, channels: config.Channels}, nil
+	return &Noise{lib: lib, handle: handle, channels: config.Channels, format: config.Format}, nil
 }
 
 // Read writes up to len(out)/channels frames into out, returning how many frames were written.

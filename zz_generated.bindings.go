@@ -25,6 +25,7 @@ const (
 	DeviceNotStarted                 Result             = -302
 	DeviceNotStopped                 Result             = -303
 	AtEnd                            Result             = -17
+	NotImplemented                   Result             = -29
 	BackendWASAPI                    Backend            = 0
 	BackendDSound                    Backend            = 1
 	BackendWinMM                     Backend            = 2
@@ -304,6 +305,14 @@ type bindingSet struct {
 	magoEncoderInit                              func(*encoderHandle, *encoderConfigNative, uintptr, uintptr, uintptr, **encoderBridgeNative) Result
 	maEncoderUninit                              func(*encoderHandle)
 	maEncoderWritePCMFrames                      func(*encoderHandle, unsafe.Pointer, uint64, *uint64) Result
+	magoDataSourceInit                           func(uintptr, uintptr, uintptr, uintptr, uintptr, uintptr, uintptr, **dataSourceHandle) Result
+	magoDataSourceUninit                         func(*dataSourceHandle)
+	maDataSourceReadPCMFrames                    func(*dataSourceHandle, unsafe.Pointer, uint64, *uint64) Result
+	maDataSourceSeekToPCMFrame                   func(*dataSourceHandle, uint64) Result
+	maDataSourceGetDataFormat                    func(*dataSourceHandle, *Format, *uint32, *uint32, *uint8, uintptr) Result
+	maDataSourceGetCursorInPCMFrames             func(*dataSourceHandle, *uint64) Result
+	maDataSourceGetLengthInPCMFrames             func(*dataSourceHandle, *uint64) Result
+	maDataSourceSetLooping                       func(*dataSourceHandle, uint32) Result
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -541,6 +550,14 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.magoEncoderInit, handle, "mago_encoder_init")
 	purego.RegisterLibFunc(&b.maEncoderUninit, handle, "ma_encoder_uninit")
 	purego.RegisterLibFunc(&b.maEncoderWritePCMFrames, handle, "ma_encoder_write_pcm_frames")
+	purego.RegisterLibFunc(&b.magoDataSourceInit, handle, "mago_data_source_init")
+	purego.RegisterLibFunc(&b.magoDataSourceUninit, handle, "mago_data_source_uninit")
+	purego.RegisterLibFunc(&b.maDataSourceReadPCMFrames, handle, "ma_data_source_read_pcm_frames")
+	purego.RegisterLibFunc(&b.maDataSourceSeekToPCMFrame, handle, "ma_data_source_seek_to_pcm_frame")
+	purego.RegisterLibFunc(&b.maDataSourceGetDataFormat, handle, "ma_data_source_get_data_format")
+	purego.RegisterLibFunc(&b.maDataSourceGetCursorInPCMFrames, handle, "ma_data_source_get_cursor_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maDataSourceGetLengthInPCMFrames, handle, "ma_data_source_get_length_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maDataSourceSetLooping, handle, "ma_data_source_set_looping")
 }
 
 var _ unsafe.Pointer
