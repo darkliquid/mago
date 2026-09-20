@@ -20,6 +20,12 @@
  * Everything else (context init/uninit, device enumeration, logging) is bound
  * directly from Go against the exported `ma_*` symbols. Do not add wrappers for
  * anything that already has a public miniaudio function.
+ *
+ * Note that no node graph wrapper exists even though `ma_node_graph_config_init`
+ * and the `ma_*_node_config_init` helpers return structs by value: every one of
+ * those configs has a fixed layout that Go mirrors in types.go, and none of them
+ * needs an opaque vtable, because each `ma_*_node_init` sets the node's vtable
+ * itself. Node objects are therefore ordinary category 1 allocations.
  */
 
 #include <stdint.h>
@@ -80,7 +86,19 @@ enum mago_object_type
     MAGO_OBJECT_HISHELF2          = 28,
     MAGO_OBJECT_DELAY             = 29,
     MAGO_OBJECT_DECODER           = 30,
-    MAGO_OBJECT_ENCODER           = 31
+    MAGO_OBJECT_ENCODER           = 31,
+    MAGO_OBJECT_NODE_GRAPH        = 32,
+    MAGO_OBJECT_DATA_SOURCE_NODE  = 33,
+    MAGO_OBJECT_SPLITTER_NODE     = 34,
+    MAGO_OBJECT_BIQUAD_NODE       = 35,
+    MAGO_OBJECT_LPF_NODE          = 36,
+    MAGO_OBJECT_HPF_NODE          = 37,
+    MAGO_OBJECT_BPF_NODE          = 38,
+    MAGO_OBJECT_NOTCH_NODE        = 39,
+    MAGO_OBJECT_PEAK_NODE         = 40,
+    MAGO_OBJECT_LOSHELF_NODE      = 41,
+    MAGO_OBJECT_HISHELF_NODE      = 42,
+    MAGO_OBJECT_DELAY_NODE        = 43
 };
 
 MAGO_API void* mago_alloc(int type)
@@ -118,6 +136,18 @@ MAGO_API void* mago_alloc(int type)
         case MAGO_OBJECT_DELAY:             return calloc(1, sizeof(ma_delay));
         case MAGO_OBJECT_DECODER:           return calloc(1, sizeof(ma_decoder));
         case MAGO_OBJECT_ENCODER:           return calloc(1, sizeof(ma_encoder));
+        case MAGO_OBJECT_NODE_GRAPH:        return calloc(1, sizeof(ma_node_graph));
+        case MAGO_OBJECT_DATA_SOURCE_NODE:  return calloc(1, sizeof(ma_data_source_node));
+        case MAGO_OBJECT_SPLITTER_NODE:     return calloc(1, sizeof(ma_splitter_node));
+        case MAGO_OBJECT_BIQUAD_NODE:       return calloc(1, sizeof(ma_biquad_node));
+        case MAGO_OBJECT_LPF_NODE:          return calloc(1, sizeof(ma_lpf_node));
+        case MAGO_OBJECT_HPF_NODE:          return calloc(1, sizeof(ma_hpf_node));
+        case MAGO_OBJECT_BPF_NODE:          return calloc(1, sizeof(ma_bpf_node));
+        case MAGO_OBJECT_NOTCH_NODE:        return calloc(1, sizeof(ma_notch_node));
+        case MAGO_OBJECT_PEAK_NODE:         return calloc(1, sizeof(ma_peak_node));
+        case MAGO_OBJECT_LOSHELF_NODE:      return calloc(1, sizeof(ma_loshelf_node));
+        case MAGO_OBJECT_HISHELF_NODE:      return calloc(1, sizeof(ma_hishelf_node));
+        case MAGO_OBJECT_DELAY_NODE:        return calloc(1, sizeof(ma_delay_node));
         default:                            return NULL;
     }
 }

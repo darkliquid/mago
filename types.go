@@ -23,6 +23,14 @@ const (
 	DeviceStateStopping      DeviceState = 4
 )
 
+// NodeState mirrors ma_node_state: the playback state of a graph node.
+type NodeState int32
+
+const (
+	NodeStateStarted NodeState = 0
+	NodeStateStopped NodeState = 1
+)
+
 type Version struct {
 	Major    uint32
 	Minor    uint32
@@ -157,6 +165,18 @@ const (
 	magoObjectDelay            int32 = 29
 	magoObjectDecoder          int32 = 30
 	magoObjectEncoder          int32 = 31
+	magoObjectNodeGraph        int32 = 32
+	magoObjectDataSourceNode   int32 = 33
+	magoObjectSplitterNode     int32 = 34
+	magoObjectBiquadNode       int32 = 35
+	magoObjectLPFNode          int32 = 36
+	magoObjectHPFNode          int32 = 37
+	magoObjectBPFNode          int32 = 38
+	magoObjectNotchNode        int32 = 39
+	magoObjectPeakNode         int32 = 40
+	magoObjectLoShelfNode      int32 = 41
+	magoObjectHiShelfNode      int32 = 42
+	magoObjectDelayNode        int32 = 43
 )
 
 type channelConverterHandle struct{}
@@ -523,4 +543,97 @@ type delayConfigNative struct {
 	Wet           float32
 	Dry           float32
 	Decay         float32
+}
+
+// nodeGraphHandle is the mirror of ma_node_graph. It is opaque to Go; the size
+// comes from mago_alloc.
+type nodeGraphHandle struct{}
+
+// nodeHandle is the mirror of ma_node. Every concrete node type begins with
+// ma_node_base, so a node's own pointer is also a valid *nodeHandle.
+type nodeHandle struct{}
+
+// nodeConfigNative mirrors ma_node_config. Validated by layout_test.go.
+//
+// Go cannot call ma_node_config_init because it returns by value, but the
+// function's result is fully determined: a NULL vtable, the started state, and
+// MA_NODE_BUS_COUNT_UNKNOWN for both bus counts. The vtable is left NULL because
+// every ma_*_node_init overwrites it.
+type nodeConfigNative struct {
+	VTable         unsafe.Pointer
+	InitialState   NodeState
+	InputBusCount  uint32
+	OutputBusCount uint32
+	InputChannels  *uint32
+	OutputChannels *uint32
+}
+
+// nodeGraphConfigNative mirrors ma_node_graph_config. Validated by
+// layout_test.go.
+type nodeGraphConfigNative struct {
+	Channels               uint32
+	ProcessingSizeInFrames uint32
+	PreMixStackSizeInBytes uintptr
+}
+
+// dataSourceNodeConfigNative mirrors ma_data_source_node_config. Validated by
+// layout_test.go.
+type dataSourceNodeConfigNative struct {
+	NodeConfig nodeConfigNative
+	DataSource *dataSourceHandle
+}
+
+// splitterNodeConfigNative mirrors ma_splitter_node_config. Validated by
+// layout_test.go.
+type splitterNodeConfigNative struct {
+	NodeConfig     nodeConfigNative
+	Channels       uint32
+	OutputBusCount uint32
+}
+
+// biquadNodeConfigNative mirrors ma_biquad_node_config. Validated by
+// layout_test.go.
+type biquadNodeConfigNative struct {
+	NodeConfig nodeConfigNative
+	Biquad     biquadConfigNative
+}
+
+// lpfNodeConfigNative mirrors ma_lpf_node_config. ma_hpf_node_config and
+// ma_bpf_node_config have identical members. Validated by layout_test.go.
+type lpfNodeConfigNative struct {
+	NodeConfig nodeConfigNative
+	LPF        lpfConfigNative
+}
+
+type hpfNodeConfigNative = lpfNodeConfigNative
+type bpfNodeConfigNative = lpfNodeConfigNative
+
+// notchNodeConfigNative mirrors ma_notch_node_config (whose filter member is
+// the ma_notch2_config layout). Validated by layout_test.go.
+type notchNodeConfigNative struct {
+	NodeConfig nodeConfigNative
+	Notch      notch2ConfigNative
+}
+
+// peakNodeConfigNative mirrors ma_peak_node_config (whose filter member is the
+// ma_peak2_config layout). Validated by layout_test.go.
+type peakNodeConfigNative struct {
+	NodeConfig nodeConfigNative
+	Peak       peak2ConfigNative
+}
+
+// loshelfNodeConfigNative mirrors ma_loshelf_node_config. ma_hishelf_node_config
+// has identical members. Validated by layout_test.go.
+type loshelfNodeConfigNative struct {
+	NodeConfig nodeConfigNative
+	LoShelf    loshelf2ConfigNative
+}
+
+type hishelfNodeConfigNative = loshelfNodeConfigNative
+
+// delayNodeConfigNative mirrors ma_delay_node_config. Validated by
+// layout_test.go.
+type delayNodeConfigNative struct {
+	NodeConfig nodeConfigNative
+	Delay      delayConfigNative
 }

@@ -340,4 +340,115 @@ func TestMirroredStructLayouts(t *testing.T) {
 			t.Errorf("offsetof ma_encoder_config.%s: mirror %d, header %d", name, got, want)
 		}
 	}
+
+	checkNodeLayouts(t, probe)
+}
+
+// checkNodeLayouts validates the node graph mirrors. The node configs are the
+// layouts most likely to drift, because Go has to reproduce the padding that
+// follows ma_node_config.initialState and ma_node_config.outputBusCount.
+func checkNodeLayouts(t *testing.T, probe map[string]uint64) {
+	t.Helper()
+
+	checkSize(t, probe, "ma_node_config", unsafe.Sizeof(nodeConfigNative{}))
+	nodeCfg := nodeConfigNative{}
+	checkOffsets(t, probe, "ma_node_config", map[string]uintptr{
+		"vtable":          unsafe.Offsetof(nodeCfg.VTable),
+		"initialState":    unsafe.Offsetof(nodeCfg.InitialState),
+		"inputBusCount":   unsafe.Offsetof(nodeCfg.InputBusCount),
+		"outputBusCount":  unsafe.Offsetof(nodeCfg.OutputBusCount),
+		"pInputChannels":  unsafe.Offsetof(nodeCfg.InputChannels),
+		"pOutputChannels": unsafe.Offsetof(nodeCfg.OutputChannels),
+	})
+
+	checkSize(t, probe, "ma_node_graph_config", unsafe.Sizeof(nodeGraphConfigNative{}))
+	graphCfg := nodeGraphConfigNative{}
+	checkOffsets(t, probe, "ma_node_graph_config", map[string]uintptr{
+		"channels":               unsafe.Offsetof(graphCfg.Channels),
+		"processingSizeInFrames": unsafe.Offsetof(graphCfg.ProcessingSizeInFrames),
+		"preMixStackSizeInBytes": unsafe.Offsetof(graphCfg.PreMixStackSizeInBytes),
+	})
+
+	checkSize(t, probe, "ma_data_source_node_config", unsafe.Sizeof(dataSourceNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_data_source_node_config", map[string]uintptr{
+		"pDataSource": unsafe.Offsetof(dataSourceNodeConfigNative{}.DataSource),
+	})
+
+	checkSize(t, probe, "ma_splitter_node_config", unsafe.Sizeof(splitterNodeConfigNative{}))
+	splitterCfg := splitterNodeConfigNative{}
+	checkOffsets(t, probe, "ma_splitter_node_config", map[string]uintptr{
+		"channels":       unsafe.Offsetof(splitterCfg.Channels),
+		"outputBusCount": unsafe.Offsetof(splitterCfg.OutputBusCount),
+	})
+
+	checkSize(t, probe, "ma_biquad_node_config", unsafe.Sizeof(biquadNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_biquad_node_config", map[string]uintptr{
+		"biquad": unsafe.Offsetof(biquadNodeConfigNative{}.Biquad),
+	})
+
+	checkSize(t, probe, "ma_lpf_node_config", unsafe.Sizeof(lpfNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_lpf_node_config", map[string]uintptr{
+		"lpf": unsafe.Offsetof(lpfNodeConfigNative{}.LPF),
+	})
+	checkSize(t, probe, "ma_hpf_node_config", unsafe.Sizeof(hpfNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_hpf_node_config", map[string]uintptr{
+		"hpf": unsafe.Offsetof(hpfNodeConfigNative{}.LPF),
+	})
+	checkSize(t, probe, "ma_bpf_node_config", unsafe.Sizeof(bpfNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_bpf_node_config", map[string]uintptr{
+		"bpf": unsafe.Offsetof(bpfNodeConfigNative{}.LPF),
+	})
+
+	checkSize(t, probe, "ma_notch_node_config", unsafe.Sizeof(notchNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_notch_node_config", map[string]uintptr{
+		"notch": unsafe.Offsetof(notchNodeConfigNative{}.Notch),
+	})
+
+	checkSize(t, probe, "ma_peak_node_config", unsafe.Sizeof(peakNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_peak_node_config", map[string]uintptr{
+		"peak": unsafe.Offsetof(peakNodeConfigNative{}.Peak),
+	})
+
+	checkSize(t, probe, "ma_loshelf_node_config", unsafe.Sizeof(loshelfNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_loshelf_node_config", map[string]uintptr{
+		"loshelf": unsafe.Offsetof(loshelfNodeConfigNative{}.LoShelf),
+	})
+	checkSize(t, probe, "ma_hishelf_node_config", unsafe.Sizeof(hishelfNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_hishelf_node_config", map[string]uintptr{
+		"hishelf": unsafe.Offsetof(hishelfNodeConfigNative{}.LoShelf),
+	})
+
+	checkSize(t, probe, "ma_delay_node_config", unsafe.Sizeof(delayNodeConfigNative{}))
+	checkOffsets(t, probe, "ma_delay_node_config", map[string]uintptr{
+		"delay": unsafe.Offsetof(delayNodeConfigNative{}.Delay),
+	})
+}
+
+func checkSize(t *testing.T, probe map[string]uint64, name string, got uintptr) {
+	t.Helper()
+
+	want, ok := probe["sizeof:"+name]
+	if !ok {
+		t.Errorf("layout probe did not report sizeof:%s", name)
+		return
+	}
+	if uint64(got) != want {
+		t.Errorf("sizeof %s: mirror %d, header %d", name, got, want)
+	}
+}
+
+func checkOffsets(t *testing.T, probe map[string]uint64, name string, fields map[string]uintptr) {
+	t.Helper()
+
+	for field, got := range fields {
+		key := "offsetof:" + name + "." + field
+		want, ok := probe[key]
+		if !ok {
+			t.Errorf("layout probe did not report %s", key)
+			continue
+		}
+		if uint64(got) != want {
+			t.Errorf("offsetof %s.%s: mirror %d, header %d", name, field, got, want)
+		}
+	}
 }

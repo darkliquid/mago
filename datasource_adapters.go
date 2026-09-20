@@ -6,11 +6,54 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"unsafe"
 )
 
 // This file adapts the existing mago sources to the DataSource interface. The
 // byte-oriented ReadPCMFrames renders the object's typed read into the raw PCM
 // layout miniaudio expects; the typed reads remain the efficient path.
+
+// nativeDataSource is implemented by the objects that miniaudio already treats
+// as data sources. A node graph can read one directly instead of bouncing every
+// frame through Go callbacks, which is faster and keeps miniaudio's own seeking
+// and looping behaviour.
+type nativeDataSource interface {
+	DataSource
+	nativeDataSourceHandle() *dataSourceHandle
+}
+
+// nativeDataSourceHandle implements nativeDataSource for Decoder. ma_decoder
+// begins with ma_data_source_base, so the object pointer is also a data source.
+func (d *Decoder) nativeDataSourceHandle() *dataSourceHandle {
+	if d == nil || d.handle == nil {
+		return nil
+	}
+	return (*dataSourceHandle)(unsafe.Pointer(d.handle))
+}
+
+// nativeDataSourceHandle implements nativeDataSource for AudioBuffer.
+func (b *AudioBuffer) nativeDataSourceHandle() *dataSourceHandle {
+	if b == nil || b.handle == nil {
+		return nil
+	}
+	return (*dataSourceHandle)(unsafe.Pointer(b.handle))
+}
+
+// nativeDataSourceHandle implements nativeDataSource for Waveform.
+func (w *Waveform) nativeDataSourceHandle() *dataSourceHandle {
+	if w == nil || w.handle == nil {
+		return nil
+	}
+	return (*dataSourceHandle)(unsafe.Pointer(w.handle))
+}
+
+// nativeDataSourceHandle implements nativeDataSource for Noise.
+func (n *Noise) nativeDataSourceHandle() *dataSourceHandle {
+	if n == nil || n.handle == nil {
+		return nil
+	}
+	return (*dataSourceHandle)(unsafe.Pointer(n.handle))
+}
 
 func sourceFrameSize(format Format, channels uint32) (int, error) {
 	size := frameSizeOf(format, channels)

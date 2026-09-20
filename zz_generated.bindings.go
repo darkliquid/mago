@@ -313,6 +313,69 @@ type bindingSet struct {
 	maDataSourceGetCursorInPCMFrames             func(*dataSourceHandle, *uint64) Result
 	maDataSourceGetLengthInPCMFrames             func(*dataSourceHandle, *uint64) Result
 	maDataSourceSetLooping                       func(*dataSourceHandle, uint32) Result
+	maNodeGraphInit                              func(*nodeGraphConfigNative, unsafe.Pointer, *nodeGraphHandle) Result
+	maNodeGraphUninit                            func(*nodeGraphHandle, unsafe.Pointer)
+	maNodeGraphGetEndpoint                       func(*nodeGraphHandle) *nodeHandle
+	maNodeGraphReadPCMFrames                     func(*nodeGraphHandle, unsafe.Pointer, uint64, *uint64) Result
+	maNodeGraphGetChannels                       func(*nodeGraphHandle) uint32
+	maNodeGraphGetTime                           func(*nodeGraphHandle) uint64
+	maNodeGraphSetTime                           func(*nodeGraphHandle, uint64) Result
+	maNodeGraphGetProcessingSizeInFrames         func(*nodeGraphHandle) uint32
+	maNodeAttachOutputBus                        func(*nodeHandle, uint32, *nodeHandle, uint32) Result
+	maNodeDetachOutputBus                        func(*nodeHandle, uint32) Result
+	maNodeDetachAllOutputBuses                   func(*nodeHandle) Result
+	maNodeSetOutputBusVolume                     func(*nodeHandle, uint32, float32) Result
+	maNodeGetOutputBusVolume                     func(*nodeHandle, uint32) float32
+	maNodeGetInputBusCount                       func(*nodeHandle) uint32
+	maNodeGetOutputBusCount                      func(*nodeHandle) uint32
+	maNodeGetInputChannels                       func(*nodeHandle, uint32) uint32
+	maNodeGetOutputChannels                      func(*nodeHandle, uint32) uint32
+	maNodeSetState                               func(*nodeHandle, NodeState) Result
+	maNodeGetState                               func(*nodeHandle) NodeState
+	maNodeSetStateTime                           func(*nodeHandle, NodeState, uint64) Result
+	maNodeGetStateTime                           func(*nodeHandle, NodeState) uint64
+	maNodeGetStateByTime                         func(*nodeHandle, uint64) NodeState
+	maNodeGetStateByTimeRange                    func(*nodeHandle, uint64, uint64) NodeState
+	maNodeGetTime                                func(*nodeHandle) uint64
+	maNodeSetTime                                func(*nodeHandle, uint64) Result
+	maDataSourceNodeInit                         func(*nodeGraphHandle, *dataSourceNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maDataSourceNodeUninit                       func(*nodeHandle, unsafe.Pointer)
+	maDataSourceNodeSetLooping                   func(*nodeHandle, uint32) Result
+	maDataSourceNodeIsLooping                    func(*nodeHandle) uint32
+	maSplitterNodeInit                           func(*nodeGraphHandle, *splitterNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maSplitterNodeUninit                         func(*nodeHandle, unsafe.Pointer)
+	maBiquadNodeInit                             func(*nodeGraphHandle, *biquadNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maBiquadNodeReinit                           func(*biquadConfigNative, *nodeHandle) Result
+	maBiquadNodeUninit                           func(*nodeHandle, unsafe.Pointer)
+	maLPFNodeInit                                func(*nodeGraphHandle, *lpfNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maLPFNodeReinit                              func(*lpfConfigNative, *nodeHandle) Result
+	maLPFNodeUninit                              func(*nodeHandle, unsafe.Pointer)
+	maHPFNodeInit                                func(*nodeGraphHandle, *hpfNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maHPFNodeReinit                              func(*hpfConfigNative, *nodeHandle) Result
+	maHPFNodeUninit                              func(*nodeHandle, unsafe.Pointer)
+	maBPFNodeInit                                func(*nodeGraphHandle, *bpfNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maBPFNodeReinit                              func(*bpfConfigNative, *nodeHandle) Result
+	maBPFNodeUninit                              func(*nodeHandle, unsafe.Pointer)
+	maNotchNodeInit                              func(*nodeGraphHandle, *notchNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maNotchNodeReinit                            func(*notch2ConfigNative, *nodeHandle) Result
+	maNotchNodeUninit                            func(*nodeHandle, unsafe.Pointer)
+	maPeakNodeInit                               func(*nodeGraphHandle, *peakNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maPeakNodeReinit                             func(*peak2ConfigNative, *nodeHandle) Result
+	maPeakNodeUninit                             func(*nodeHandle, unsafe.Pointer)
+	maLoShelfNodeInit                            func(*nodeGraphHandle, *loshelfNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maLoShelfNodeReinit                          func(*loshelf2ConfigNative, *nodeHandle) Result
+	maLoShelfNodeUninit                          func(*nodeHandle, unsafe.Pointer)
+	maHiShelfNodeInit                            func(*nodeGraphHandle, *hishelfNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maHiShelfNodeReinit                          func(*hishelf2ConfigNative, *nodeHandle) Result
+	maHiShelfNodeUninit                          func(*nodeHandle, unsafe.Pointer)
+	maDelayNodeInit                              func(*nodeGraphHandle, *delayNodeConfigNative, unsafe.Pointer, *nodeHandle) Result
+	maDelayNodeUninit                            func(*nodeHandle, unsafe.Pointer)
+	maDelayNodeSetWet                            func(*nodeHandle, float32)
+	maDelayNodeGetWet                            func(*nodeHandle) float32
+	maDelayNodeSetDry                            func(*nodeHandle, float32)
+	maDelayNodeGetDry                            func(*nodeHandle) float32
+	maDelayNodeSetDecay                          func(*nodeHandle, float32)
+	maDelayNodeGetDecay                          func(*nodeHandle) float32
 }
 
 func (b *bindingSet) register(handle uintptr) {
@@ -558,6 +621,69 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maDataSourceGetCursorInPCMFrames, handle, "ma_data_source_get_cursor_in_pcm_frames")
 	purego.RegisterLibFunc(&b.maDataSourceGetLengthInPCMFrames, handle, "ma_data_source_get_length_in_pcm_frames")
 	purego.RegisterLibFunc(&b.maDataSourceSetLooping, handle, "ma_data_source_set_looping")
+	purego.RegisterLibFunc(&b.maNodeGraphInit, handle, "ma_node_graph_init")
+	purego.RegisterLibFunc(&b.maNodeGraphUninit, handle, "ma_node_graph_uninit")
+	purego.RegisterLibFunc(&b.maNodeGraphGetEndpoint, handle, "ma_node_graph_get_endpoint")
+	purego.RegisterLibFunc(&b.maNodeGraphReadPCMFrames, handle, "ma_node_graph_read_pcm_frames")
+	purego.RegisterLibFunc(&b.maNodeGraphGetChannels, handle, "ma_node_graph_get_channels")
+	purego.RegisterLibFunc(&b.maNodeGraphGetTime, handle, "ma_node_graph_get_time")
+	purego.RegisterLibFunc(&b.maNodeGraphSetTime, handle, "ma_node_graph_set_time")
+	purego.RegisterLibFunc(&b.maNodeGraphGetProcessingSizeInFrames, handle, "ma_node_graph_get_processing_size_in_frames")
+	purego.RegisterLibFunc(&b.maNodeAttachOutputBus, handle, "ma_node_attach_output_bus")
+	purego.RegisterLibFunc(&b.maNodeDetachOutputBus, handle, "ma_node_detach_output_bus")
+	purego.RegisterLibFunc(&b.maNodeDetachAllOutputBuses, handle, "ma_node_detach_all_output_buses")
+	purego.RegisterLibFunc(&b.maNodeSetOutputBusVolume, handle, "ma_node_set_output_bus_volume")
+	purego.RegisterLibFunc(&b.maNodeGetOutputBusVolume, handle, "ma_node_get_output_bus_volume")
+	purego.RegisterLibFunc(&b.maNodeGetInputBusCount, handle, "ma_node_get_input_bus_count")
+	purego.RegisterLibFunc(&b.maNodeGetOutputBusCount, handle, "ma_node_get_output_bus_count")
+	purego.RegisterLibFunc(&b.maNodeGetInputChannels, handle, "ma_node_get_input_channels")
+	purego.RegisterLibFunc(&b.maNodeGetOutputChannels, handle, "ma_node_get_output_channels")
+	purego.RegisterLibFunc(&b.maNodeSetState, handle, "ma_node_set_state")
+	purego.RegisterLibFunc(&b.maNodeGetState, handle, "ma_node_get_state")
+	purego.RegisterLibFunc(&b.maNodeSetStateTime, handle, "ma_node_set_state_time")
+	purego.RegisterLibFunc(&b.maNodeGetStateTime, handle, "ma_node_get_state_time")
+	purego.RegisterLibFunc(&b.maNodeGetStateByTime, handle, "ma_node_get_state_by_time")
+	purego.RegisterLibFunc(&b.maNodeGetStateByTimeRange, handle, "ma_node_get_state_by_time_range")
+	purego.RegisterLibFunc(&b.maNodeGetTime, handle, "ma_node_get_time")
+	purego.RegisterLibFunc(&b.maNodeSetTime, handle, "ma_node_set_time")
+	purego.RegisterLibFunc(&b.maDataSourceNodeInit, handle, "ma_data_source_node_init")
+	purego.RegisterLibFunc(&b.maDataSourceNodeUninit, handle, "ma_data_source_node_uninit")
+	purego.RegisterLibFunc(&b.maDataSourceNodeSetLooping, handle, "ma_data_source_node_set_looping")
+	purego.RegisterLibFunc(&b.maDataSourceNodeIsLooping, handle, "ma_data_source_node_is_looping")
+	purego.RegisterLibFunc(&b.maSplitterNodeInit, handle, "ma_splitter_node_init")
+	purego.RegisterLibFunc(&b.maSplitterNodeUninit, handle, "ma_splitter_node_uninit")
+	purego.RegisterLibFunc(&b.maBiquadNodeInit, handle, "ma_biquad_node_init")
+	purego.RegisterLibFunc(&b.maBiquadNodeReinit, handle, "ma_biquad_node_reinit")
+	purego.RegisterLibFunc(&b.maBiquadNodeUninit, handle, "ma_biquad_node_uninit")
+	purego.RegisterLibFunc(&b.maLPFNodeInit, handle, "ma_lpf_node_init")
+	purego.RegisterLibFunc(&b.maLPFNodeReinit, handle, "ma_lpf_node_reinit")
+	purego.RegisterLibFunc(&b.maLPFNodeUninit, handle, "ma_lpf_node_uninit")
+	purego.RegisterLibFunc(&b.maHPFNodeInit, handle, "ma_hpf_node_init")
+	purego.RegisterLibFunc(&b.maHPFNodeReinit, handle, "ma_hpf_node_reinit")
+	purego.RegisterLibFunc(&b.maHPFNodeUninit, handle, "ma_hpf_node_uninit")
+	purego.RegisterLibFunc(&b.maBPFNodeInit, handle, "ma_bpf_node_init")
+	purego.RegisterLibFunc(&b.maBPFNodeReinit, handle, "ma_bpf_node_reinit")
+	purego.RegisterLibFunc(&b.maBPFNodeUninit, handle, "ma_bpf_node_uninit")
+	purego.RegisterLibFunc(&b.maNotchNodeInit, handle, "ma_notch_node_init")
+	purego.RegisterLibFunc(&b.maNotchNodeReinit, handle, "ma_notch_node_reinit")
+	purego.RegisterLibFunc(&b.maNotchNodeUninit, handle, "ma_notch_node_uninit")
+	purego.RegisterLibFunc(&b.maPeakNodeInit, handle, "ma_peak_node_init")
+	purego.RegisterLibFunc(&b.maPeakNodeReinit, handle, "ma_peak_node_reinit")
+	purego.RegisterLibFunc(&b.maPeakNodeUninit, handle, "ma_peak_node_uninit")
+	purego.RegisterLibFunc(&b.maLoShelfNodeInit, handle, "ma_loshelf_node_init")
+	purego.RegisterLibFunc(&b.maLoShelfNodeReinit, handle, "ma_loshelf_node_reinit")
+	purego.RegisterLibFunc(&b.maLoShelfNodeUninit, handle, "ma_loshelf_node_uninit")
+	purego.RegisterLibFunc(&b.maHiShelfNodeInit, handle, "ma_hishelf_node_init")
+	purego.RegisterLibFunc(&b.maHiShelfNodeReinit, handle, "ma_hishelf_node_reinit")
+	purego.RegisterLibFunc(&b.maHiShelfNodeUninit, handle, "ma_hishelf_node_uninit")
+	purego.RegisterLibFunc(&b.maDelayNodeInit, handle, "ma_delay_node_init")
+	purego.RegisterLibFunc(&b.maDelayNodeUninit, handle, "ma_delay_node_uninit")
+	purego.RegisterLibFunc(&b.maDelayNodeSetWet, handle, "ma_delay_node_set_wet")
+	purego.RegisterLibFunc(&b.maDelayNodeGetWet, handle, "ma_delay_node_get_wet")
+	purego.RegisterLibFunc(&b.maDelayNodeSetDry, handle, "ma_delay_node_set_dry")
+	purego.RegisterLibFunc(&b.maDelayNodeGetDry, handle, "ma_delay_node_get_dry")
+	purego.RegisterLibFunc(&b.maDelayNodeSetDecay, handle, "ma_delay_node_set_decay")
+	purego.RegisterLibFunc(&b.maDelayNodeGetDecay, handle, "ma_delay_node_get_decay")
 }
 
 var _ unsafe.Pointer
