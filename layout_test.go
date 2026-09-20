@@ -292,4 +292,32 @@ func TestMirroredStructLayouts(t *testing.T) {
 			t.Errorf("offsetof ma_delay_config.%s: mirror %d, header %d", name, got, want)
 		}
 	}
+
+	if got, want := uint64(unsafe.Sizeof(decoderConfigNative{})), probe["sizeof:ma_decoder_config"]; got != want {
+		t.Errorf("sizeof decoderConfigNative: mirror %d, header %d", got, want)
+	}
+	decoderCfg := decoderConfigNative{}
+	decoderOffsets := map[string]struct {
+		got uintptr
+		key string
+	}{
+		"pChannelMap":         {unsafe.Offsetof(decoderCfg.ChannelMap), "offsetof:ma_decoder_config.pChannelMap"},
+		"channelMixMode":      {unsafe.Offsetof(decoderCfg.ChannelMixMode), "offsetof:ma_decoder_config.channelMixMode"},
+		"ditherMode":          {unsafe.Offsetof(decoderCfg.DitherMode), "offsetof:ma_decoder_config.ditherMode"},
+		"resampling":          {unsafe.Offsetof(decoderCfg.Resampling), "offsetof:ma_decoder_config.resampling"},
+		"allocationCallbacks": {unsafe.Offsetof(decoderCfg.AllocationCallbacks), "offsetof:ma_decoder_config.allocationCallbacks"},
+		"encodingFormat":      {unsafe.Offsetof(decoderCfg.EncodingFormat), "offsetof:ma_decoder_config.encodingFormat"},
+		"seekPointCount":      {unsafe.Offsetof(decoderCfg.SeekPointCount), "offsetof:ma_decoder_config.seekPointCount"},
+		"ppCustomBackendVTables": {
+			unsafe.Offsetof(decoderCfg.CustomBackendVTables),
+			"offsetof:ma_decoder_config.ppCustomBackendVTables",
+		},
+		"customBackendCount":     {unsafe.Offsetof(decoderCfg.CustomBackendCount), "offsetof:ma_decoder_config.customBackendCount"},
+		"pCustomBackendUserData": {unsafe.Offsetof(decoderCfg.CustomBackendUserData), "offsetof:ma_decoder_config.pCustomBackendUserData"},
+	}
+	for name, check := range decoderOffsets {
+		if got, want := uint64(check.got), probe[check.key]; got != want {
+			t.Errorf("offsetof ma_decoder_config.%s: mirror %d, header %d", name, got, want)
+		}
+	}
 }

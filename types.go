@@ -155,6 +155,7 @@ const (
 	magoObjectLoShelf2         int32 = 27
 	magoObjectHiShelf2         int32 = 28
 	magoObjectDelay            int32 = 29
+	magoObjectDecoder          int32 = 30
 )
 
 type channelConverterHandle struct{}
@@ -392,6 +393,35 @@ type peak2Handle struct{}
 type loshelf2Handle struct{}
 type hishelf2Handle struct{}
 type delayHandle struct{}
+type decoderHandle struct{}
+
+// EncodingFormat mirrors ma_encoding_format.
+type EncodingFormat int32
+
+const (
+	EncodingFormatUnknown EncodingFormat = 0
+	EncodingFormatWAV     EncodingFormat = 1
+	EncodingFormatFLAC    EncodingFormat = 2
+	EncodingFormatMP3     EncodingFormat = 3
+	EncodingFormatVorbis  EncodingFormat = 4
+)
+
+// decoderConfigNative mirrors ma_decoder_config. Validated by layout_test.go.
+type decoderConfigNative struct {
+	Format                Format
+	Channels              uint32
+	SampleRate            uint32
+	ChannelMap            *uint8 // *ma_channel
+	ChannelMixMode        ChannelMixMode
+	DitherMode            DitherMode
+	Resampling            resamplerConfigNative
+	AllocationCallbacks   allocationCallbacksNative
+	EncodingFormat        EncodingFormat
+	SeekPointCount        uint32
+	CustomBackendVTables  unsafe.Pointer // **ma_decoding_backend_vtable, always nil
+	CustomBackendCount    uint32
+	CustomBackendUserData unsafe.Pointer
+}
 
 // biquadConfigNative mirrors ma_biquad_config. Validated by layout_test.go.
 type biquadConfigNative struct {
