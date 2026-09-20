@@ -319,11 +319,17 @@ Decode an encoded stream from memory and from a file:
 go run ./examples/decode
 ```
 
+Encode a tone to WAV in memory and to a file:
+
+```bash
+go run ./examples/encode
+```
+
 All of the examples accept `--backend` and fall back to the null backend when no
 real device backend is available, so they run on a headless machine. They load
 the embedded library and need no compiler; set `MAGO_MINIAUDIO_LIB` to run them
 against a locally built library instead. `convert-formats`, `channel-map`,
-`resample`, `buffers` and `decode` need no audio device at all.
+`resample`, `buffers`, `decode` and `encode` need no audio device at all.
 
 You can override the backend/device selection. The accepted backend values are platform-dependent:
 
