@@ -21,11 +21,13 @@ type AudioBufferConfig struct {
 
 // AudioBuffer is an in-memory PCM buffer that behaves as a data source.
 type AudioBuffer struct {
-	lib      *Library
-	handle   *audioBufferHandle
-	format   Format
-	channels uint32
-	dataRef  any
+	lib        *Library
+	handle     *audioBufferHandle
+	format     Format
+	channels   uint32
+	sampleRate uint32
+	dataRef    any
+	looping    bool
 }
 
 // NewAudioBuffer creates a buffer referencing config.Data or config.DataF32
@@ -94,11 +96,12 @@ func (lib *Library) newAudioBuffer(op string, config AudioBufferConfig, copyData
 	}
 
 	return &AudioBuffer{
-		lib:      lib,
-		handle:   handle,
-		format:   config.Format,
-		channels: config.Channels,
-		dataRef:  dataRef,
+		lib:        lib,
+		handle:     handle,
+		format:     config.Format,
+		channels:   config.Channels,
+		sampleRate: config.SampleRate,
+		dataRef:    dataRef,
 	}, nil
 }
 

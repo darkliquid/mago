@@ -116,3 +116,75 @@ func TestCustomDataSourceForwardSeek(t *testing.T) {
 		t.Fatalf("first frame after seek = %v, want 3", got)
 	}
 }
+
+func TestExistingSourcesImplementDataSource(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	waveform, err := lib.NewWaveform(WaveformConfig{
+		Format:     FormatF32,
+		Channels:   1,
+		SampleRate: 48_000,
+		Type:       WaveformTypeSine,
+		Amplitude:  0.5,
+		Frequency:  440,
+	})
+	if err != nil {
+		t.Fatalf("NewWaveform: %v", err)
+	}
+	defer func() { _ = waveform.Close() }()
+
+	var fromWaveform DataSource = waveform
+	if _, _, rate, err := fromWaveform.DataFormat(); err != nil || rate != 48_000 {
+		t.Fatalf("waveform DataFormat rate = %d (%v), want 48000", rate, err)
+	}
+	if read, err := fromWaveform.ReadPCMFrames(make([]byte, 4*16)); err != nil || read == 0 {
+		t.Fatalf("waveform ReadPCMFrames = %d (%v), want frames", read, err)
+	}
+
+	samples := []float32{0, 0.5, 1, -0.5}
+	buffer, err := lib.NewAudioBuffer(AudioBufferConfig{
+		Format:     FormatF32,
+		Channels:   1,
+		SampleRate: 48_000,
+		DataF32:    samples,
+	})
+	if err != nil {
+		t.Fatalf("NewAudioBuffer: %v", err)
+	}
+	defer func() { _ = buffer.Close() }()
+
+	var fromBuffer DataSource = buffer
+	out := make([]byte, 4*len(samples))
+	read, err := fromBuffer.ReadPCMFrames(out)
+	if err != nil {
+		t.Fatalf("audio buffer ReadPCMFrames: %v", err)
+	}
+	if read != uint64(len(samples)) {
+		t.Fatalf("audio buffer read %d frames, want %d", read, len(samples))
+	}
+	if got := math.Float32frombits(binary.LittleEndian.Uint32(out[4:8])); got != samples[1] {
+		t.Fatalf("second byte-encoded frame = %v, want %v", got, samples[1])
+	}
+
+	decoder, err := lib.NewDecoderMemory(decoderTestWAV(t, samples, 1, 48_000), DefaultDecoderConfig())
+	if err != nil {
+		t.Fatalf("NewDecoderMemory: %v", err)
+	}
+	defer func() { _ = decoder.Close() }()
+
+	var fromDecoder DataSource = decoder
+	if read, err := fromDecoder.ReadPCMFrames(make([]byte, 4*len(samples))); err != nil || read != uint64(len(samples)) {
+		t.Fatalf("decoder ReadPCMFrames = %d (%v), want %d", read, err, len(samples))
+	}
+
+	noise, err := lib.NewNoise(NoiseConfig{Format: FormatF32, Channels: 1, Type: NoiseTypeWhite, Seed: 1, Amplitude: 0.5})
+	if err != nil {
+		t.Fatalf("NewNoise: %v", err)
+	}
+	defer func() { _ = noise.Close() }()
+
+	var fromNoise DataSource = noise
+	if read, err := fromNoise.ReadPCMFrames(make([]byte, 4*16)); err != nil || read == 0 {
+		t.Fatalf("noise ReadPCMFrames = %d (%v), want frames", read, err)
+	}
+}
