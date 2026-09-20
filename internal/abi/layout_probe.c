@@ -143,5 +143,60 @@ int main(void)
     printf("offsetof:ma_encoder_config.channels %zu\n", offsetof(ma_encoder_config, channels));
     printf("offsetof:ma_encoder_config.sampleRate %zu\n", offsetof(ma_encoder_config, sampleRate));
     printf("offsetof:ma_encoder_config.allocationCallbacks %zu\n", offsetof(ma_encoder_config, allocationCallbacks));
+
+    printf("sizeof:ma_node_config %zu\n", sizeof(ma_node_config));
+    printf("offsetof:ma_node_config.vtable %zu\n", offsetof(ma_node_config, vtable));
+    printf("offsetof:ma_node_config.initialState %zu\n", offsetof(ma_node_config, initialState));
+    printf("offsetof:ma_node_config.inputBusCount %zu\n", offsetof(ma_node_config, inputBusCount));
+    printf("offsetof:ma_node_config.outputBusCount %zu\n", offsetof(ma_node_config, outputBusCount));
+    printf("offsetof:ma_node_config.pInputChannels %zu\n", offsetof(ma_node_config, pInputChannels));
+    printf("offsetof:ma_node_config.pOutputChannels %zu\n", offsetof(ma_node_config, pOutputChannels));
+
+    printf("sizeof:ma_node_graph_config %zu\n", sizeof(ma_node_graph_config));
+    printf("offsetof:ma_node_graph_config.channels %zu\n", offsetof(ma_node_graph_config, channels));
+    printf("offsetof:ma_node_graph_config.processingSizeInFrames %zu\n", offsetof(ma_node_graph_config, processingSizeInFrames));
+    printf("offsetof:ma_node_graph_config.preMixStackSizeInBytes %zu\n", offsetof(ma_node_graph_config, preMixStackSizeInBytes));
+
+    printf("sizeof:ma_data_source_node_config %zu\n", sizeof(ma_data_source_node_config));
+    printf("offsetof:ma_data_source_node_config.pDataSource %zu\n", offsetof(ma_data_source_node_config, pDataSource));
+
+    printf("sizeof:ma_splitter_node_config %zu\n", sizeof(ma_splitter_node_config));
+    printf("offsetof:ma_splitter_node_config.channels %zu\n", offsetof(ma_splitter_node_config, channels));
+    printf("offsetof:ma_splitter_node_config.outputBusCount %zu\n", offsetof(ma_splitter_node_config, outputBusCount));
+
+    printf("sizeof:ma_biquad_node_config %zu\n", sizeof(ma_biquad_node_config));
+    printf("offsetof:ma_biquad_node_config.biquad %zu\n", offsetof(ma_biquad_node_config, biquad));
+
+    printf("sizeof:ma_lpf_node_config %zu\n", sizeof(ma_lpf_node_config));
+    printf("offsetof:ma_lpf_node_config.lpf %zu\n", offsetof(ma_lpf_node_config, lpf));
+    printf("sizeof:ma_hpf_node_config %zu\n", sizeof(ma_hpf_node_config));
+    printf("offsetof:ma_hpf_node_config.hpf %zu\n", offsetof(ma_hpf_node_config, hpf));
+    printf("sizeof:ma_bpf_node_config %zu\n", sizeof(ma_bpf_node_config));
+    printf("offsetof:ma_bpf_node_config.bpf %zu\n", offsetof(ma_bpf_node_config, bpf));
+
+    printf("sizeof:ma_notch_node_config %zu\n", sizeof(ma_notch_node_config));
+    printf("offsetof:ma_notch_node_config.notch %zu\n", offsetof(ma_notch_node_config, notch));
+    printf("sizeof:ma_peak_node_config %zu\n", sizeof(ma_peak_node_config));
+    printf("offsetof:ma_peak_node_config.peak %zu\n", offsetof(ma_peak_node_config, peak));
+    printf("sizeof:ma_loshelf_node_config %zu\n", sizeof(ma_loshelf_node_config));
+    printf("offsetof:ma_loshelf_node_config.loshelf %zu\n", offsetof(ma_loshelf_node_config, loshelf));
+    printf("sizeof:ma_hishelf_node_config %zu\n", sizeof(ma_hishelf_node_config));
+    printf("offsetof:ma_hishelf_node_config.hishelf %zu\n", offsetof(ma_hishelf_node_config, hishelf));
+
+    printf("sizeof:ma_delay_node_config %zu\n", sizeof(ma_delay_node_config));
+    printf("offsetof:ma_delay_node_config.delay %zu\n", offsetof(ma_delay_node_config, delay));
+
+    printf("sizeof:ma_node_graph %zu\n", sizeof(ma_node_graph));
+    printf("sizeof:ma_data_source_node %zu\n", sizeof(ma_data_source_node));
+    printf("sizeof:ma_splitter_node %zu\n", sizeof(ma_splitter_node));
+    printf("sizeof:ma_biquad_node %zu\n", sizeof(ma_biquad_node));
+    printf("sizeof:ma_lpf_node %zu\n", sizeof(ma_lpf_node));
+    printf("sizeof:ma_hpf_node %zu\n", sizeof(ma_hpf_node));
+    printf("sizeof:ma_bpf_node %zu\n", sizeof(ma_bpf_node));
+    printf("sizeof:ma_notch_node %zu\n", sizeof(ma_notch_node));
+    printf("sizeof:ma_peak_node %zu\n", sizeof(ma_peak_node));
+    printf("sizeof:ma_loshelf_node %zu\n", sizeof(ma_loshelf_node));
+    printf("sizeof:ma_hishelf_node %zu\n", sizeof(ma_hishelf_node));
+    printf("sizeof:ma_delay_node %zu\n", sizeof(ma_delay_node));
     return 0;
 }

@@ -15,9 +15,11 @@ Three layers:
 
 1. **Root `mago` package** - low-level, explicit ABI: `Open()`/`Library`,
    `NewContext`, `Devices`, `NewPlaybackDevice`, `Device.Start/Stop/Close`, and
-   callback registration. Platform-specific files: `*_supported.go` (build-tagged
-   for the supported OSes) and `unsupported.go` (stub API for everything else so
-   the package still compiles).
+   callback registration, plus the software DSP objects (waveform/noise, filters,
+   delay, decoders/encoders, buffers, resamplers, data sources) and `NodeGraph`
+   for building routing racks. Platform-specific files: `*_supported.go`
+   (build-tagged for the supported OSes) and `unsupported.go` (stub API for
+   everything else so the package still compiles).
 2. **`audio` subpackage** - higher-level software mixer/engine: WAV decoding,
    `Engine`/`Clip`/`Stream`, looping, volume, speed, reverse, fades, crossfades.
 3. **`speaker` subpackage** - `gopxl/beep/speaker`-compatible API.
@@ -92,6 +94,13 @@ miniaudio through purego. C may only: (1) allocate raw memory Go cannot size
 mirror (the `ma_device_config` setter); (3) provide callback trampolines for C
 signatures that carry no `pUserData` (device data/notification). No other
 wrappers: bind `ma_*` symbols directly; every `mago_*` shim must be justified.
+
+A struct-returning config is **not** automatically category 2. If the struct has
+a fixed layout and carries no opaque internal pointer, mirror it in `types.go`
+and call the initialiser directly. The node graph is the worked example: every
+`ma_*_node_config` is a plain struct that Go mirrors, and no vtable is needed
+because each `ma_*_node_init` overwrites the vtable itself. Only add a config
+shim when a field is genuinely unavailable to Go, as with `ma_device_config`.
 
 `native/miniaudio_bridge.c` defines `mago_*` wrapper structs and functions for
 everything the Go side needs, and forwards device data/notification callbacks

@@ -65,6 +65,7 @@ The current implementation includes:
 - backend device enumeration
 - playback device creation
 - callback-based audio output
+- a node graph for building routing racks, with per-bus volume and scheduled node states
 - a higher-level `audio` subpackage for ergonomic stream playback
 - a `speaker` subpackage compatible with `gopxl/beep/speaker`
 
@@ -331,12 +332,18 @@ Supply PCM from Go with a custom data source:
 go run ./examples/datasource
 ```
 
+Build a routing rack with the node graph:
+
+```bash
+go run ./examples/nodegraph
+```
+
 All of the examples accept `--backend` and fall back to the null backend when no
 real device backend is available, so they run on a headless machine. They load
 the embedded library and need no compiler; set `MAGO_MINIAUDIO_LIB` to run them
 against a locally built library instead. `convert-formats`, `channel-map`,
-`resample`, `buffers`, `decode`, `encode` and `datasource` need no audio device
-at all.
+`resample`, `buffers`, `decode`, `encode`, `datasource` and `nodegraph` need no
+audio device at all.
 
 You can override the backend/device selection. The accepted backend values are platform-dependent:
 

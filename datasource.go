@@ -173,6 +173,16 @@ type CustomDataSource struct {
 	frameSize int
 }
 
+// nativeDataSourceHandle implements nativeDataSource, so a node graph reads this
+// source through the bridge object it already owns instead of registering a
+// second one.
+func (d *CustomDataSource) nativeDataSourceHandle() *dataSourceHandle {
+	if d == nil {
+		return nil
+	}
+	return d.handle
+}
+
 // NewCustomDataSource registers source with miniaudio so it can be consumed as
 // a data source (for example by a later node graph).
 func (lib *Library) NewCustomDataSource(source DataSource) (*CustomDataSource, error) {

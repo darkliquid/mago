@@ -764,3 +764,220 @@ func (*Delay) SetDry(float32) error   { return errUnsupportedPlatform }
 func (*Delay) Decay() float32         { return 0 }
 func (*Delay) SetDecay(float32) error { return errUnsupportedPlatform }
 func (*Delay) Close() error           { return errUnsupportedPlatform }
+
+// DataSource is the Go view of a miniaudio data source. The node graph stubs
+// below need the interface even though the concrete sources are still awaiting
+// their own stubs on unsupported platforms.
+type DataSource interface {
+	ReadPCMFrames(out []byte) (uint64, error)
+	SeekToPCMFrame(frameIndex uint64) error
+	DataFormat() (Format, uint32, uint32, error)
+	CursorInPCMFrames() (uint64, error)
+	LengthInPCMFrames() (uint64, error)
+	SetLooping(looping bool) error
+}
+
+type NodeGraphConfig struct {
+	Channels               uint32
+	ProcessingSizeInFrames uint32
+	PreMixStackSizeInBytes uint64
+}
+type NodeGraph struct{}
+
+func (*Library) NewNodeGraph(NodeGraphConfig) (*NodeGraph, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*NodeGraph) Endpoint() Node                 { return nil }
+func (*NodeGraph) Channels() uint32               { return 0 }
+func (*NodeGraph) ProcessingSizeInFrames() uint32 { return 0 }
+func (*NodeGraph) Read([]float32) (uint64, error) { return 0, errUnsupportedPlatform }
+func (*NodeGraph) Time() uint64                   { return 0 }
+func (*NodeGraph) SetTime(uint64) error           { return errUnsupportedPlatform }
+func (*NodeGraph) Close() error                   { return errUnsupportedPlatform }
+
+// Node is the routing view of an object in a NodeGraph.
+type Node interface {
+	Graph() *NodeGraph
+	InputBusCount() uint32
+	OutputBusCount() uint32
+	InputChannels(inputBusIndex uint32) uint32
+	OutputChannels(outputBusIndex uint32) uint32
+	AttachOutputBus(outputBusIndex uint32, other Node, otherInputBusIndex uint32) error
+	DetachOutputBus(outputBusIndex uint32) error
+	DetachAllOutputBuses() error
+	SetOutputBusVolume(outputBusIndex uint32, volume float32) error
+	OutputBusVolume(outputBusIndex uint32) float32
+	State() NodeState
+	SetState(state NodeState) error
+	SetStateTime(state NodeState, globalTime uint64) error
+	StateTime(state NodeState) uint64
+	StateByTime(globalTime uint64) NodeState
+	StateByTimeRange(globalTimeBeg, globalTimeEnd uint64) NodeState
+	Time() uint64
+	SetTime(localTime uint64) error
+
+	nodeHandle() *nodeHandle
+}
+
+// nodeStub implements the shared Node surface for every node type on
+// unsupported platforms.
+type nodeStub struct{}
+
+func (nodeStub) Graph() *NodeGraph { return nil }
+func (nodeStub) InputBusCount() uint32 {
+	return 0
+}
+func (nodeStub) OutputBusCount() uint32 { return 0 }
+func (nodeStub) InputChannels(uint32) uint32 {
+	return 0
+}
+func (nodeStub) OutputChannels(uint32) uint32 { return 0 }
+func (nodeStub) AttachOutputBus(uint32, Node, uint32) error {
+	return errUnsupportedPlatform
+}
+func (nodeStub) DetachOutputBus(uint32) error { return errUnsupportedPlatform }
+func (nodeStub) DetachAllOutputBuses() error  { return errUnsupportedPlatform }
+func (nodeStub) SetOutputBusVolume(uint32, float32) error {
+	return errUnsupportedPlatform
+}
+func (nodeStub) OutputBusVolume(uint32) float32 { return 0 }
+func (nodeStub) State() NodeState               { return NodeStateStopped }
+func (nodeStub) SetState(NodeState) error       { return errUnsupportedPlatform }
+func (nodeStub) SetStateTime(NodeState, uint64) error {
+	return errUnsupportedPlatform
+}
+func (nodeStub) StateTime(NodeState) uint64                { return 0 }
+func (nodeStub) StateByTime(uint64) NodeState              { return NodeStateStopped }
+func (nodeStub) StateByTimeRange(uint64, uint64) NodeState { return NodeStateStopped }
+func (nodeStub) Time() uint64                              { return 0 }
+func (nodeStub) SetTime(uint64) error                      { return errUnsupportedPlatform }
+func (nodeStub) nodeHandle() *nodeHandle                   { return nil }
+
+type SplitterNodeConfig struct {
+	Channels       uint32
+	OutputBusCount uint32
+}
+
+func DefaultSplitterNodeConfig(channels uint32) SplitterNodeConfig {
+	return SplitterNodeConfig{Channels: channels, OutputBusCount: 2}
+}
+
+type BiquadNodeConfig struct {
+	Channels uint32
+	B0       float64
+	B1       float64
+	B2       float64
+	A0       float64
+	A1       float64
+	A2       float64
+}
+type FilterNodeConfig struct {
+	Channels        uint32
+	SampleRate      uint32
+	CutoffFrequency float64
+	Order           uint32
+}
+type NotchNodeConfig struct {
+	Channels   uint32
+	SampleRate uint32
+	Q          float64
+	Frequency  float64
+}
+type PeakNodeConfig struct {
+	Channels   uint32
+	SampleRate uint32
+	GainDB     float64
+	Q          float64
+	Frequency  float64
+}
+type ShelfNodeConfig struct {
+	Channels   uint32
+	SampleRate uint32
+	GainDB     float64
+	ShelfSlope float64
+	Frequency  float64
+}
+
+type DataSourceNode struct{ nodeStub }
+
+func (*NodeGraph) NewDataSourceNode(DataSource) (*DataSourceNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*DataSourceNode) Source() DataSource    { return nil }
+func (*DataSourceNode) SetLooping(bool) error { return errUnsupportedPlatform }
+func (*DataSourceNode) IsLooping() bool       { return false }
+func (*DataSourceNode) Close() error          { return errUnsupportedPlatform }
+
+type SplitterNode struct{ nodeStub }
+
+func (*NodeGraph) NewSplitterNode(SplitterNodeConfig) (*SplitterNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*SplitterNode) Close() error { return errUnsupportedPlatform }
+
+type BiquadNode struct{ nodeStub }
+
+func (*NodeGraph) NewBiquadNode(BiquadNodeConfig) (*BiquadNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*BiquadNode) Reinit(BiquadNodeConfig) error { return errUnsupportedPlatform }
+func (*BiquadNode) Close() error                  { return errUnsupportedPlatform }
+
+type LowPassNode struct{ nodeStub }
+type HighPassNode struct{ nodeStub }
+type BandPassNode struct{ nodeStub }
+
+func (*NodeGraph) NewLowPassNode(FilterNodeConfig) (*LowPassNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*NodeGraph) NewHighPassNode(FilterNodeConfig) (*HighPassNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*NodeGraph) NewBandPassNode(FilterNodeConfig) (*BandPassNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*LowPassNode) Reinit(FilterNodeConfig) error  { return errUnsupportedPlatform }
+func (*LowPassNode) Close() error                   { return errUnsupportedPlatform }
+func (*HighPassNode) Reinit(FilterNodeConfig) error { return errUnsupportedPlatform }
+func (*HighPassNode) Close() error                  { return errUnsupportedPlatform }
+func (*BandPassNode) Reinit(FilterNodeConfig) error { return errUnsupportedPlatform }
+func (*BandPassNode) Close() error                  { return errUnsupportedPlatform }
+
+type NotchNode struct{ nodeStub }
+type PeakNode struct{ nodeStub }
+type LowShelfNode struct{ nodeStub }
+type HighShelfNode struct{ nodeStub }
+
+func (*NodeGraph) NewNotchNode(NotchNodeConfig) (*NotchNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*NodeGraph) NewPeakNode(PeakNodeConfig) (*PeakNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*NodeGraph) NewLowShelfNode(ShelfNodeConfig) (*LowShelfNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*NodeGraph) NewHighShelfNode(ShelfNodeConfig) (*HighShelfNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*NotchNode) Reinit(NotchNodeConfig) error     { return errUnsupportedPlatform }
+func (*NotchNode) Close() error                     { return errUnsupportedPlatform }
+func (*PeakNode) Reinit(PeakNodeConfig) error       { return errUnsupportedPlatform }
+func (*PeakNode) Close() error                      { return errUnsupportedPlatform }
+func (*LowShelfNode) Reinit(ShelfNodeConfig) error  { return errUnsupportedPlatform }
+func (*LowShelfNode) Close() error                  { return errUnsupportedPlatform }
+func (*HighShelfNode) Reinit(ShelfNodeConfig) error { return errUnsupportedPlatform }
+func (*HighShelfNode) Close() error                 { return errUnsupportedPlatform }
+
+type DelayNode struct{ nodeStub }
+
+func (*NodeGraph) NewDelayNode(DelayConfig) (*DelayNode, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*DelayNode) Wet() float32           { return 0 }
+func (*DelayNode) SetWet(float32) error   { return errUnsupportedPlatform }
+func (*DelayNode) Dry() float32           { return 0 }
+func (*DelayNode) SetDry(float32) error   { return errUnsupportedPlatform }
+func (*DelayNode) Decay() float32         { return 0 }
+func (*DelayNode) SetDecay(float32) error { return errUnsupportedPlatform }
+func (*DelayNode) Close() error           { return errUnsupportedPlatform }

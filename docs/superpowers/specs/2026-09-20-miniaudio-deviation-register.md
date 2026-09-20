@@ -44,10 +44,12 @@ Legend: **P** = originating phase, **Sev** = severity (H high, M medium, L low).
 | D7 | 1 | L | The loopback device type is accepted and validated but has no test; it is WASAPI-only, so it cannot be exercised on the null backend. | only `device_supported.go` references `DeviceTypeLoopback` |
 | D8 | 3 | L | Custom resampling backends, `get_heap_size` and `init_preallocated` are not exposed. Recorded as a decision, not an oversight. | `mago-8a3.4.3`; `resample.go` rejects custom backends |
 | D9 | 2/3 | L | Custom channel mixing weights are rejected in the channel converter and the data converter. | `channel.go`, `resample.go` |
+| D19 | 10 | M | Custom nodes are not exposed. `ma_node_init` accepts a caller-supplied `ma_node_vtable`, but reaching it from Go needs `onProcess` and `onGetRequiredInputFrameCount` trampolines plus a bridge object, which belongs with the engine work. | `nodes.go` covers miniaudio's own node types only; `ma_node_init` is not bound |
+| D20 | 10 | L | `ma_node_init_preallocated` and `ma_node_get_heap_size` are not exposed. mago always lets miniaudio own a node's heap. Recorded as a decision, matching D8. | `nodes.go` and `nodegraph.go` allocate with `mago_alloc` and pass NULL allocation callbacks |
 
 ### 2.2 Dead bindings
 
-Ten of 242 registered bindings are never called. Dead bindings are not harmless: they are
+Ten of 305 registered bindings are never called. Dead bindings are not harmless: they are
 symbols we must keep exported and regenerated for seven targets.
 
 | Binding | Notes |
@@ -72,7 +74,7 @@ symbols we must keep exported and regenerated for seven targets.
 | ID | P | Sev | Deviation | Evidence |
 | --- | --- | --- | --- | --- |
 | D15 | 0-9 | H | `zz_generated.bindings.go` has **no build tag** and imports `purego`, so an unsupported GOOS fails inside purego before the stub API is reached. `unsupported.go` is therefore unverifiable dead code. | `GOOS=plan9 go build ./...` fails with `undefined: syscall15Args` in purego |
-| D16 | 7-9 | H | `unsupported.go` has no stubs for `Decoder`, `Encoder`, `DataSource`, `CustomDataSource` or the Phase 9 adapters, so its advertised API is incomplete even if D15 were fixed. | grep counts are 0 for those names |
+| D16 | 7-9 | H | `unsupported.go` has no stubs for `Decoder`, `Encoder`, `CustomDataSource` or the Phase 9 adapters on `AudioBuffer`, `Waveform` and `Noise`, so its advertised API is incomplete even if D15 were fixed. The bare `DataSource` interface stub landed with Phase 10 (D22) because the node types need it. | grep counts are 0 for those names; see D22 |
 | D17 | 0-9 | L | No test fails when a binding becomes dead, so section 2.2 will keep growing. | the audit above is manual |
 
 ### 2.5 Process
@@ -80,6 +82,8 @@ symbols we must keep exported and regenerated for seven targets.
 | ID | Sev | Deviation |
 | --- | --- | --- |
 | D18 | M | Deviations live only in commit messages and closed beads. This document is the first durable register; keeping it current is a process obligation, not a task. |
+| D21 | L | The Phase 10 section of the program spec named APIs that do not exist in miniaudio 0.11.25: `ma_node_graph_get_node_count`, and the `ma_lpf1_node` / `ma_lpf2_node` / `ma_hpf1_node` / `ma_hpf2_node` / `ma_bpf2_node` / `ma_notch2_node` / `ma_peak2_node` / `ma_loshelf2_node` / `ma_hishelf2_node` filter-node variants. The spec hedged with "verify exact names at implementation time"; Phase 10 implemented the real surface, and the graph's introspection is `ma_node_graph_get_channels` / `get_time` / `set_time` / `get_processing_size_in_frames`. |
+| D22 | L | Phase 10 needed a `DataSource` interface stub in `unsupported.go` because `DataSourceNode.Source` returns one, so a sliver of WS1.2 (D16) landed early. The rest of D16 is still open. |
 
 ## 3. Remediation roadmap
 
@@ -170,11 +174,14 @@ phases 0-9".
 
 | Workstream | Epic | Covers |
 | --- | --- | --- |
-| WS1 platform build hygiene | `mago-8a3.15.1` | D15, D16, D17 |
+| WS1 platform build hygiene | `mago-8a3.15.1` | D15, D16, D17 (and the sliver of D16 that landed as D22) |
 | WS2 finish half-built behaviour | `mago-8a3.15.2` | D1, D2, D3, D4, D5, D6 |
-| WS3 close API gaps | `mago-8a3.15.3` | D10, D11, D12, D14 |
+| WS3 close API gaps | `mago-8a3.15.3` | D10, D11, D12, D14, D19 (`mago-8a3.15.3.5`) |
 | WS4 test the untested | `mago-8a3.15.4` | D7, D9 |
-| Process | `mago-8a3.15.5` | D18 |
+| Process | `mago-8a3.15.5` | D18, D21 (`mago-8a3.15.5.1`) |
+
+D20 is a recorded decision rather than work, matching D8. D22 is a note about how
+D16 landed, not a separate task.
 
 `mago-8a3.15.3.4` (`*_vfs` variants) is blocked by `mago-8a3.13`, the Phase 12 VFS
 decision, because the variants cannot be designed before that choice is made.
