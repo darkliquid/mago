@@ -10,8 +10,61 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      native: ${{ steps.filter.outputs.native }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            if ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "${base}"
+            fi
+            files=$(git diff --name-only "${base}" HEAD)
+          else
+            files=$(git diff --name-only HEAD^ HEAD)
+          fi
+
+          printf 'Changed files:\n%s\n' "${files}"
+
+          go=false
+          native=false
+          while IFS= read -r file; do
+            [ -n "${file}" ] || continue
+            case "${file}" in
+              *.go | go.mod | go.sum | .golangci.yml | mise.toml | examples/*)
+                go=true
+                ;;
+            esac
+            case "${file}" in
+              native/* | internal/buildlib/* | internal/gen/* | mise.toml | embed_*.go | zz_generated.bindings.go)
+                native=true
+                ;;
+            esac
+          done <<< "${files}"
+
+          echo "go=${go}" >> "${GITHUB_OUTPUT}"
+          echo "native=${native}" >> "${GITHUB_OUTPUT}"
+          echo "Skipping lint/test: ${go}; skipping test and embed verification: ${native}"
+
   lint:
     name: Lint
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -28,6 +81,8 @@ jobs:
 
   verify-embeds:
     name: Verify embeds
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.native == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -79,7 +134,8 @@ jobs:
 
   test:
     name: Test (${{ matrix.os }})
-    needs: [verify-embeds]
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.go == 'true' || needs.changes.outputs.native == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
