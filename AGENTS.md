@@ -133,6 +133,14 @@ When adding a bridge symbol: add it to `functions` in
 
 ## Testing
 
+CI classifies the diff in a `Detect changes` job and skips work the change cannot
+affect: `go` paths (`*.go`, `go.mod`, `go.sum`, `.golangci.yml`, `mise.toml`) gate
+Lint and the test matrix, `native` paths (`native/*`, `internal/buildlib/*`,
+`internal/gen/*`, `mise.toml`, `embed_*.go`, `zz_generated.bindings.go`) also gate
+embed verification. A docs-only pull request therefore runs none of them, so run
+`mise run test` locally before pushing if you changed code and only docs in the
+final commit. Pushes to `main` always run every job.
+
 Tests that touch audio build a fresh native library at runtime via
 `internal/testlib.BuildRuntimeLibrary(t, root)`, which calls `buildlib.Build`
 into a temp dir. **This means the ordinary test suite requires `zig` on `PATH`
