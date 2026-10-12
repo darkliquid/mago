@@ -27,12 +27,46 @@ func (DeviceIO) InputBytes() []byte   { return nil }
 type DataCallback func(*Device, DeviceIO)
 type NotificationCallback func(*Device, NotificationType)
 type PlaybackDeviceConfig struct {
-	DeviceID *DeviceID
+	DeviceID                  *DeviceID
+	DeviceIndex               int
+	Format                    Format
+	Channels                  uint32
+	SampleRate                uint32
+	PeriodSizeInFrames        uint32
+	PeriodSizeInMilliseconds  uint32
+	Periods                   uint32
+	PerformanceProfile        PerformanceProfile
+	ShareMode                 ShareMode
+	NoPreSilencedOutputBuffer bool
+	NoClip                    bool
+	NoDisableDenormals        bool
+	NoFixedSizedCallback      bool
+	DataCallback              DataCallback
+	NotificationCallback      NotificationCallback
 }
 type StreamConfig struct {
-	DeviceID *DeviceID
+	DeviceID                  *DeviceID
+	DeviceIndex               int
+	Format                    Format
+	Channels                  uint32
+	SampleRate                uint32
+	PeriodSizeInFrames        uint32
+	PeriodSizeInMilliseconds  uint32
+	Periods                   uint32
+	PerformanceProfile        PerformanceProfile
+	ShareMode                 ShareMode
+	NoPreSilencedOutputBuffer bool
+	NoClip                    bool
+	NoDisableDenormals        bool
+	NoFixedSizedCallback      bool
 }
-type DeviceConfig struct{}
+type DeviceConfig struct {
+	Type                 DeviceType
+	Playback             *StreamConfig
+	Capture              *StreamConfig
+	DataCallback         DataCallback
+	NotificationCallback NotificationCallback
+}
 
 type OpError struct {
 	Op          string
@@ -40,7 +74,17 @@ type OpError struct {
 	Description string
 }
 
-func (e *OpError) Error() string                        { return errUnsupportedPlatform.Error() }
+func (e *OpError) Error() string { return errUnsupportedPlatform.Error() }
+
+type VersionMismatchError struct {
+	Expected       Version
+	Actual         Version
+	ExpectedString string
+	ActualString   string
+}
+
+func (e *VersionMismatchError) Error() string { return errUnsupportedPlatform.Error() }
+
 func WithLibraryPath(string) LibraryOption              { return func(*struct{}) {} }
 func Open(...LibraryOption) (*Library, error)           { return nil, errUnsupportedPlatform }
 func DefaultPlaybackDeviceConfig() PlaybackDeviceConfig { return PlaybackDeviceConfig{} }
@@ -61,6 +105,40 @@ func (*Library) NewPlaybackDevice(*Context, PlaybackDeviceConfig) (*Device, erro
 func (*Context) NewPlaybackDevice(PlaybackDeviceConfig) (*Device, error) {
 	return nil, errUnsupportedPlatform
 }
+func (*Library) Close() error              { return errUnsupportedPlatform }
+func (*Library) Path() string              { return "" }
+func (*Library) Version() (Version, error) { return Version{}, errUnsupportedPlatform }
+func (*Library) VersionString() (string, error) {
+	return "", errUnsupportedPlatform
+}
+func (*Library) ResultDescription(Result) (string, error) {
+	return "", errUnsupportedPlatform
+}
+func (*Library) NewContext(...Backend) (*Context, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) DefaultChannelMapFor(ChannelMap, uint32) ChannelMap { return ChannelMap{} }
+
+func (*Context) Devices() ([]DeviceInfo, []DeviceInfo, error) {
+	return nil, nil, errUnsupportedPlatform
+}
+func (*Context) Log() *Log    { return nil }
+func (*Context) Close() error { return errUnsupportedPlatform }
+
+func (*Device) Start() error                           { return errUnsupportedPlatform }
+func (*Device) Stop() error                            { return errUnsupportedPlatform }
+func (*Device) Close() error                           { return errUnsupportedPlatform }
+func (*Device) State() DeviceState                     { return DeviceStateStopped }
+func (*Device) Name() (string, error)                  { return "", errUnsupportedPlatform }
+func (*Device) NameFor(DeviceType) (string, error)     { return "", errUnsupportedPlatform }
+func (*Device) Info() (DeviceInfo, error)              { return DeviceInfo{}, errUnsupportedPlatform }
+func (*Device) InfoFor(DeviceType) (DeviceInfo, error) { return DeviceInfo{}, errUnsupportedPlatform }
+func (*Device) Log() *Log                              { return nil }
+func (*Device) Context() *Context                      { return nil }
+func (*Device) SetMasterVolume(float64) error          { return errUnsupportedPlatform }
+func (*Device) MasterVolume() (float64, error)         { return 0, errUnsupportedPlatform }
+func (*Device) SetMasterVolumeDB(float64) error        { return errUnsupportedPlatform }
+func (*Device) MasterVolumeDB() (float64, error)       { return 0, errUnsupportedPlatform }
 
 type LogLevel uint32
 
@@ -83,7 +161,15 @@ func (l *Log) Post(LogLevel, string) error           { return errUnsupportedPlat
 func (l *Log) LevelString(LogLevel) string           { return "" }
 
 type ChannelMap struct{}
-type ChannelConverterConfig struct{}
+type ChannelConverterConfig struct {
+	Format                          Format
+	ChannelsIn                      uint32
+	ChannelsOut                     uint32
+	ChannelMapIn                    ChannelMap
+	ChannelMapOut                   ChannelMap
+	MixingMode                      ChannelMixMode
+	CalculateLFEFromSpatialChannels bool
+}
 type ChannelConverter struct{}
 
 func (*Library) NewStandardChannelMap(StandardChannelMap, uint32) ChannelMap { return ChannelMap{} }
@@ -128,9 +214,37 @@ func (*Library) ConvertFramesF32ToS16([]int16, uint32, uint32, []float32, uint32
 }
 func BytesPerSample(Format) uint32 { return 0 }
 
-type ResamplerConfig struct{}
-type LinearResamplerConfig struct{}
-type DataConverterConfig struct{}
+type ResamplerConfig struct {
+	Format         Format
+	Channels       uint32
+	SampleRateIn   uint32
+	SampleRateOut  uint32
+	Algorithm      ResampleAlgorithm
+	LinearLPFOrder uint32
+}
+type LinearResamplerConfig struct {
+	Format           Format
+	Channels         uint32
+	SampleRateIn     uint32
+	SampleRateOut    uint32
+	LPFOrder         uint32
+	LPFNyquistFactor float64
+}
+type DataConverterConfig struct {
+	FormatIn                        Format
+	FormatOut                       Format
+	ChannelsIn                      uint32
+	ChannelsOut                     uint32
+	SampleRateIn                    uint32
+	SampleRateOut                   uint32
+	ChannelMapIn                    ChannelMap
+	ChannelMapOut                   ChannelMap
+	DitherMode                      DitherMode
+	ChannelMixMode                  ChannelMixMode
+	CalculateLFEFromSpatialChannels bool
+	AllowDynamicSampleRate          bool
+	LinearLPFOrder                  uint32
+}
 type Resampler struct{}
 type LinearResampler struct{}
 type DataConverter struct{}
@@ -247,6 +361,13 @@ func (*AudioBuffer) CursorInPCMFrames() (uint64, error) { return 0, errUnsupport
 func (*AudioBuffer) LengthInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
 func (*AudioBuffer) AvailableFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
 func (*AudioBuffer) Close() error                       { return errUnsupportedPlatform }
+func (*AudioBuffer) ReadPCMFrames([]byte) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*AudioBuffer) SetLooping(bool) error { return errUnsupportedPlatform }
+func (*AudioBuffer) DataFormat() (Format, uint32, uint32, error) {
+	return FormatUnknown, 0, 0, errUnsupportedPlatform
+}
 
 func (*Library) NewAudioBufferRef(Format, uint32, []byte) (*AudioBufferRef, error) {
 	return nil, errUnsupportedPlatform
@@ -337,6 +458,15 @@ func (*Waveform) SetFrequency(float64) error  { return errUnsupportedPlatform }
 func (*Waveform) SetType(WaveformType) error  { return errUnsupportedPlatform }
 func (*Waveform) SetSampleRate(uint32) error  { return errUnsupportedPlatform }
 func (*Waveform) Close() error                { return errUnsupportedPlatform }
+func (*Waveform) ReadPCMFrames([]byte) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*Waveform) DataFormat() (Format, uint32, uint32, error) {
+	return FormatUnknown, 0, 0, errUnsupportedPlatform
+}
+func (*Waveform) CursorInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*Waveform) LengthInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*Waveform) SetLooping(bool) error              { return errUnsupportedPlatform }
 
 type NoiseConfig struct {
 	Format            Format
@@ -355,6 +485,16 @@ func (*Noise) SetAmplitude(float64) error             { return errUnsupportedPla
 func (*Noise) SetSeed(int32) error                    { return errUnsupportedPlatform }
 func (*Noise) SetType(NoiseType) error                { return errUnsupportedPlatform }
 func (*Noise) Close() error                           { return errUnsupportedPlatform }
+func (*Noise) ReadPCMFrames([]byte) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*Noise) DataFormat() (Format, uint32, uint32, error) {
+	return FormatUnknown, 0, 0, errUnsupportedPlatform
+}
+func (*Noise) CursorInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*Noise) LengthInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*Noise) SeekToPCMFrame(uint64) error        { return errUnsupportedPlatform }
+func (*Noise) SetLooping(bool) error              { return errUnsupportedPlatform }
 
 type BiquadConfig struct {
 	Format   Format
@@ -766,9 +906,94 @@ func (*Delay) Decay() float32         { return 0 }
 func (*Delay) SetDecay(float32) error { return errUnsupportedPlatform }
 func (*Delay) Close() error           { return errUnsupportedPlatform }
 
+type DecoderConfig struct {
+	Format         Format
+	Channels       uint32
+	SampleRate     uint32
+	ChannelMixMode ChannelMixMode
+	DitherMode     DitherMode
+	SeekPointCount uint32
+}
+
+func DefaultDecoderConfig() DecoderConfig {
+	return DecoderConfig{
+		Format:         FormatF32,
+		ChannelMixMode: ChannelMixModeRectangular,
+		DitherMode:     DitherModeNone,
+	}
+}
+
+type Decoder struct{}
+
+func (*Library) NewDecoderMemory([]byte, DecoderConfig) (*Decoder, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewDecoderFile(string, DecoderConfig) (*Decoder, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Decoder) DataFormat() (Format, uint32, uint32, error) {
+	return FormatUnknown, 0, 0, errUnsupportedPlatform
+}
+func (*Decoder) ReadF32([]float32) (uint64, error)    { return 0, errUnsupportedPlatform }
+func (*Decoder) ReadS16([]int16) (uint64, error)      { return 0, errUnsupportedPlatform }
+func (*Decoder) ReadPCMFrames([]byte) (uint64, error) { return 0, errUnsupportedPlatform }
+func (*Decoder) SeekToPCMFrame(uint64) error          { return errUnsupportedPlatform }
+func (*Decoder) SetLooping(bool) error                { return errUnsupportedPlatform }
+func (*Decoder) CursorInPCMFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
+func (*Decoder) LengthInPCMFrames() (uint64, error)   { return 0, errUnsupportedPlatform }
+func (*Decoder) AvailableFrames() (uint64, error)     { return 0, errUnsupportedPlatform }
+func (*Decoder) Close() error                         { return errUnsupportedPlatform }
+
+type EncoderConfig struct {
+	EncodingFormat EncodingFormat
+	Format         Format
+	Channels       uint32
+	SampleRate     uint32
+}
+
+func DefaultEncoderConfig(channels, sampleRate uint32) EncoderConfig {
+	return EncoderConfig{
+		EncodingFormat: EncodingFormatWAV,
+		Format:         FormatF32,
+		Channels:       channels,
+		SampleRate:     sampleRate,
+	}
+}
+
+type Encoder struct{}
+
+func (*Library) NewEncoderFile(string, EncoderConfig) (*Encoder, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Library) NewEncoderWriter(EncoderConfig) (*Encoder, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*Encoder) WriteF32([]float32) (uint64, error) { return 0, errUnsupportedPlatform }
+func (*Encoder) WriteS16([]int16) (uint64, error)   { return 0, errUnsupportedPlatform }
+func (*Encoder) Finish() error                      { return errUnsupportedPlatform }
+func (*Encoder) Bytes() []byte                      { return nil }
+func (*Encoder) Close() error                       { return errUnsupportedPlatform }
+
+type CustomDataSource struct{}
+
+func (*Library) NewCustomDataSource(DataSource) (*CustomDataSource, error) {
+	return nil, errUnsupportedPlatform
+}
+func (*CustomDataSource) ReadPCMFrames([]byte) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
+func (*CustomDataSource) SeekToPCMFrame(uint64) error { return errUnsupportedPlatform }
+func (*CustomDataSource) DataFormat() (Format, uint32, uint32, error) {
+	return FormatUnknown, 0, 0, errUnsupportedPlatform
+}
+func (*CustomDataSource) CursorInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*CustomDataSource) LengthInPCMFrames() (uint64, error) { return 0, errUnsupportedPlatform }
+func (*CustomDataSource) SetLooping(bool) error              { return errUnsupportedPlatform }
+func (*CustomDataSource) Close() error                       { return errUnsupportedPlatform }
+
 // DataSource is the Go view of a miniaudio data source. The node graph stubs
-// below need the interface even though the concrete sources are still awaiting
-// their own stubs on unsupported platforms.
+// below need the interface so node graphs can consume any of the concrete
+// sources declared above.
 type DataSource interface {
 	ReadPCMFrames(out []byte) (uint64, error)
 	SeekToPCMFrame(frameIndex uint64) error

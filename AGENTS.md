@@ -53,7 +53,7 @@ Run a single test, e.g. `go test -run TestVersionAndNullBackendPlayback ./`.
 `go run ./internal/cmd/buildlib [flags]`:
 
 - `-version x.y.z` overrides the miniaudio version; otherwise it is derived from
-  `zz_generated.bindings.go` (or `miniaudio.h` if present).
+  `zz_generated.constants.go` (or `miniaudio.h` if present).
 - `-all` builds all targets; `-target os/arch` builds one; `-download-only path`
   only fetches `miniaudio.h`.
 - Outputs go to `internal/lib/<goos>-<goarch>/<lib>` (gitignored).
@@ -69,9 +69,12 @@ Supported targets (7): `linux/{amd64,arm64}`, `windows/amd64`,
 `go generate ./...` runs two generators, both writing files at the repo root
 with `DO NOT EDIT` headers:
 
-- `internal/gen/bindings` → `zz_generated.bindings.go` (version constants,
-  `Result`/`Backend`/... constant values, and the `bindingSet` struct whose
-  `register` method binds each `purego.RegisterLibFunc` symbol).
+- `internal/gen/bindings` → two files: `zz_generated.constants.go`, which is
+  untagged and carries the version constants plus the `Result`/`Backend`/...
+  constant values so every GOOS can compile them, and
+  `zz_generated.bindings.go`, which is tagged
+  `darwin || freebsd || linux || netbsd || windows` and holds the `bindingSet`
+  struct whose `register` method binds each `purego.RegisterLibFunc` symbol.
 - `internal/gen/embeds` → the tracked `embed_<goos>_<goarch>.go` files. It
   requires every built library under `internal/lib/` to exist and be non-empty,
   and fails with an actionable error telling you to run `mise run build-lib-all`.
@@ -116,7 +119,7 @@ token passed as `UserData`.
 
 When adding a bridge symbol: add it to `functions` in
 `internal/gen/bindings/main.go`, then re-run `mise run generate`; do not edit
-`zz_generated.bindings.go` directly.
+the generated `zz_generated.*.go` files directly.
 
 ## Conventions and patterns
 
@@ -149,8 +152,8 @@ When adding a bridge symbol: add it to `functions` in
 CI classifies the diff in a `Detect changes` job and skips work the change cannot
 affect: `go` paths (`*.go`, `go.mod`, `go.sum`, `.golangci.yml`, `mise.toml`) gate
 Lint and the test matrix, `native` paths (`native/*`, `internal/buildlib/*`,
-`internal/gen/*`, `mise.toml`, `embed_*.go`, `zz_generated.bindings.go`) also gate
-embed verification. A docs-only pull request therefore runs none of them, so run
+`internal/gen/*`, `mise.toml`, `embed_*.go`, `zz_generated.constants.go`,
+`zz_generated.bindings.go`) also gate embed verification. A docs-only pull request therefore runs none of them, so run
 `mise run test` locally before pushing if you changed code and only docs in the
 final commit. Pushes to `main` always run every job.
 

@@ -104,7 +104,10 @@ var (
 		return "https://raw.githubusercontent.com/mackron/miniaudio/" + url.PathEscape(version) + "/miniaudio.h"
 	}
 	versionConstPattern = regexp.MustCompile(`ExpectedMiniaudioVersion(Major|Minor|Revision)\s+uint32\s*=\s*(\d+)`)
-	compilerOverride    string // used in tests to mock compilation without executing zig/osxcross
+	// versionConstFiles lists the generated files that may carry the version
+	// constants, newest layout first.
+	versionConstFiles = []string{"zz_generated.constants.go", "zz_generated.bindings.go"}
+	compilerOverride  string // used in tests to mock compilation without executing zig/osxcross
 )
 
 func DownloadMiniaudioHeader(version, dstPath string) (err error) {
@@ -164,14 +167,23 @@ func DownloadMiniaudioHeader(version, dstPath string) (err error) {
 }
 
 func defaultMiniaudioVersion(root string) (string, error) {
-	content, err := os.ReadFile(filepath.Join(root, "zz_generated.bindings.go"))
-	if err != nil {
-		return "", fmt.Errorf("read generated bindings version constants: %w", err)
-	}
-
 	parts := map[string]string{}
-	for _, match := range versionConstPattern.FindAllStringSubmatch(string(content), -1) {
-		parts[match[1]] = match[2]
+	var found bool
+	for _, name := range versionConstFiles {
+		content, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			continue
+		}
+		found = true
+		for _, match := range versionConstPattern.FindAllStringSubmatch(string(content), -1) {
+			parts[match[1]] = match[2]
+		}
+		if _, ok := parts["Major"]; ok {
+			break
+		}
+	}
+	if !found {
+		return "", fmt.Errorf("read generated bindings version constants: %w", os.ErrNotExist)
 	}
 
 	major, ok1 := parts["Major"]

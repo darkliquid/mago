@@ -51,7 +51,7 @@ jobs:
                 ;;
             esac
             case "${file}" in
-              native/* | internal/buildlib/* | internal/gen/* | mise.toml | embed_*.go | zz_generated.bindings.go)
+              native/* | internal/buildlib/* | internal/gen/* | mise.toml | embed_*.go | zz_generated.constants.go | zz_generated.bindings.go)
                 native=true
                 ;;
             esac
