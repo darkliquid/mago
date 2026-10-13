@@ -78,8 +78,8 @@ symbols we must keep exported and regenerated for seven targets.
 
 | ID | P | Sev | Deviation | Evidence |
 | --- | --- | --- | --- | --- |
-| D15 | 0-9 | H | `zz_generated.bindings.go` has **no build tag** and imports `purego`, so an unsupported GOOS fails inside purego before the stub API is reached. `unsupported.go` is therefore unverifiable dead code. | `GOOS=plan9 go build ./...` fails with `undefined: syscall15Args` in purego |
-| D16 | 7-9 | H | `unsupported.go` has no stubs for `Decoder`, `Encoder`, `CustomDataSource` or the Phase 9 adapters on `AudioBuffer`, `Waveform` and `Noise`, so its advertised API is incomplete even if D15 were fixed. The bare `DataSource` interface stub landed with Phase 10 (D22) because the node types need it. | grep counts are 0 for those names; see D22 |
+| D15 | 0-9 | H | **Fixed in WS1 (`mago-8a3.15.1.1`).** The generated output is split in two: `zz_generated.constants.go` is untagged and carries only the version and enum constants, while `zz_generated.bindings.go` holds `bindingSet`, its `register` method and the `purego` import behind the supported-platform build tag. | `GOOS=plan9 GOARCH=amd64 go build ./...` now reaches the mago package; before the split it failed inside purego with `undefined: syscall15Args` |
+| D16 | 7-9 | H | **Fixed in WS1 (`mago-8a3.15.1.2`).** `unsupported.go` now declares `Decoder`, `Encoder`, `CustomDataSource` and `VersionMismatchError`, the Phase 9 adapter methods on `AudioBuffer`, `Waveform` and `Noise`, the core library, context and device methods, and the config struct fields, so the stub API matches the supported one. The bare `DataSource` interface stub landed early with Phase 10 (D22) because the node types need it. | A `go/types` surface diff of `GOOS=linux` against `GOOS=plan9` reports nothing missing from the stub; the sole difference is D1's `AudioBufferRef.SeekToPCMFrame`, which the stub has and the supported build does not yet |
 | D17 | 0-9 | L | No test fails when a binding becomes dead, so section 2.2 will keep growing. | the audit above is manual |
 
 ### 2.5 Process

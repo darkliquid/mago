@@ -244,12 +244,34 @@ func TestDownloadMiniaudioHeaderValidation(t *testing.T) {
 
 func TestDefaultMiniaudioVersion(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "zz_generated.bindings.go"), []byte(`package mago
+	if err := os.WriteFile(filepath.Join(root, "zz_generated.constants.go"), []byte(`package mago
 
 const (
 	ExpectedMiniaudioVersionMajor    uint32 = 1
 	ExpectedMiniaudioVersionMinor    uint32 = 22
 	ExpectedMiniaudioVersionRevision uint32 = 333
+)
+`), 0o644); err != nil {
+		t.Fatalf("write generated constants: %v", err)
+	}
+
+	version, err := defaultMiniaudioVersion(root)
+	if err != nil {
+		t.Fatalf("defaultMiniaudioVersion: %v", err)
+	}
+	if version != "1.22.333" {
+		t.Fatalf("unexpected version: %q", version)
+	}
+}
+
+func TestDefaultMiniaudioVersionLegacyBindings(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "zz_generated.bindings.go"), []byte(`package mago
+
+const (
+	ExpectedMiniaudioVersionMajor    uint32 = 2
+	ExpectedMiniaudioVersionMinor    uint32 = 33
+	ExpectedMiniaudioVersionRevision uint32 = 444
 )
 `), 0o644); err != nil {
 		t.Fatalf("write generated bindings: %v", err)
@@ -259,8 +281,14 @@ const (
 	if err != nil {
 		t.Fatalf("defaultMiniaudioVersion: %v", err)
 	}
-	if version != "1.22.333" {
+	if version != "2.33.444" {
 		t.Fatalf("unexpected version: %q", version)
+	}
+}
+
+func TestDefaultMiniaudioVersionMissing(t *testing.T) {
+	if _, err := defaultMiniaudioVersion(t.TempDir()); err == nil {
+		t.Fatal("expected error when no generated file exists, got nil")
 	}
 }
 
@@ -465,8 +493,8 @@ const (
 	ExpectedMiniaudioVersionRevision uint32 = ` + parts[2] + `
 )
 `
-	if err := os.WriteFile(filepath.Join(root, "zz_generated.bindings.go"), []byte(content), 0o644); err != nil {
-		t.Fatalf("write generated bindings: %v", err)
+	if err := os.WriteFile(filepath.Join(root, "zz_generated.constants.go"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write generated constants: %v", err)
 	}
 
 	return root
