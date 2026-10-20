@@ -536,6 +536,13 @@ gain cascade, pan and basic attenuation verified; listener updates reflected.
 **Deliverable:** a written decision (beads `decision` type) plus implementation
 if option 2 or 3 is chosen.
 
+**Status (2026-10-20):** resolved as **option 1, do not expose**. The resource
+manager's async loading and registration model duplicates Go concurrency and
+filesystem idioms (`io`, `os`, `io/fs`, and the existing `Decoder`); no
+registered-sound consumer exists today. The engine's internal resource manager
+is accepted without being exposed; full VFS exposure is out of scope. Recorded
+on beads `mago-8a3.13.1`; no implementation chosen, so no follow-up beads.
+
 **Depends on:** Phase 11 (engine). **Acceptance:** decision recorded with
 rationale; if implemented, registration round-trip tests pass.
 
