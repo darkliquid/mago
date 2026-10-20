@@ -1,6 +1,7 @@
 package mago
 
 import (
+	"errors"
 	"testing"
 	"time"
 	"unsafe"
@@ -108,6 +109,57 @@ func TestNullBackendDuplexDevice(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for duplex callback")
+	}
+}
+
+// TestLoopbackDeviceSkipsWhenUnsupported exercises the loopback device path.
+// Loopback is WASAPI-only, so on any other backend device creation fails with
+// an unsupported/backend result and the test skips with a clear reason rather
+// than failing.
+func TestLoopbackDeviceSkipsWhenUnsupported(t *testing.T) {
+	lib := newNullLibrary(t)
+	ctx := newNullContext(t, lib)
+
+	got := make(chan uint32, 8)
+	device, err := ctx.NewDevice(DeviceConfig{
+		Type: DeviceTypeLoopback,
+		Capture: &StreamConfig{
+			DeviceIndex:        -1,
+			Channels:           1,
+			SampleRate:         48000,
+			PeriodSizeInFrames: 64,
+		},
+		DataCallback: func(_ *Device, io DeviceIO) {
+			select {
+			case got <- io.FrameCount():
+			default:
+			}
+		},
+	})
+	if err != nil {
+		var opErr *OpError
+		if errors.As(err, &opErr) {
+			switch opErr.Code {
+			case NoBackend, NotImplemented, NoDevice, InvalidDeviceConfig, Result(-201): // -201: device type not supported
+				t.Skipf("loopback unsupported on this backend: %v", err)
+			}
+		}
+		t.Fatalf("NewDevice(loopback): %v", err)
+	}
+	defer func() { _ = device.Close() }()
+
+	if err := device.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	defer func() { _ = device.Stop() }()
+
+	select {
+	case n := <-got:
+		if n == 0 {
+			t.Fatal("expected non-zero loopback frame count")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for loopback callback")
 	}
 }
 
