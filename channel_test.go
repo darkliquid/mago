@@ -1,6 +1,7 @@
 package mago
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -82,13 +83,17 @@ func TestChannelConverterStereoToMono(t *testing.T) {
 func TestChannelConverterRejectsCustomWeights(t *testing.T) {
 	lib := newNullLibrary(t)
 
-	if _, err := lib.NewChannelConverter(ChannelConverterConfig{
+	_, err := lib.NewChannelConverter(ChannelConverterConfig{
 		Format:      FormatF32,
 		ChannelsIn:  2,
 		ChannelsOut: 2,
 		MixingMode:  ChannelMixModeCustomWeights,
-	}); err == nil {
+	})
+	if err == nil {
 		t.Fatal("expected custom weights to be rejected")
+	}
+	if !strings.Contains(err.Error(), "custom channel mixing weights") {
+		t.Fatalf("rejection error = %v, want custom-weight message", err)
 	}
 }
 

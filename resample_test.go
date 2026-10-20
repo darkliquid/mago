@@ -2,6 +2,7 @@ package mago
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -134,7 +135,11 @@ func TestDataConverterRejectsCustomWeights(t *testing.T) {
 
 	config := DefaultDataConverterConfig(FormatF32, FormatF32, 2, 2, 48_000, 48_000)
 	config.ChannelMixMode = ChannelMixModeCustomWeights
-	if _, err := lib.NewDataConverter(config); err == nil {
+	_, err := lib.NewDataConverter(config)
+	if err == nil {
 		t.Fatal("expected custom weights to be rejected")
+	}
+	if !strings.Contains(err.Error(), "custom channel mixing weights") {
+		t.Fatalf("rejection error = %v, want custom-weight message", err)
 	}
 }
