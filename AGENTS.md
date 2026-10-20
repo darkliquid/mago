@@ -175,6 +175,30 @@ needs no CGO. The root test passes `.`; `audio` tests pass `..`.
 - Pure unit tests for the generators/buildlib live beside them (`internal/**`)
   and use a `compilerOverride` hook so they never invoke `zig`/Docker.
 
+## Deviation register
+
+Every known deviation from the phased API-expansion plan is tracked in
+`docs/superpowers/specs/2026-09-20-miniaudio-deviation-register.md` (the
+"register"). The audit commands that produced it, and that should be re-run to
+find new deviations, are:
+
+```bash
+# stubs and "not supported" paths
+grep -rnE "TODO|FIXME|not implemented|not supported|not wired|no effect" --include=*.go . | grep -v _test.go
+
+# bindings that nothing calls
+# (fields of bindingSet in zz_generated.bindings.go never referenced as bindings.<name>)
+
+# API gaps: symbols present in the header but absent from the generator
+```
+
+**Rule:** when a change deviates from the plan (a stub, a deliberately unbound
+symbol, a documented no-op), add a row to the register in the same commit that
+introduces it. A deviation that is not in the register is a bug in the process.
+`bindings_guard_test.go` enforces that registered bindings are either used or
+allowlisted with a reason; the register is the durable record of those reasons.
+It is separate from the Beads tracker, which tracks work items.
+
 ## Gotchas
 
 - `miniaudio.h` is downloaded on demand and gitignored; it is usually **absent**

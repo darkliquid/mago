@@ -469,16 +469,21 @@ streams to a null device; chaining and looping verified.
 **Scope**
 - `ma_node_graph_config_init`, `ma_node_graph_init`, `ma_node_graph_uninit`,
   `ma_node_graph_read_pcm_frames`, `ma_node_graph_get_endpoint`,
-  `ma_node_graph_set_time`, `ma_node_graph_get_node_count` (verify exact names
-  at implementation time).
+  `ma_node_graph_set_time`, and the real 0.11.25 introspection surface:
+  `ma_node_graph_get_channels`, `ma_node_graph_get_time`,
+  `ma_node_graph_get_processing_size_in_frames`. Note: `ma_node_graph_get_node_count`
+  does not exist in miniaudio 0.11.25 and is not exposed.
 - `ma_node_*`: config_init, init, init_preallocated, uninit,
   attach_output_bus, detach_output_bus, detach_all_output_buses,
   set/get_output_bus_volume, get_node_graph, get_state, set_state,
   get/set state_by_time.
-- Node types: `ma_data_source_node`, `ma_splitter_node`, `ma_biquad_node`,
-  `ma_lpf_node`, `ma_lpf1_node`/`ma_lpf2_node` if present, `ma_hpf_node`,
+- Node types, exactly the eleven that exist in 0.11.25: `ma_data_source_node`,
+  `ma_splitter_node`, `ma_biquad_node`, `ma_lpf_node`, `ma_hpf_node`,
   `ma_bpf_node`, `ma_notch_node`, `ma_peak_node`, `ma_loshelf_node`,
-  `ma_hishelf_node`, `ma_delay_node`.
+  `ma_hishelf_node`, `ma_delay_node`. The `ma_lpf1_node`/`ma_lpf2_node`/
+  `ma_hpf1_node`/`ma_hpf2_node`/`ma_bpf2_node`/`ma_notch2_node`/
+  `ma_peak2_node`/`ma_loshelf2_node`/`ma_hishelf2_node` filter-node variants
+  do not exist in 0.11.25 and are not exposed.
 - `ma_engine_node` is internal to the engine and is not exposed directly.
 
 **Deliverables:** `NodeGraph`, `Node` interface, concrete node wrappers,
