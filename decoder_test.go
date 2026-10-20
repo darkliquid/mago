@@ -123,6 +123,41 @@ func TestDecoderSeekAndCursor(t *testing.T) {
 	}
 }
 
+func TestDecoderSetLooping(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	samples := []float32{0.1, 0.2, 0.3, 0.4}
+	decoder, err := lib.NewDecoderMemory(decoderTestWAV(t, samples, 1, 48_000), DefaultDecoderConfig())
+	if err != nil {
+		t.Fatalf("NewDecoderMemory: %v", err)
+	}
+	defer func() { _ = decoder.Close() }()
+
+	first := make([]float32, len(samples))
+	if read, err := decoder.ReadF32(first); err != nil || read != uint64(len(samples)) {
+		t.Fatalf("ReadF32 = %d (%v), want %d", read, err, len(samples))
+	}
+
+	residual := make([]float32, 2)
+	if read, err := decoder.ReadF32(residual); err != nil || read != 0 {
+		t.Fatalf("residual read = %d (%v), want 0", read, err)
+	}
+
+	if err := decoder.SetLooping(true); err != nil {
+		t.Fatalf("SetLooping: %v", err)
+	}
+
+	wrapped := make([]float32, len(samples))
+	if read, err := decoder.ReadF32(wrapped); err != nil || read != uint64(len(samples)) {
+		t.Fatalf("looped ReadF32 = %d (%v), want %d", read, err, len(samples))
+	}
+	for i := range samples {
+		if math.Abs(float64(wrapped[i]-samples[i])) > 0.001 {
+			t.Fatalf("looped sample %d = %v, want %v", i, wrapped[i], samples[i])
+		}
+	}
+}
+
 func TestDecoderReadsWAVFromFile(t *testing.T) {
 	lib := newNullLibrary(t)
 

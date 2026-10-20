@@ -146,9 +146,16 @@ func (d *Decoder) ReadPCMFrames(out []byte) (uint64, error) {
 	}
 }
 
-// SetLooping implements DataSource. Decoder looping is not wired up yet, so this
-// accepts the request and has no effect.
-func (d *Decoder) SetLooping(bool) error { return nil }
+// SetLooping implements DataSource for Decoder. Looping is honoured by the
+// decoder's reads: when the end of the stream is reached the read cursor is
+// rewound and decoding continues.
+func (d *Decoder) SetLooping(looping bool) error {
+	if d == nil || d.handle == nil {
+		return fmt.Errorf("mago: nil decoder")
+	}
+	d.looping = looping
+	return nil
+}
 
 // ReadPCMFrames implements DataSource for AudioBuffer.
 func (b *AudioBuffer) ReadPCMFrames(out []byte) (uint64, error) {

@@ -36,6 +36,7 @@ type Decoder struct {
 	format     Format
 	channels   uint32
 	sampleRate uint32
+	looping    bool
 }
 
 // NewDecoderMemory decodes from an in-memory encoded stream. The data slice is
@@ -137,12 +138,35 @@ func (d *Decoder) ReadF32(out []float32) (uint64, error) {
 		return 0, err
 	}
 
-	var read uint64
-	result := d.lib.bindings.maDecoderReadPCMFrames(d.handle, unsafe.Pointer(&out[0]), frameCount, &read)
-	if result != Success && result != AtEnd {
-		return read, d.lib.resultError("ma_decoder_read_pcm_frames", result)
+	return d.readFrames(unsafe.Pointer(&out[0]), frameCount, d.channels)
+}
+
+func (d *Decoder) readFrames(out unsafe.Pointer, framesNeeded uint64, channels uint32) (uint64, error) {
+	var total uint64
+	rewound := false
+	for total < framesNeeded {
+		var read uint64
+		result := d.lib.bindings.maDecoderReadPCMFrames(d.handle, unsafe.Pointer(uintptr(out)+uintptr(total*uint64(channels)*4)), framesNeeded-total, &read)
+		if result != Success && result != AtEnd {
+			return total, d.lib.resultError("ma_decoder_read_pcm_frames", result)
+		}
+		total += read
+		if read > 0 {
+			rewound = false
+			continue
+		}
+		if !d.looping {
+			return total, nil
+		}
+		if rewound {
+			return total, nil
+		}
+		if err := d.SeekToPCMFrame(0); err != nil {
+			return total, err
+		}
+		rewound = true
 	}
-	return read, nil
+	return total, nil
 }
 
 // ReadS16 decodes up to len(out) signed 16-bit samples into out, returning the
@@ -166,12 +190,35 @@ func (d *Decoder) ReadS16(out []int16) (uint64, error) {
 		return 0, err
 	}
 
-	var read uint64
-	result := d.lib.bindings.maDecoderReadPCMFrames(d.handle, unsafe.Pointer(&out[0]), frameCount, &read)
-	if result != Success && result != AtEnd {
-		return read, d.lib.resultError("ma_decoder_read_pcm_frames", result)
+	return d.readFrames16(unsafe.Pointer(&out[0]), frameCount, d.channels)
+}
+
+func (d *Decoder) readFrames16(out unsafe.Pointer, framesNeeded uint64, channels uint32) (uint64, error) {
+	var total uint64
+	rewound := false
+	for total < framesNeeded {
+		var read uint64
+		result := d.lib.bindings.maDecoderReadPCMFrames(d.handle, unsafe.Pointer(uintptr(out)+uintptr(total*uint64(channels)*2)), framesNeeded-total, &read)
+		if result != Success && result != AtEnd {
+			return total, d.lib.resultError("ma_decoder_read_pcm_frames", result)
+		}
+		total += read
+		if read > 0 {
+			rewound = false
+			continue
+		}
+		if !d.looping {
+			return total, nil
+		}
+		if rewound {
+			return total, nil
+		}
+		if err := d.SeekToPCMFrame(0); err != nil {
+			return total, err
+		}
+		rewound = true
 	}
-	return read, nil
+	return total, nil
 }
 
 func (d *Decoder) frameCount(sampleCount int) (uint64, error) {
