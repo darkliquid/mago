@@ -30,15 +30,22 @@ func (c *Clip) Channels() int {
 }
 
 // Encode renders the clip as WAV bytes.
-//
-// The clip must have been loaded through an Engine so that it has a library to
-// encode with.
 func (c *Clip) Encode() ([]byte, error) {
+	return c.EncodeTo(mago.EncodingFormatWAV)
+}
+
+// EncodeTo renders the clip in the requested encoding format. miniaudio's
+// encoder only supports WAV, so any other format (for example FLAC) is rejected
+// with a documented reason. The clip may have been loaded through an Engine, in
+// which case that library is used; otherwise the embedded mago library is
+// resolved.
+func (c *Clip) EncodeTo(format mago.EncodingFormat) ([]byte, error) {
 	if c == nil {
 		return nil, fmt.Errorf("audio: nil clip")
 	}
-	if c.lib == nil {
-		return nil, fmt.Errorf("audio: clip has no library; load it through an Engine")
+
+	if format != mago.EncodingFormatWAV {
+		return nil, fmt.Errorf("audio: miniaudio only supports WAV encoding, got format %d", format)
 	}
 
 	c.mu.RLock()
@@ -51,7 +58,24 @@ func (c *Clip) Encode() ([]byte, error) {
 		return nil, fmt.Errorf("audio: clip has no samples to encode")
 	}
 
-	encoder, err := c.lib.NewEncoderWriter(mago.DefaultEncoderConfig(uint32(channels), uint32(sampleRate)))
+	lib := c.lib
+	var owned bool
+	if lib == nil {
+		opened, err := mago.Open()
+		if err != nil {
+			return nil, fmt.Errorf("audio: clip has no library and embedded library is unavailable: %w", err)
+		}
+		lib = opened
+		owned = true
+	}
+	if owned {
+		defer func() { _ = lib.Close() }()
+	}
+
+	cfg := mago.DefaultEncoderConfig(uint32(channels), uint32(sampleRate))
+	cfg.EncodingFormat = format
+
+	encoder, err := lib.NewEncoderWriter(cfg)
 	if err != nil {
 		return nil, err
 	}

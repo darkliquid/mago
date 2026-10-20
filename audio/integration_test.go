@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -196,11 +197,36 @@ func TestClipEncodesToWAV(t *testing.T) {
 		t.Fatalf("encoded output is not a WAV stream: % x", encoded[:12])
 	}
 
+	// miniaudio's encoder only supports WAV; FLAC must fail with a documented
+	// reason rather than producing output.
+	if _, err := clip.EncodeTo(mago.EncodingFormatFLAC); err == nil {
+		t.Fatal("expected EncodeTo(FLAC) to be rejected")
+	} else if !strings.Contains(err.Error(), "only supports WAV") {
+		t.Fatalf("EncodeTo(FLAC) error = %v, want WAV-only reason", err)
+	}
+
 	var buf bytes.Buffer
 	if err := clip.WriteWAV(&buf); err != nil {
 		t.Fatalf("WriteWAV: %v", err)
 	}
 	if buf.Len() != len(encoded) {
 		t.Fatalf("WriteWAV wrote %d bytes, Encode produced %d", buf.Len(), len(encoded))
+	}
+}
+
+func TestHandBuiltClipEncodesViaEmbeddedLibrary(t *testing.T) {
+	clip := &Clip{
+		samples:    []float32{0.25, 0.25, -0.25, -0.25},
+		channels:   1,
+		sampleRate: 48000,
+		frameCount: 4,
+	}
+
+	encoded, err := clip.Encode()
+	if err != nil {
+		t.Fatalf("Encode on hand-built clip: %v", err)
+	}
+	if len(encoded) < 44 || string(encoded[0:4]) != "RIFF" || string(encoded[8:12]) != "WAVE" {
+		t.Fatalf("encoded output is not a WAV stream: % x", encoded[:12])
 	}
 }
