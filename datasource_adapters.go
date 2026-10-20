@@ -245,15 +245,21 @@ func (w *Waveform) DataFormat() (Format, uint32, uint32, error) {
 }
 
 // CursorInPCMFrames implements DataSource. A waveform is an endless generator, so
-// it has no cursor.
+// it has no cursor; callers can detect this with errors.Is(err, ErrNotSupported).
 func (w *Waveform) CursorInPCMFrames() (uint64, error) {
-	return 0, fmt.Errorf("mago: waveform has no cursor")
+	if w == nil || w.handle == nil {
+		return 0, fmt.Errorf("mago: nil waveform")
+	}
+	return 0, fmt.Errorf("mago: waveform has no cursor: %w", ErrNotSupported)
 }
 
 // LengthInPCMFrames implements DataSource. A waveform is an endless generator, so
-// it has no length.
+// it has no length; callers can detect this with errors.Is(err, ErrNotSupported).
 func (w *Waveform) LengthInPCMFrames() (uint64, error) {
-	return 0, fmt.Errorf("mago: waveform has no length")
+	if w == nil || w.handle == nil {
+		return 0, fmt.Errorf("mago: nil waveform")
+	}
+	return 0, fmt.Errorf("mago: waveform has no length: %w", ErrNotSupported)
 }
 
 // SetLooping implements DataSource. A waveform never ends, so looping is a no-op.
@@ -294,21 +300,30 @@ func (n *Noise) DataFormat() (Format, uint32, uint32, error) {
 }
 
 // CursorInPCMFrames implements DataSource. Noise is an endless generator, so it
-// has no cursor.
+// has no cursor; callers can detect this with errors.Is(err, ErrNotSupported).
 func (n *Noise) CursorInPCMFrames() (uint64, error) {
-	return 0, fmt.Errorf("mago: noise has no cursor")
+	if n == nil || n.handle == nil {
+		return 0, fmt.Errorf("mago: nil noise")
+	}
+	return 0, fmt.Errorf("mago: noise has no cursor: %w", ErrNotSupported)
 }
 
 // LengthInPCMFrames implements DataSource. Noise is an endless generator, so it
-// has no length.
+// has no length; callers can detect this with errors.Is(err, ErrNotSupported).
 func (n *Noise) LengthInPCMFrames() (uint64, error) {
-	return 0, fmt.Errorf("mago: noise has no length")
+	if n == nil || n.handle == nil {
+		return 0, fmt.Errorf("mago: nil noise")
+	}
+	return 0, fmt.Errorf("mago: noise has no length: %w", ErrNotSupported)
 }
 
 // SeekToPCMFrame implements DataSource. Noise is an endless generator with no
-// seek support, so this always reports that seeking is unavailable.
+// seek support; callers can detect this with errors.Is(err, ErrNotSupported).
 func (n *Noise) SeekToPCMFrame(uint64) error {
-	return fmt.Errorf("mago: noise has no seek")
+	if n == nil || n.handle == nil {
+		return fmt.Errorf("mago: nil noise")
+	}
+	return fmt.Errorf("mago: noise has no seek: %w", ErrNotSupported)
 }
 
 // SetLooping implements DataSource. Noise never ends, so looping is a no-op.

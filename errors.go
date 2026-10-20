@@ -2,7 +2,16 @@
 
 package mago
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrNotSupported is returned when a DataSource does not implement an optional
+// operation, such as cursor or length tracking on an endless generator.
+// Callers can distinguish unsupported operations from genuine failures with
+// errors.Is.
+var ErrNotSupported = errors.New("mago: operation not supported")
 
 type OpError struct {
 	Op          string

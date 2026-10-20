@@ -2,6 +2,7 @@ package mago
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"testing"
@@ -186,5 +187,51 @@ func TestExistingSourcesImplementDataSource(t *testing.T) {
 	var fromNoise DataSource = noise
 	if read, err := fromNoise.ReadPCMFrames(make([]byte, 4*16)); err != nil || read == 0 {
 		t.Fatalf("noise ReadPCMFrames = %d (%v), want frames", read, err)
+	}
+}
+
+func TestGeneratorOperationsReportNotSupported(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	wf, err := lib.NewWaveform(WaveformConfig{
+		Format:     FormatF32,
+		Channels:   1,
+		SampleRate: 48_000,
+		Type:       WaveformTypeSine,
+		Amplitude:  0.5,
+		Frequency:  440,
+	})
+	if err != nil {
+		t.Fatalf("NewWaveform: %v", err)
+	}
+	defer func() { _ = wf.Close() }()
+
+	if _, err := wf.CursorInPCMFrames(); !errors.Is(err, ErrNotSupported) {
+		t.Fatalf("waveform cursor error = %v, want ErrNotSupported", err)
+	}
+	if _, err := wf.LengthInPCMFrames(); !errors.Is(err, ErrNotSupported) {
+		t.Fatalf("waveform length error = %v, want ErrNotSupported", err)
+	}
+
+	noise, err := lib.NewNoise(NoiseConfig{Format: FormatF32, Channels: 1, Type: NoiseTypeWhite, Seed: 1, Amplitude: 0.5})
+	if err != nil {
+		t.Fatalf("NewNoise: %v", err)
+	}
+	defer func() { _ = noise.Close() }()
+
+	if _, err := noise.CursorInPCMFrames(); !errors.Is(err, ErrNotSupported) {
+		t.Fatalf("noise cursor error = %v, want ErrNotSupported", err)
+	}
+	if _, err := noise.LengthInPCMFrames(); !errors.Is(err, ErrNotSupported) {
+		t.Fatalf("noise length error = %v, want ErrNotSupported", err)
+	}
+	if err := noise.SeekToPCMFrame(0); !errors.Is(err, ErrNotSupported) {
+		t.Fatalf("noise seek error = %v, want ErrNotSupported", err)
+	}
+
+	// A genuine failure (nil receiver) must not be mistaken for an unsupported
+	// operation.
+	if _, err := (*Waveform)(nil).CursorInPCMFrames(); errors.Is(err, ErrNotSupported) {
+		t.Fatalf("nil waveform error = %v, should not match ErrNotSupported", err)
 	}
 }
