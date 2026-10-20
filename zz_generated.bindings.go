@@ -254,6 +254,14 @@ type bindingSet struct {
 	maDataSourceGetCursorInPCMFrames             func(*dataSourceHandle, *uint64) Result
 	maDataSourceGetLengthInPCMFrames             func(*dataSourceHandle, *uint64) Result
 	maDataSourceSetLooping                       func(*dataSourceHandle, uint32) Result
+	maDataSourceSeekPCMFrames                    func(*dataSourceHandle, uint64, *uint64) Result
+	maDataSourceGetCursorInSeconds               func(*dataSourceHandle, *float32) Result
+	maDataSourceGetLengthInSeconds               func(*dataSourceHandle, *float32) Result
+	maDataSourceSetRangeInPCMFrames              func(*dataSourceHandle, uint64, uint64) Result
+	maDataSourceGetRangeInPCMFrames              func(*dataSourceHandle, *uint64, *uint64)
+	maDataSourceSetLoopPointInPCMFrames          func(*dataSourceHandle, uint64, uint64) Result
+	maDataSourceGetLoopPointInPCMFrames          func(*dataSourceHandle, *uint64, *uint64)
+	maDataSourceSetNext                          func(*dataSourceHandle, *dataSourceHandle) Result
 	maNodeGraphInit                              func(*nodeGraphConfigNative, unsafe.Pointer, *nodeGraphHandle) Result
 	maNodeGraphUninit                            func(*nodeGraphHandle, unsafe.Pointer)
 	maNodeGraphGetEndpoint                       func(*nodeGraphHandle) *nodeHandle
@@ -662,6 +670,14 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maDataSourceGetCursorInPCMFrames, handle, "ma_data_source_get_cursor_in_pcm_frames")
 	purego.RegisterLibFunc(&b.maDataSourceGetLengthInPCMFrames, handle, "ma_data_source_get_length_in_pcm_frames")
 	purego.RegisterLibFunc(&b.maDataSourceSetLooping, handle, "ma_data_source_set_looping")
+	purego.RegisterLibFunc(&b.maDataSourceSeekPCMFrames, handle, "ma_data_source_seek_pcm_frames")
+	purego.RegisterLibFunc(&b.maDataSourceGetCursorInSeconds, handle, "ma_data_source_get_cursor_in_seconds")
+	purego.RegisterLibFunc(&b.maDataSourceGetLengthInSeconds, handle, "ma_data_source_get_length_in_seconds")
+	purego.RegisterLibFunc(&b.maDataSourceSetRangeInPCMFrames, handle, "ma_data_source_set_range_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maDataSourceGetRangeInPCMFrames, handle, "ma_data_source_get_range_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maDataSourceSetLoopPointInPCMFrames, handle, "ma_data_source_set_loop_point_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maDataSourceGetLoopPointInPCMFrames, handle, "ma_data_source_get_loop_point_in_pcm_frames")
+	purego.RegisterLibFunc(&b.maDataSourceSetNext, handle, "ma_data_source_set_next")
 	purego.RegisterLibFunc(&b.maNodeGraphInit, handle, "ma_node_graph_init")
 	purego.RegisterLibFunc(&b.maNodeGraphUninit, handle, "ma_node_graph_uninit")
 	purego.RegisterLibFunc(&b.maNodeGraphGetEndpoint, handle, "ma_node_graph_get_endpoint")

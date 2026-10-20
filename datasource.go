@@ -178,6 +178,7 @@ type CustomDataSource struct {
 	format    Format
 	channels  uint32
 	frameSize int
+	next      *CustomDataSource
 }
 
 // nativeDataSourceHandle implements nativeDataSource, so a node graph reads this
@@ -309,6 +310,103 @@ func (d *CustomDataSource) SetLooping(looping bool) error {
 	}
 	return d.lib.resultError("ma_data_source_set_looping",
 		d.lib.bindings.maDataSourceSetLooping(d.handle, boolToBool32(looping)))
+}
+
+// SeekPCMFrames skips forward by frameCount frames and reports how many frames
+// were actually skipped.
+func (d *CustomDataSource) SeekPCMFrames(frameCount uint64) (uint64, error) {
+	if d == nil || d.handle == nil {
+		return 0, fmt.Errorf("mago: nil custom data source")
+	}
+	var skipped uint64
+	result := d.lib.bindings.maDataSourceSeekPCMFrames(d.handle, frameCount, &skipped)
+	if result != Success && result != AtEnd {
+		return skipped, d.lib.resultError("ma_data_source_seek_pcm_frames", result)
+	}
+	return skipped, nil
+}
+
+// CursorInSeconds reports the current position in seconds.
+func (d *CustomDataSource) CursorInSeconds() (float32, error) {
+	return d.readFloat("ma_data_source_get_cursor_in_seconds", d.lib.bindings.maDataSourceGetCursorInSeconds)
+}
+
+// LengthInSeconds reports the total length in seconds, when known.
+func (d *CustomDataSource) LengthInSeconds() (float32, error) {
+	return d.readFloat("ma_data_source_get_length_in_seconds", d.lib.bindings.maDataSourceGetLengthInSeconds)
+}
+
+func (d *CustomDataSource) readFloat(op string, fn func(*dataSourceHandle, *float32) Result) (float32, error) {
+	if d == nil || d.handle == nil {
+		return 0, fmt.Errorf("mago: nil custom data source")
+	}
+	var value float32
+	if result := fn(d.handle, &value); result != Success {
+		return 0, d.lib.resultError(op, result)
+	}
+	return value, nil
+}
+
+// SetRangeInPCMFrames restricts reads to the frame range [begin, end). An empty
+// range plays no frames.
+func (d *CustomDataSource) SetRangeInPCMFrames(begin, end uint64) error {
+	if d == nil || d.handle == nil {
+		return fmt.Errorf("mago: nil custom data source")
+	}
+	return d.lib.resultError("ma_data_source_set_range_in_pcm_frames",
+		d.lib.bindings.maDataSourceSetRangeInPCMFrames(d.handle, begin, end))
+}
+
+// RangeInPCMFrames returns the configured playback range in frames.
+func (d *CustomDataSource) RangeInPCMFrames() (begin, end uint64, err error) {
+	if d == nil || d.handle == nil {
+		return 0, 0, fmt.Errorf("mago: nil custom data source")
+	}
+	d.lib.bindings.maDataSourceGetRangeInPCMFrames(d.handle, &begin, &end)
+	return begin, end, nil
+}
+
+// SetLoopPointInPCMFrames configures the loop point within the source.
+func (d *CustomDataSource) SetLoopPointInPCMFrames(begin, end uint64) error {
+	if d == nil || d.handle == nil {
+		return fmt.Errorf("mago: nil custom data source")
+	}
+	return d.lib.resultError("ma_data_source_set_loop_point_in_pcm_frames",
+		d.lib.bindings.maDataSourceSetLoopPointInPCMFrames(d.handle, begin, end))
+}
+
+// LoopPointInPCMFrames returns the configured loop point in frames.
+func (d *CustomDataSource) LoopPointInPCMFrames() (begin, end uint64, err error) {
+	if d == nil || d.handle == nil {
+		return 0, 0, fmt.Errorf("mago: nil custom data source")
+	}
+	d.lib.bindings.maDataSourceGetLoopPointInPCMFrames(d.handle, &begin, &end)
+	return begin, end, nil
+}
+
+// SetNext chains next after this source: once this source is exhausted, reads
+// fall through to next.
+func (d *CustomDataSource) SetNext(next *CustomDataSource) error {
+	if d == nil || d.handle == nil {
+		return fmt.Errorf("mago: nil custom data source")
+	}
+	if next == nil || next.handle == nil {
+		return fmt.Errorf("mago: nil next data source")
+	}
+	if next.lib != d.lib {
+		return fmt.Errorf("mago: data sources belong to different libraries")
+	}
+	d.next = next
+	return d.lib.resultError("ma_data_source_set_next",
+		d.lib.bindings.maDataSourceSetNext(d.handle, next.handle))
+}
+
+// GetNext returns the chained source, if any.
+func (d *CustomDataSource) GetNext() *CustomDataSource {
+	if d == nil {
+		return nil
+	}
+	return d.next
 }
 
 // Close unregisters the source.

@@ -235,3 +235,105 @@ func TestGeneratorOperationsReportNotSupported(t *testing.T) {
 		t.Fatalf("nil waveform error = %v, should not match ErrNotSupported", err)
 	}
 }
+
+func TestCustomDataSourceChain(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	a, err := lib.NewCustomDataSource(&rampSource{frames: []float32{0.1, 0.2, 0.3, 0.4}})
+	if err != nil {
+		t.Fatalf("NewCustomDataSource a: %v", err)
+	}
+	defer func() { _ = a.Close() }()
+
+	b, err := lib.NewCustomDataSource(&rampSource{frames: []float32{0.5, 0.6}})
+	if err != nil {
+		t.Fatalf("NewCustomDataSource b: %v", err)
+	}
+	defer func() { _ = b.Close() }()
+
+	if err := a.SetNext(b); err != nil {
+		t.Fatalf("SetNext: %v", err)
+	}
+	if a.GetNext() != b {
+		t.Fatal("GetNext did not return the chained source")
+	}
+
+	out := make([]byte, 6*4)
+	read, err := a.ReadPCMFrames(out)
+	if err != nil {
+		t.Fatalf("ReadPCMFrames: %v", err)
+	}
+	if read != 6 {
+		t.Fatalf("read %d frames, want 6", read)
+	}
+
+	want := []float32{0.1, 0.2, 0.3, 0.4, 0.5, 0.6}
+	for i, w := range want {
+		v := math.Float32frombits(binary.LittleEndian.Uint32(out[i*4 : i*4+4]))
+		if math.Abs(float64(v-w)) > 1e-4 {
+			t.Fatalf("frame %d = %v, want %v", i, v, w)
+		}
+	}
+}
+
+func TestCustomDataSourceRangeAndLoopPoint(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	src, err := lib.NewCustomDataSource(&rampSource{frames: make([]float32, 8)})
+	if err != nil {
+		t.Fatalf("NewCustomDataSource: %v", err)
+	}
+	defer func() { _ = src.Close() }()
+
+	if err := src.SetRangeInPCMFrames(2, 6); err != nil {
+		t.Fatalf("SetRangeInPCMFrames: %v", err)
+	}
+	beg, end, err := src.RangeInPCMFrames()
+	if err != nil || beg != 2 || end != 6 {
+		t.Fatalf("range = (%d,%d) (%v), want (2,6)", beg, end, err)
+	}
+
+	// The loop point end is clamped to the range length (range 2..6 has length 4).
+	if err := src.SetLoopPointInPCMFrames(1, 4); err != nil {
+		t.Fatalf("SetLoopPointInPCMFrames: %v", err)
+	}
+	lbeg, lend, err := src.LoopPointInPCMFrames()
+	if err != nil || lbeg != 1 || lend != 4 {
+		t.Fatalf("loop point = (%d,%d) (%v), want (1,4)", lbeg, lend, err)
+	}
+}
+
+func TestCustomDataSourceSecondsAndForwardSeek(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	const frames = 8
+	const rate = 48_000
+	src, err := lib.NewCustomDataSource(&rampSource{frames: make([]float32, frames)})
+	if err != nil {
+		t.Fatalf("NewCustomDataSource: %v", err)
+	}
+	defer func() { _ = src.Close() }()
+
+	length, err := src.LengthInSeconds()
+	if err != nil {
+		t.Fatalf("LengthInSeconds: %v", err)
+	}
+	if want := float32(frames) / rate; math.Abs(float64(length-want)) > 1e-4 {
+		t.Fatalf("length seconds = %v, want ~%v", length, want)
+	}
+
+	skipped, err := src.SeekPCMFrames(3)
+	if err != nil {
+		t.Fatalf("SeekPCMFrames: %v", err)
+	}
+	if skipped != 3 {
+		t.Fatalf("skipped %d frames, want 3", skipped)
+	}
+	cursor, err := src.CursorInSeconds()
+	if err != nil {
+		t.Fatalf("CursorInSeconds: %v", err)
+	}
+	if want := float32(3) / rate; math.Abs(float64(cursor-want)) > 1e-4 {
+		t.Fatalf("cursor seconds = %v, want ~%v", cursor, want)
+	}
+}
