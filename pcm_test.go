@@ -1,6 +1,8 @@
 package mago
 
 import (
+	"encoding/binary"
+	"math"
 	"testing"
 )
 
@@ -105,5 +107,47 @@ func TestConvertFramesStereoF32ToMonoS16(t *testing.T) {
 	}
 	if out[0] == 0 && out[1] == 0 {
 		t.Fatal("expected non-silent output from a down-mix of non-zero input")
+	}
+}
+
+func TestConvertFramesExCombined(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	// Mono s16 DC of ~0.5 builds 44.1kHz, converted to stereo f32 at 48kHz.
+	const framesIn = 512
+	inBytes := make([]byte, framesIn*2)
+	for i := range framesIn {
+		inBytes[i*2] = 0x00
+		inBytes[i*2+1] = 0x40 // 16384
+	}
+	outBytes := make([]byte, 600*2*4) // up to 600 stereo f32 frames
+	config := ConvertFramesConfig{
+		FormatIn:      FormatS16,
+		FormatOut:     FormatF32,
+		ChannelsIn:    1,
+		ChannelsOut:   2,
+		SampleRateIn:  44_100,
+		SampleRateOut: 48_000,
+	}
+
+	written, err := lib.ConvertFramesEx(outBytes, inBytes, config)
+	if err != nil {
+		t.Fatalf("ConvertFramesEx: %v", err)
+	}
+	if written < framesIn {
+		t.Fatalf("wrote %d frames, want at least %d", written, framesIn)
+	}
+
+	middle := int(written) / 2
+	for ch := 0; ch < 2; ch++ {
+		offset := (middle*2 + ch) * 4
+		v := math.Float32frombits(binary.LittleEndian.Uint32(outBytes[offset : offset+4]))
+		if v < 0.45 || v > 0.55 {
+			t.Fatalf("sample at frame %d ch %d = %v, want ~0.5", middle, ch, v)
+		}
+	}
+
+	if _, err := lib.ConvertFramesEx(outBytes, []byte{0}, config); err != ErrInvalidSliceLength {
+		t.Fatalf("expected ErrInvalidSliceLength, got %v", err)
 	}
 }

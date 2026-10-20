@@ -69,6 +69,7 @@ var functions = []functionSpec{
 	{FieldName: "maPCMConvert", Symbol: "ma_pcm_convert", Type: "func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, DitherMode)"},
 	{FieldName: "maConvertPCMFramesFormat", Symbol: "ma_convert_pcm_frames_format", Type: "func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, uint32, DitherMode)"},
 	{FieldName: "maConvertFrames", Symbol: "ma_convert_frames", Type: "func(unsafe.Pointer, uint64, Format, uint32, uint32, unsafe.Pointer, uint64, Format, uint32, uint32) uint64"},
+	{FieldName: "maConvertFramesEx", Symbol: "ma_convert_frames_ex", Type: "func(unsafe.Pointer, uint64, unsafe.Pointer, uint64, *dataConverterConfigNative) uint64"},
 	{FieldName: "maChannelMapInitStandard", Symbol: "ma_channel_map_init_standard", Type: "func(StandardChannelMap, *uint8, uintptr, uint32)"},
 	{FieldName: "maChannelMapInitBlank", Symbol: "ma_channel_map_init_blank", Type: "func(*uint8, uint32)"},
 	{FieldName: "maChannelMapCopy", Symbol: "ma_channel_map_copy", Type: "func(*uint8, *uint8, uint32)"},

@@ -45,6 +45,7 @@ type bindingSet struct {
 	maPCMConvert                                 func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, DitherMode)
 	maConvertPCMFramesFormat                     func(unsafe.Pointer, Format, unsafe.Pointer, Format, uint64, uint32, DitherMode)
 	maConvertFrames                              func(unsafe.Pointer, uint64, Format, uint32, uint32, unsafe.Pointer, uint64, Format, uint32, uint32) uint64
+	maConvertFramesEx                            func(unsafe.Pointer, uint64, unsafe.Pointer, uint64, *dataConverterConfigNative) uint64
 	maChannelMapInitStandard                     func(StandardChannelMap, *uint8, uintptr, uint32)
 	maChannelMapInitBlank                        func(*uint8, uint32)
 	maChannelMapCopy                             func(*uint8, *uint8, uint32)
@@ -452,6 +453,7 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maPCMConvert, handle, "ma_pcm_convert")
 	purego.RegisterLibFunc(&b.maConvertPCMFramesFormat, handle, "ma_convert_pcm_frames_format")
 	purego.RegisterLibFunc(&b.maConvertFrames, handle, "ma_convert_frames")
+	purego.RegisterLibFunc(&b.maConvertFramesEx, handle, "ma_convert_frames_ex")
 	purego.RegisterLibFunc(&b.maChannelMapInitStandard, handle, "ma_channel_map_init_standard")
 	purego.RegisterLibFunc(&b.maChannelMapInitBlank, handle, "ma_channel_map_init_blank")
 	purego.RegisterLibFunc(&b.maChannelMapCopy, handle, "ma_channel_map_copy")

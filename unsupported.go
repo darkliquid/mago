@@ -212,6 +212,9 @@ func (*Library) ConvertFrames([]byte, Format, uint32, uint32, []byte, Format, ui
 func (*Library) ConvertFramesF32ToS16([]int16, uint32, uint32, []float32, uint32, uint32) (uint64, error) {
 	return 0, errUnsupportedPlatform
 }
+func (*Library) ConvertFramesEx([]byte, []byte, ConvertFramesConfig) (uint64, error) {
+	return 0, errUnsupportedPlatform
+}
 func BytesPerSample(Format) uint32 { return 0 }
 
 type ResamplerConfig struct {

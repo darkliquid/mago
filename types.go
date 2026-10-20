@@ -383,6 +383,21 @@ type dataConverterConfigNative struct {
 	Resampling                      resamplerConfigNative
 }
 
+// ConvertFramesConfig controls ConvertFramesEx. The zero value is valid: it
+// uses rectangular channel mixing, no dithering and the default linear
+// resampler low-pass filter order.
+type ConvertFramesConfig struct {
+	FormatIn       Format
+	FormatOut      Format
+	ChannelsIn     uint32
+	ChannelsOut    uint32
+	SampleRateIn   uint32
+	SampleRateOut  uint32
+	DitherMode     DitherMode
+	ChannelMixMode ChannelMixMode
+	LinearLPFOrder uint32
+}
+
 type resamplerHandle struct{}
 type linearResamplerHandle struct{}
 type dataConverterHandle struct{}

@@ -123,6 +123,53 @@ func (lib *Library) ConvertFramesF32ToS16(
 	), nil
 }
 
+// ConvertFramesEx converts frames between formats, channel counts and sample
+// rates in a single call using an explicit config, and returns the number of
+// frames written to out. Unlike ConvertFrames it honors DitherMode,
+// ChannelMixMode and the resampler low-pass filter order.
+func (lib *Library) ConvertFramesEx(out, in []byte, config ConvertFramesConfig) (uint64, error) {
+	if lib == nil {
+		return 0, fmt.Errorf("mago: nil library")
+	}
+	if err := lib.ensureOpen(); err != nil {
+		return 0, err
+	}
+	if len(in) == 0 || len(out) == 0 {
+		return 0, nil
+	}
+	bytesIn := BytesPerSample(config.FormatIn) * config.ChannelsIn
+	bytesOut := BytesPerSample(config.FormatOut) * config.ChannelsOut
+	if bytesIn == 0 || len(in)%int(bytesIn) != 0 || bytesOut == 0 || len(out)%int(bytesOut) != 0 {
+		return 0, ErrInvalidSliceLength
+	}
+
+	lpfOrder := config.LinearLPFOrder
+	if lpfOrder == 0 {
+		lpfOrder = 4
+	}
+
+	native := dataConverterConfigNative{
+		FormatIn:       config.FormatIn,
+		FormatOut:      config.FormatOut,
+		ChannelsIn:     config.ChannelsIn,
+		ChannelsOut:    config.ChannelsOut,
+		SampleRateIn:   config.SampleRateIn,
+		SampleRateOut:  config.SampleRateOut,
+		DitherMode:     config.DitherMode,
+		ChannelMixMode: config.ChannelMixMode,
+		Resampling: resamplerConfigNative{
+			Algorithm: ResampleAlgorithmLinear,
+			Linear:    resamplerLinearConfigNative{LPFOrder: lpfOrder},
+		},
+	}
+
+	return lib.bindings.maConvertFramesEx(
+		unsafe.Pointer(&out[0]), uint64(len(out)/int(bytesOut)),
+		unsafe.Pointer(&in[0]), uint64(len(in)/int(bytesIn)),
+		&native,
+	), nil
+}
+
 // BytesPerSample reports the size in bytes of a single sample in a PCM format. It
 // returns 0 for an unknown format.
 func BytesPerSample(format Format) uint32 {
