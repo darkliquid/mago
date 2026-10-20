@@ -170,7 +170,7 @@ var functions = []functionSpec{
 	{FieldName: "maNoiseReadPCMFrames", Symbol: "ma_noise_read_pcm_frames", Type: "func(*noiseHandle, unsafe.Pointer, uint64, *uint64) Result"},
 	{FieldName: "maNoiseSetAmplitude", Symbol: "ma_noise_set_amplitude", Type: "func(*noiseHandle, float64) Result"},
 	{FieldName: "maNoiseSetSeed", Symbol: "ma_noise_set_seed", Type: "func(*noiseHandle, int32) Result"},
-	{FieldName: "maNoiseSetType", Symbol: "ma_noise_set_type", Type: "func(*noiseHandle, NoiseType) Result"},
+
 	{FieldName: "maBiquadInit", Symbol: "ma_biquad_init", Type: "func(*biquadConfigNative, unsafe.Pointer, *biquadHandle) Result"},
 	{FieldName: "maBiquadUninit", Symbol: "ma_biquad_uninit", Type: "func(*biquadHandle, unsafe.Pointer)"},
 	{FieldName: "maBiquadReinit", Symbol: "ma_biquad_reinit", Type: "func(*biquadConfigNative, *biquadHandle) Result"},

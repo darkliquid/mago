@@ -146,7 +146,6 @@ type bindingSet struct {
 	maNoiseReadPCMFrames                         func(*noiseHandle, unsafe.Pointer, uint64, *uint64) Result
 	maNoiseSetAmplitude                          func(*noiseHandle, float64) Result
 	maNoiseSetSeed                               func(*noiseHandle, int32) Result
-	maNoiseSetType                               func(*noiseHandle, NoiseType) Result
 	maBiquadInit                                 func(*biquadConfigNative, unsafe.Pointer, *biquadHandle) Result
 	maBiquadUninit                               func(*biquadHandle, unsafe.Pointer)
 	maBiquadReinit                               func(*biquadConfigNative, *biquadHandle) Result
@@ -554,7 +553,6 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maNoiseReadPCMFrames, handle, "ma_noise_read_pcm_frames")
 	purego.RegisterLibFunc(&b.maNoiseSetAmplitude, handle, "ma_noise_set_amplitude")
 	purego.RegisterLibFunc(&b.maNoiseSetSeed, handle, "ma_noise_set_seed")
-	purego.RegisterLibFunc(&b.maNoiseSetType, handle, "ma_noise_set_type")
 	purego.RegisterLibFunc(&b.maBiquadInit, handle, "ma_biquad_init")
 	purego.RegisterLibFunc(&b.maBiquadUninit, handle, "ma_biquad_uninit")
 	purego.RegisterLibFunc(&b.maBiquadReinit, handle, "ma_biquad_reinit")

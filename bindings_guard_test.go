@@ -12,9 +12,7 @@ import (
 // bindingAllowlist names bindingSet fields that are registered but intentionally
 // not referenced by Go code yet. Each entry must justify why it is allowed to
 // be dead so the list cannot grow silently.
-var bindingAllowlist = map[string]string{
-	"maNoiseSetType": "decide Noise.SetType stub and binding; see mago-8a3.15.2.3",
-}
+var bindingAllowlist = map[string]string{}
 
 var (
 	bindingFieldRe = regexp.MustCompile(`(?m)^\t(\w+)\s+func`)
