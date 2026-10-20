@@ -4,7 +4,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/darkliquid/mago"
+	"github.com/darkliquid/mago/internal/testlib"
 	"github.com/gopxl/beep"
+	"github.com/gopxl/beep/generators"
 )
 
 func TestStreamToFloat32ClampsAndPads(t *testing.T) {
@@ -26,6 +29,41 @@ func TestStreamToFloat32ClampsAndPads(t *testing.T) {
 		if got != want[i] {
 			t.Fatalf("out[%d] = %v, want %v", i, got, want[i])
 		}
+	}
+}
+
+func TestInitWithConfigNullBackend(t *testing.T) {
+	libPath := testlib.BuildRuntimeLibrary(t, "..")
+	t.Setenv("MAGO_MINIAUDIO_LIB", libPath)
+
+	if err := InitWithConfig(48000, 256, Config{
+		Backends:    []mago.Backend{mago.BackendNull},
+		DeviceIndex: -1,
+	}); err != nil {
+		t.Fatalf("init speaker with null backend: %v", err)
+	}
+	defer Close()
+
+	seq := beep.Seq(generators.Silence(1), generators.Silence(1), generators.Silence(1))
+	PlayAndWait(seq)
+}
+
+func TestFindDeviceIndex(t *testing.T) {
+	devices := []mago.DeviceInfo{
+		{Name: "Null Output", IsDefault: false},
+		{Name: "Null Output", IsDefault: true},
+	}
+	if got := findDeviceIndex(devices, ""); got != 1 {
+		t.Fatalf("default device index = %d, want 1", got)
+	}
+	if got := findDeviceIndex(devices, "null"); got != 0 {
+		t.Fatalf("named device index = %d, want 0", got)
+	}
+	if got := findDeviceIndex(devices, "missing"); got != -1 {
+		t.Fatalf("missing device index = %d, want -1", got)
+	}
+	if got := findDeviceIndex(nil, ""); got != -1 {
+		t.Fatalf("empty device list index = %d, want -1", got)
 	}
 }
 

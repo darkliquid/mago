@@ -33,6 +33,13 @@ type speakerState struct {
 //
 // The bufferSize argument is expressed in samples, matching beep/speaker.
 func Init(sampleRate beep.SampleRate, bufferSize int) error {
+	return InitWithConfig(sampleRate, bufferSize, Config{DeviceIndex: -1})
+}
+
+// InitWithConfig initializes playback through speaker against a chosen backend
+// and device. It behaves like Init but honors the fields of config; see Config
+// for the defaults and device selection rules.
+func InitWithConfig(sampleRate beep.SampleRate, bufferSize int, config Config) error {
 	if sampleRate <= 0 {
 		return errors.New("speaker: sample rate must be positive")
 	}
@@ -52,10 +59,34 @@ func Init(sampleRate beep.SampleRate, bufferSize int) error {
 		return err
 	}
 
-	ctx, err := lib.NewContext()
+	var ctx *mago.Context
+	if config.Backends == nil {
+		ctx, err = lib.NewContext()
+	} else {
+		ctx, err = lib.NewContext(config.Backends...)
+	}
 	if err != nil {
 		_ = lib.Close()
 		return err
+	}
+
+	if config.DeviceName != "" || config.DeviceIndex < 0 {
+		playback, _, derr := ctx.Devices()
+		if derr != nil {
+			_ = ctx.Close()
+			_ = lib.Close()
+			return derr
+		}
+		if config.DeviceName != "" {
+			config.DeviceIndex = findDeviceIndex(playback, config.DeviceName)
+			if config.DeviceIndex < 0 {
+				_ = ctx.Close()
+				_ = lib.Close()
+				return fmt.Errorf("speaker: no playback device matched %q", config.DeviceName)
+			}
+		} else if config.DeviceIndex < 0 {
+			config.DeviceIndex = findDeviceIndex(playback, "")
+		}
 	}
 
 	state := &speakerState{
@@ -63,9 +94,9 @@ func Init(sampleRate beep.SampleRate, bufferSize int) error {
 		ctx: ctx,
 	}
 
-	config := mago.DefaultPlaybackDeviceConfig()
-	config.Format = mago.FormatF32
-	config.Channels = channelCount
+	deviceConfig := mago.DefaultPlaybackDeviceConfig()
+	deviceConfig.Format = mago.FormatF32
+	deviceConfig.Channels = channelCount
 	if sampleRate > beep.SampleRate(math.MaxUint32) {
 		_ = ctx.Close()
 		_ = lib.Close()
@@ -76,11 +107,14 @@ func Init(sampleRate beep.SampleRate, bufferSize int) error {
 		_ = lib.Close()
 		return fmt.Errorf("speaker: buffer size must be %d or less", uint32(math.MaxUint32))
 	}
-	config.SampleRate = uint32(sampleRate)
-	config.PeriodSizeInFrames = uint32(bufferSize)
-	config.DataCallback = state.onDeviceData
+	deviceConfig.SampleRate = uint32(sampleRate)
+	deviceConfig.PeriodSizeInFrames = uint32(bufferSize)
+	deviceConfig.DeviceIndex = config.DeviceIndex
+	deviceConfig.PerformanceProfile = config.PerformanceProfile
+	deviceConfig.ShareMode = config.ShareMode
+	deviceConfig.DataCallback = state.onDeviceData
 
-	device, err := ctx.NewPlaybackDevice(config)
+	device, err := ctx.NewPlaybackDevice(deviceConfig)
 	if err != nil {
 		_ = ctx.Close()
 		_ = lib.Close()
