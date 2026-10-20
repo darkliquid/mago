@@ -356,6 +356,8 @@ var functions = []functionSpec{
 	{FieldName: "maEngineGetVolume", Symbol: "ma_engine_get_volume", Type: "func(*engineHandle) float32"},
 	{FieldName: "maEngineSetGainDB", Symbol: "ma_engine_set_gain_db", Type: "func(*engineHandle, float32) Result"},
 	{FieldName: "maEngineGetGainDB", Symbol: "ma_engine_get_gain_db", Type: "func(*engineHandle) float32"},
+	{FieldName: "maEngineGetDevice", Symbol: "ma_engine_get_device", Type: "func(*engineHandle) *deviceHandle"},
+	{FieldName: "maEngineGetLog", Symbol: "ma_engine_get_log", Type: "func(*engineHandle) *logHandle"},
 	{FieldName: "maEngineGetListenerCount", Symbol: "ma_engine_get_listener_count", Type: "func(*engineHandle) uint32"},
 	{FieldName: "maEngineFindClosestListener", Symbol: "ma_engine_find_closest_listener", Type: "func(*engineHandle, float32, float32, float32) uint32"},
 	{FieldName: "maEngineListenerSetPosition", Symbol: "ma_engine_listener_set_position", Type: "func(*engineHandle, uint32, float32, float32, float32)"},

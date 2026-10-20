@@ -292,3 +292,84 @@ func TestEngineNullDeviceStartStop(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 }
+
+func TestEngineBorrowedDeviceAndLog(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	// Provide an owned log so the engine has a non-nil log to expose.
+	log, err := lib.NewLog()
+	if err != nil {
+		t.Fatalf("NewLog: %v", err)
+	}
+
+	config := DefaultEngineConfig(1, 48000)
+	config.NoDevice = true
+	config.Log = log
+
+	engine, err := lib.NewEngine(config)
+	if err != nil {
+		t.Fatalf("NewEngine: %v", err)
+	}
+	defer func() { _ = engine.Close() }()
+
+	// A device-less engine has no device.
+	if d := engine.Device(); d != nil {
+		t.Fatal("expected nil device for a device-less engine")
+	}
+
+	borrowed := engine.Log()
+	if borrowed == nil {
+		t.Fatal("expected a non-nil engine log")
+	}
+	if borrowed.handle != log.handle {
+		t.Fatal("engine log is not the configured log")
+	}
+
+	// Closing the borrowed log must detach, not uninitialize the configured log.
+	if err := borrowed.Close(); err != nil {
+		t.Fatalf("close borrowed log: %v", err)
+	}
+	if err := borrowed.Close(); err != nil {
+		t.Fatalf("close borrowed log twice: %v", err)
+	}
+
+	// The owned log survives the borrowed close and can still be used.
+	if err := log.Post(LogLevelInfo, "still alive"); err != nil {
+		t.Fatalf("Post after borrowed close: %v", err)
+	}
+	if err := log.Close(); err != nil {
+		t.Fatalf("close owned log: %v", err)
+	}
+}
+
+func TestEngineBorrowedDeviceWithDevice(t *testing.T) {
+	lib := newNullLibrary(t)
+	ctx := newNullContext(t, lib)
+
+	config := DefaultEngineConfig(1, 48000)
+	config.Context = ctx
+	config.NoDevice = false
+
+	engine, err := lib.NewEngine(config)
+	if err != nil {
+		t.Skipf("engine with device unavailable: %v", err)
+	}
+	defer func() { _ = engine.Close() }()
+
+	d := engine.Device()
+	if d == nil {
+		t.Fatal("expected a non-nil engine device")
+	}
+
+	// Closing the borrowed device must detach, not uninitialize the engine's
+	// device, so the engine keeps running and double-close is safe.
+	if err := d.Close(); err != nil {
+		t.Fatalf("close borrowed device: %v", err)
+	}
+	if err := d.Close(); err != nil {
+		t.Fatalf("close borrowed device twice: %v", err)
+	}
+	if engine.SampleRate() != 48000 {
+		t.Fatalf("engine sample rate = %d, want 48000", engine.SampleRate())
+	}
+}

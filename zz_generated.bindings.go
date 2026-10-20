@@ -331,6 +331,8 @@ type bindingSet struct {
 	maEngineGetVolume                            func(*engineHandle) float32
 	maEngineSetGainDB                            func(*engineHandle, float32) Result
 	maEngineGetGainDB                            func(*engineHandle) float32
+	maEngineGetDevice                            func(*engineHandle) *deviceHandle
+	maEngineGetLog                               func(*engineHandle) *logHandle
 	maEngineGetListenerCount                     func(*engineHandle) uint32
 	maEngineFindClosestListener                  func(*engineHandle, float32, float32, float32) uint32
 	maEngineListenerSetPosition                  func(*engineHandle, uint32, float32, float32, float32)
@@ -738,6 +740,8 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maEngineGetVolume, handle, "ma_engine_get_volume")
 	purego.RegisterLibFunc(&b.maEngineSetGainDB, handle, "ma_engine_set_gain_db")
 	purego.RegisterLibFunc(&b.maEngineGetGainDB, handle, "ma_engine_get_gain_db")
+	purego.RegisterLibFunc(&b.maEngineGetDevice, handle, "ma_engine_get_device")
+	purego.RegisterLibFunc(&b.maEngineGetLog, handle, "ma_engine_get_log")
 	purego.RegisterLibFunc(&b.maEngineGetListenerCount, handle, "ma_engine_get_listener_count")
 	purego.RegisterLibFunc(&b.maEngineFindClosestListener, handle, "ma_engine_find_closest_listener")
 	purego.RegisterLibFunc(&b.maEngineListenerSetPosition, handle, "ma_engine_listener_set_position")

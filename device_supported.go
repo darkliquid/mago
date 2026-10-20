@@ -131,6 +131,16 @@ type Device struct {
 	handle      *deviceHandle
 	token       uintptr
 	primaryType DeviceType
+	owned       bool
+}
+
+// borrowedDevice wraps a device owned by something else (an engine). Closing a
+// borrowed device only detaches the handle; the owner is left to uninitialize it.
+func borrowedDevice(lib *Library, handle *deviceHandle) *Device {
+	if handle == nil {
+		return nil
+	}
+	return &Device{lib: lib, handle: handle, primaryType: DeviceTypePlayback, owned: false}
 }
 
 type callbackState struct {
@@ -269,7 +279,7 @@ func (lib *Library) NewDevice(ctx *Context, config DeviceConfig) (*Device, error
 	}
 
 	token := uintptr(callbackSeq.Add(1))
-	device := &Device{lib: lib, token: token, primaryType: config.Type}
+	device := &Device{lib: lib, token: token, primaryType: config.Type, owned: true}
 	callbacks.Store(token, &callbackState{
 		device:           device,
 		playbackChannels: playbackChannels,
@@ -415,6 +425,10 @@ func (device *Device) Stop() error {
 
 func (device *Device) Close() error {
 	if device == nil || device.handle == nil {
+		return nil
+	}
+	if !device.owned {
+		device.handle = nil
 		return nil
 	}
 	if err := device.lib.ensureOpen(); err != nil {

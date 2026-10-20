@@ -198,6 +198,25 @@ func (e *Engine) Endpoint() Node {
 	return e.graph.Endpoint()
 }
 
+// Device returns the engine's playback device. It is owned by the engine, so
+// Close on it detaches the handle rather than uninitializing the device. It is
+// nil for a device-less engine.
+func (e *Engine) Device() *Device {
+	if e == nil || e.handle == nil {
+		return nil
+	}
+	return borrowedDevice(e.lib, e.lib.bindings.maEngineGetDevice(e.handle))
+}
+
+// Log returns the engine's log, which the engine owns; Close on it detaches the
+// handle rather than uninitializing the log.
+func (e *Engine) Log() *Log {
+	if e == nil || e.handle == nil {
+		return nil
+	}
+	return borrowedLog(e.lib, e.lib.bindings.maEngineGetLog(e.handle))
+}
+
 // Read fills out with interleaved f32 frames and returns how many of them the
 // graph actually produced, which is zero when no sound is playing. miniaudio
 // always writes the whole slice, silencing whatever the graph had nothing to
