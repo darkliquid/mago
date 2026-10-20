@@ -132,6 +132,24 @@ jobs:
         if: steps.embed-cache.outputs.cache-hit != 'true'
         run: touch .buildlib-cache-marker
 
+  build-unsupported:
+    name: Build unsupported GOOS
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+        with:
+          cache: true
+
+      - name: Build stub API for an unsupported GOOS
+        run: CGO_ENABLED=0 GOOS=plan9 GOARCH=amd64 go build ./...
+
   test:
     name: Test (${{ matrix.os }})
     needs: [changes]
