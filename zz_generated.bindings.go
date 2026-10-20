@@ -117,10 +117,6 @@ type bindingSet struct {
 	maRBPointerDistance                          func(*ringBufferHandle) int32
 	maRBAvailableRead                            func(*ringBufferHandle) uint32
 	maRBAvailableWrite                           func(*ringBufferHandle) uint32
-	maRBGetSubbufferSize                         func(*ringBufferHandle) uintptr
-	maRBGetSubbufferStride                       func(*ringBufferHandle) uintptr
-	maRBGetSubbufferOffset                       func(*ringBufferHandle, uintptr) uintptr
-	maRBGetSubbufferPtr                          func(*ringBufferHandle, uintptr, unsafe.Pointer) unsafe.Pointer
 	maPCMRBInit                                  func(Format, uint32, uint32, unsafe.Pointer, unsafe.Pointer, *pcmRingBufferHandle) Result
 	maPCMRBInitEx                                func(Format, uint32, uint32, uint32, uint32, unsafe.Pointer, unsafe.Pointer, *pcmRingBufferHandle) Result
 	maPCMRBUninit                                func(*pcmRingBufferHandle)
@@ -137,10 +133,6 @@ type bindingSet struct {
 	maPCMRBGetFormat                             func(*pcmRingBufferHandle) Format
 	maPCMRBGetChannels                           func(*pcmRingBufferHandle) uint32
 	maPCMRBGetSampleRate                         func(*pcmRingBufferHandle) uint32
-	maPCMRBGetSubbufferSize                      func(*pcmRingBufferHandle) uint32
-	maPCMRBGetSubbufferStride                    func(*pcmRingBufferHandle) uint32
-	maPCMRBGetSubbufferOffset                    func(*pcmRingBufferHandle, uint32) uint32
-	maPCMRBGetSubbufferPtr                       func(*pcmRingBufferHandle, uint32, unsafe.Pointer) unsafe.Pointer
 	maWaveformInit                               func(*waveformConfigNative, *waveformHandle) Result
 	maWaveformUninit                             func(*waveformHandle)
 	maWaveformReadPCMFrames                      func(*waveformHandle, unsafe.Pointer, uint64, *uint64) Result
@@ -533,10 +525,6 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maRBPointerDistance, handle, "ma_rb_pointer_distance")
 	purego.RegisterLibFunc(&b.maRBAvailableRead, handle, "ma_rb_available_read")
 	purego.RegisterLibFunc(&b.maRBAvailableWrite, handle, "ma_rb_available_write")
-	purego.RegisterLibFunc(&b.maRBGetSubbufferSize, handle, "ma_rb_get_subbuffer_size")
-	purego.RegisterLibFunc(&b.maRBGetSubbufferStride, handle, "ma_rb_get_subbuffer_stride")
-	purego.RegisterLibFunc(&b.maRBGetSubbufferOffset, handle, "ma_rb_get_subbuffer_offset")
-	purego.RegisterLibFunc(&b.maRBGetSubbufferPtr, handle, "ma_rb_get_subbuffer_ptr")
 	purego.RegisterLibFunc(&b.maPCMRBInit, handle, "ma_pcm_rb_init")
 	purego.RegisterLibFunc(&b.maPCMRBInitEx, handle, "ma_pcm_rb_init_ex")
 	purego.RegisterLibFunc(&b.maPCMRBUninit, handle, "ma_pcm_rb_uninit")
@@ -553,10 +541,6 @@ func (b *bindingSet) register(handle uintptr) {
 	purego.RegisterLibFunc(&b.maPCMRBGetFormat, handle, "ma_pcm_rb_get_format")
 	purego.RegisterLibFunc(&b.maPCMRBGetChannels, handle, "ma_pcm_rb_get_channels")
 	purego.RegisterLibFunc(&b.maPCMRBGetSampleRate, handle, "ma_pcm_rb_get_sample_rate")
-	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferSize, handle, "ma_pcm_rb_get_subbuffer_size")
-	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferStride, handle, "ma_pcm_rb_get_subbuffer_stride")
-	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferOffset, handle, "ma_pcm_rb_get_subbuffer_offset")
-	purego.RegisterLibFunc(&b.maPCMRBGetSubbufferPtr, handle, "ma_pcm_rb_get_subbuffer_ptr")
 	purego.RegisterLibFunc(&b.maWaveformInit, handle, "ma_waveform_init")
 	purego.RegisterLibFunc(&b.maWaveformUninit, handle, "ma_waveform_uninit")
 	purego.RegisterLibFunc(&b.maWaveformReadPCMFrames, handle, "ma_waveform_read_pcm_frames")
