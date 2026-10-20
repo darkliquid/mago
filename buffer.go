@@ -435,6 +435,17 @@ func (r *AudioBufferRef) ReadS16(out []int16, loop bool) (uint64, error) {
 	return read, nil
 }
 
+// SeekToPCMFrame moves the read cursor of the reference.
+func (r *AudioBufferRef) SeekToPCMFrame(frameIndex uint64) error {
+	if r == nil || r.handle == nil {
+		return fmt.Errorf("mago: nil audio buffer ref")
+	}
+	if err := r.lib.ensureOpen(); err != nil {
+		return err
+	}
+	return r.lib.resultError("ma_audio_buffer_ref_seek_to_pcm_frame", r.lib.bindings.maAudioBufferRefSeekToPCMFrame(r.handle, frameIndex))
+}
+
 // MapF32 returns a direct slice over the remaining float32 frames in the referenced buffer.
 func (r *AudioBufferRef) MapF32() ([]float32, error) {
 	if r == nil || r.handle == nil {

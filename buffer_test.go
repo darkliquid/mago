@@ -93,6 +93,39 @@ func TestAudioBufferRefDoesNotOwnData(t *testing.T) {
 	}
 }
 
+func TestAudioBufferRefSeekToPCMFrame(t *testing.T) {
+	lib := newNullLibrary(t)
+
+	samples := []float32{10, 11, 12, 13, 14, 15}
+	ref, err := lib.NewAudioBufferRefF32(1, samples)
+	if err != nil {
+		t.Fatalf("NewAudioBufferRefF32: %v", err)
+	}
+	defer func() { _ = ref.Close() }()
+
+	out := make([]float32, 3)
+	if read, err := ref.Read(out, false); err != nil || read != 3 {
+		t.Fatalf("Read = %d (%v), want 3", read, err)
+	}
+
+	if err := ref.SeekToPCMFrame(4); err != nil {
+		t.Fatalf("SeekToPCMFrame: %v", err)
+	}
+	if cursor, err := ref.CursorInPCMFrames(); err != nil || cursor != 4 {
+		t.Fatalf("cursor = %d (%v), want 4", cursor, err)
+	}
+
+	if read, err := ref.Read(out[:2], false); err != nil || read != 2 {
+		t.Fatalf("Read after seek = %d (%v), want 2", read, err)
+	}
+	if out[0] != samples[4] || out[1] != samples[5] {
+		t.Fatalf("read after seek %v, want samples 4..5", out[:2])
+	}
+	if !ref.AtEnd() {
+		t.Fatal("expected reference to be at end after reading the final frames")
+	}
+}
+
 func TestRingBufferWriteThenRead(t *testing.T) {
 	lib := newNullLibrary(t)
 

@@ -13,16 +13,15 @@ import (
 // not referenced by Go code yet. Each entry must justify why it is allowed to
 // be dead so the list cannot grow silently.
 var bindingAllowlist = map[string]string{
-	"maRBGetSubbufferSize":           "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
-	"maRBGetSubbufferStride":         "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
-	"maRBGetSubbufferOffset":         "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
-	"maRBGetSubbufferPtr":            "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
-	"maPCMRBGetSubbufferSize":        "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
-	"maPCMRBGetSubbufferStride":      "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
-	"maPCMRBGetSubbufferOffset":      "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
-	"maPCMRBGetSubbufferPtr":         "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
-	"maAudioBufferRefSeekToPCMFrame": "restore via AudioBufferRef.SeekToPCMFrame; see mago-8a3.15.2.1",
-	"maNoiseSetType":                 "decide Noise.SetType stub and binding; see mago-8a3.15.2.3",
+	"maRBGetSubbufferSize":      "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
+	"maRBGetSubbufferStride":    "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
+	"maRBGetSubbufferOffset":    "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
+	"maRBGetSubbufferPtr":       "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
+	"maPCMRBGetSubbufferSize":   "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
+	"maPCMRBGetSubbufferStride": "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
+	"maPCMRBGetSubbufferOffset": "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
+	"maPCMRBGetSubbufferPtr":    "unused ring-buffer subbuffer accessor; see mago-8a3.15.3.3",
+	"maNoiseSetType":            "decide Noise.SetType stub and binding; see mago-8a3.15.2.3",
 }
 
 var (
