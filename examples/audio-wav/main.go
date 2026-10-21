@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/darkliquid/mago"
 	"github.com/darkliquid/mago/audio"
 )
 
@@ -43,6 +44,12 @@ func main() {
 	fmt.Println("fading out...")
 	stream.FadeOutAndStop(500 * time.Millisecond)
 	time.Sleep(700 * time.Millisecond)
+
+	// EncodeTo renders the clip back to WAV bytes (the only format miniaudio's
+	// encoder can write).
+	encoded, err := clip.EncodeTo(mago.EncodingFormatWAV)
+	must(err)
+	fmt.Printf("re-encoded clip: %d WAV bytes\n", len(encoded))
 }
 
 func makeTestWAV() []byte {

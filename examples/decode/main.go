@@ -42,7 +42,26 @@ func main() {
 	report("file", file)
 	example.Must(file.SeekToPCMFrame(0))
 	fmt.Println("                 seeked back to the start")
+
+	// Loop the file decoder and confirm reads wrap back to the start.
+	example.Must(file.SetLooping(true))
+	total := readAll(file)
+	fmt.Printf("                 looping read %d frames total\n", total)
 	example.Must(file.Close())
+}
+
+func readAll(decoder *mago.Decoder) uint64 {
+	buffer := make([]float32, 1024)
+	var total uint64
+	for i := 0; i < 2; i++ {
+		read, err := decoder.ReadF32(buffer)
+		example.Must(err)
+		if read == 0 {
+			break
+		}
+		total += read
+	}
+	return total
 }
 
 func report(source string, decoder *mago.Decoder) {

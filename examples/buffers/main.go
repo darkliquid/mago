@@ -57,6 +57,12 @@ func audioBufferRef(lib *mago.Library, samples []float32) {
 	read, err := ref.Read(out, false)
 	example.Must(err)
 	fmt.Printf("AudioBufferRef:  read %d frames, at end: %v\n", read, ref.AtEnd())
+
+	// SeekToPCMFrame rewinds the reference cursor.
+	example.Must(ref.SeekToPCMFrame(0))
+	read, err = ref.Read(out[:4], false)
+	example.Must(err)
+	fmt.Printf("                 after seek to 0, read %d frames, first sample %.4f\n", read, out[0])
 }
 
 func ringBuffer(lib *mago.Library) {

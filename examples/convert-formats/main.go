@@ -5,6 +5,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math"
 
@@ -63,4 +64,27 @@ func main() {
 	example.Must(err)
 	fmt.Printf("ConvertFrames: stereo f32 @%dHz -> mono s16 @%dHz, wrote %d frames\n", sampleRate, sampleRate/2, written)
 	fmt.Printf("  %v\n", downsampled[:written])
+
+	// ConvertFramesEx does the same conversion with an explicit config, so the
+	// dither mode, channel mix mode and resampler low-pass filter order are
+	// controllable.
+	stereoBytes := make([]byte, len(stereo)*4)
+	for i, value := range stereo {
+		binary.LittleEndian.PutUint32(stereoBytes[i*4:], math.Float32bits(value))
+	}
+	exOut := make([]byte, (frames/2)*1*2)
+	exWritten, err := lib.ConvertFramesEx(exOut, stereoBytes, mago.ConvertFramesConfig{
+		FormatIn:      mago.FormatF32,
+		FormatOut:     mago.FormatS16,
+		ChannelsIn:    2,
+		ChannelsOut:   1,
+		SampleRateIn:  sampleRate,
+		SampleRateOut: sampleRate / 2,
+	})
+	example.Must(err)
+	fmt.Printf("ConvertFramesEx: stereo f32 @%dHz -> mono s16 @%dHz, wrote %d frames\n", sampleRate, sampleRate/2, exWritten)
+	for i := uint64(0); i < exWritten; i++ {
+		sample := int16(exOut[i*2]) | int16(exOut[i*2+1])<<8
+		fmt.Printf("  [%d] %d\n", i, sample)
+	}
 }

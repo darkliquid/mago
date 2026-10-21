@@ -97,4 +97,31 @@ func main() {
 	cursor, err = source.CursorInPCMFrames()
 	example.Must(err)
 	fmt.Printf("               cursor after seek to 0: %d\n", cursor)
+
+	// Chaining: once source is exhausted, reads fall through to next.
+	next, err := lib.NewCustomDataSource(&sineSource{frames: frames / 2, sampleRate: sampleRate})
+	example.Must(err)
+	defer func() { example.Must(next.Close()) }()
+	example.Must(source.SetNext(next))
+	fmt.Printf("chained: next source has %d frames\n", frames/2)
+
+	// Ranges restrict playback to a window of frames.
+	example.Must(source.SetRangeInPCMFrames(0, 64))
+	beg, end, err := source.RangeInPCMFrames()
+	example.Must(err)
+	fmt.Printf("range: %d..%d\n", beg, end)
+
+	// Loop points let a source repeat a sub-region.
+	example.Must(source.SetLoopPointInPCMFrames(0, 32))
+	lbeg, lend, err := source.LoopPointInPCMFrames()
+	example.Must(err)
+	fmt.Printf("loop point: %d..%d\n", lbeg, lend)
+
+	// Seconds-based cursor and length, and forward seek, are also available.
+	seconds, err := source.LengthInSeconds()
+	example.Must(err)
+	fmt.Printf("length in seconds: %.3f\n", seconds)
+	skipped, err := source.SeekPCMFrames(16)
+	example.Must(err)
+	fmt.Printf("forward seek skipped %d frames\n", skipped)
 }

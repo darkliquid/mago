@@ -95,6 +95,20 @@ func main() {
 	example.Must(music.SetVolume(0))
 	fmt.Printf("group muted:       peak %.4f\n", peakAt())
 
+	// The engine's device and log are exposed as borrowed views. For a
+	// device-less engine the device is nil; the log must not be closed (it is
+	// owned by the engine), so it is only inspected here.
+	if dev := engine.Device(); dev != nil {
+		fmt.Println("engine device: present")
+	} else {
+		fmt.Println("engine device: none (device-less engine)")
+	}
+	if log := engine.Log(); log != nil {
+		fmt.Println("engine log: present")
+	} else {
+		fmt.Println("engine log: none")
+	}
+
 	example.Must(sound.Close())
 	example.Must(music.Close())
 	example.Must(engine.Close())
