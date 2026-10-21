@@ -148,7 +148,7 @@ jobs:
           cache: true
 
       - name: Build stub API for an unsupported GOOS
-        run: CGO_ENABLED=0 GOOS=plan9 GOARCH=amd64 go build ./...
+        run: CGO_ENABLED=0 GOOS=plan9 GOARCH=amd64 go build $(go list ./... | grep -v /examples/)
 
   test:
     name: Test (${{ matrix.os }})
